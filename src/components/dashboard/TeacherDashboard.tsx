@@ -1,0 +1,311 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
+import StatsCard from '@/components/ui/StatsCard';
+import CreateClassModal from '@/components/teacher/CreateClassModal';
+
+interface TeacherDashboardProps {
+  onViewChange: (view: string) => void;
+}
+
+const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange }) => {
+  const { user } = useAuth();
+  const [classes, setClasses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      fetchClasses();
+    }
+  }, [user]);
+
+  const fetchClasses = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('edu-auth', {
+        body: { action: 'getTeacherClasses', teacherId: user.id }
+      });
+
+      if (data?.classes) {
+        setClasses(data.classes);
+      }
+    } catch (err) {
+      console.error('Error fetching classes:', err);
+    }
+    setLoading(false);
+  };
+
+  const totalLearners = classes.reduce((acc, cls) => {
+    const learners = cls.class_enrollments?.filter((e: any) => e.role === 'learner') || [];
+    return acc + learners.length;
+  }, 0);
+
+  const totalParents = classes.reduce((acc, cls) => {
+    const parents = cls.class_enrollments?.filter((e: any) => e.role === 'parent') || [];
+    return acc + parents.length;
+  }, 0);
+
+  const quickActions = [
+    { label: 'Take Attendance', icon: '📋', view: 'attendance', color: 'bg-blue-500' },
+    { label: 'Add Homework', icon: '📚', view: 'homework', color: 'bg-green-500' },
+    { label: 'Create Assignment', icon: '📝', view: 'assignments', color: 'bg-purple-500' },
+    { label: 'Capture Marks', icon: '📊', view: 'marks', color: 'bg-orange-500' },
+    { label: 'Send Message', icon: '💬', view: 'messages', color: 'bg-pink-500' },
+    { label: 'View Reports', icon: '📈', view: 'reports', color: 'bg-indigo-500' }
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Welcome Section */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 md:p-8 text-white">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold">Welcome back, {user?.fullName?.split(' ')[0]}!</h1>
+            <p className="text-blue-100 mt-2">Here's what's happening in your classes today</p>
+          </div>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 px-5 py-3 bg-white text-blue-600 font-semibold rounded-xl hover:bg-blue-50 transition-all"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Create New Class
+          </button>
+        </div>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatsCard
+          title="Total Classes"
+          value={classes.length}
+          subtitle="Active classes"
+          color="blue"
+          icon={
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+          }
+        />
+        <StatsCard
+          title="Total Learners"
+          value={totalLearners}
+          subtitle="Across all classes"
+          color="green"
+          icon={
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          }
+        />
+        <StatsCard
+          title="Connected Parents"
+          value={totalParents}
+          subtitle="Engaged families"
+          color="purple"
+          icon={
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+          }
+        />
+        <StatsCard
+          title="Avg Pass Rate"
+          value="78%"
+          subtitle="This term"
+          color="orange"
+          trend={{ value: 5, isPositive: true }}
+          icon={
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          }
+        />
+      </div>
+
+      {/* Quick Actions */}
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {quickActions.map((action) => (
+            <button
+              key={action.view}
+              onClick={() => onViewChange(action.view)}
+              className="flex flex-col items-center gap-2 p-4 bg-white rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all"
+            >
+              <div className={`w-12 h-12 rounded-xl ${action.color} flex items-center justify-center text-2xl`}>
+                {action.icon}
+              </div>
+              <span className="text-sm font-medium text-gray-700 text-center">{action.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* My Classes */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">My Classes</h2>
+          <button
+            onClick={() => onViewChange('classes')}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+          >
+            View All
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 animate-pulse">
+                <div className="h-6 bg-gray-200 rounded w-3/4 mb-3"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
+                <div className="flex gap-2">
+                  <div className="h-8 bg-gray-200 rounded w-20"></div>
+                  <div className="h-8 bg-gray-200 rounded w-20"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : classes.length === 0 ? (
+          <div className="bg-white rounded-xl border-2 border-dashed border-gray-300 p-8 text-center">
+            <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <svg className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No classes yet</h3>
+            <p className="text-gray-500 mb-4">Create your first class to get started</p>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="px-5 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-all"
+            >
+              Create Class
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {classes.map((cls) => {
+              const learnerCount = cls.class_enrollments?.filter((e: any) => e.role === 'learner').length || 0;
+              const parentCount = cls.class_enrollments?.filter((e: any) => e.role === 'parent').length || 0;
+              
+              return (
+                <div
+                  key={cls.id}
+                  className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all cursor-pointer"
+                  onClick={() => onViewChange('classes')}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h3 className="font-semibold text-gray-900">{cls.class_name}</h3>
+                      <p className="text-sm text-gray-500">{cls.grade} • {cls.subject}</p>
+                    </div>
+                    <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                      Active
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <div className="flex items-center gap-1">
+                      <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                      </svg>
+                      {learnerCount} Learners
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                      {parentCount} Parents
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-gray-100 flex gap-2">
+                    <button className="flex-1 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-all">
+                      View Class
+                    </button>
+                    <button className="px-3 py-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all">
+                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Recent Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Upcoming Tasks */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h3 className="font-semibold text-gray-900 mb-4">Upcoming Tasks</h3>
+          <div className="space-y-3">
+            {[
+              { task: 'Grade Math Assignment 2', due: 'Today', priority: 'high' },
+              { task: 'Submit Term Reports', due: 'Tomorrow', priority: 'medium' },
+              { task: 'Parent Meeting - Grade 10', due: 'Feb 2', priority: 'low' },
+              { task: 'Prepare Science Exam', due: 'Feb 5', priority: 'medium' }
+            ].map((item, idx) => (
+              <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className={`w-2 h-2 rounded-full ${
+                    item.priority === 'high' ? 'bg-red-500' : 
+                    item.priority === 'medium' ? 'bg-orange-500' : 'bg-green-500'
+                  }`}></div>
+                  <span className="text-sm text-gray-700">{item.task}</span>
+                </div>
+                <span className="text-xs text-gray-500">{item.due}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* At-Risk Learners */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h3 className="font-semibold text-gray-900 mb-4">At-Risk Learners</h3>
+          <div className="space-y-3">
+            {classes.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-4">No data available yet</p>
+            ) : (
+              [
+                { name: 'John Doe', class: 'Grade 10A', avg: 42, trend: 'down' },
+                { name: 'Sarah Smith', class: 'Grade 10A', avg: 45, trend: 'up' },
+                { name: 'Mike Johnson', class: 'Grade 11B', avg: 48, trend: 'stable' }
+              ].map((learner, idx) => (
+                <div key={idx} className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-red-200 flex items-center justify-center text-red-700 font-medium text-sm">
+                      {learner.name.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{learner.name}</p>
+                      <p className="text-xs text-gray-500">{learner.class}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-red-600">{learner.avg}%</p>
+                    <p className="text-xs text-gray-500">Average</p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+
+      <CreateClassModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onClassCreated={() => fetchClasses()}
+      />
+    </div>
+  );
+};
+
+export default TeacherDashboard;
