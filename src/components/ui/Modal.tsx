@@ -35,7 +35,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className={`relative w-full ${sizeClasses[size]} mx-4 max-h-[90vh] overflow-auto rounded-2xl bg-white shadow-2xl`}>
+      <div className={`relative w-full ${sizeClasses[size]} mx-4 max-h-[90vh] overflow-auto rounded-2xl bg-white shadow-2xl no-scrollbar`}>
         {title && (
           <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-4">
             <h2 className="text-xl font-semibold text-gray-900">{title}</h2>

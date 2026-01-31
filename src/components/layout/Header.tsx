@@ -106,11 +106,25 @@ const Header: React.FC<HeaderProps> = ({ onOpenLogin, onOpenRegister, onToggleSi
                 </button>
 
                 {showUserMenu && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-2">
-                    <div className="px-4 py-3 border-b border-gray-100">
+                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-200 py-2">
+                    <div className="px-4 py-3 border-b border-gray-100 space-y-1">
                       <p className="text-sm font-medium text-gray-900">{user.fullName}</p>
                       <p className="text-xs text-gray-500">{user.email}</p>
                     </div>
+                    {user.role === 'teacher' && user.teacherInviteCode && (
+                      <button
+                        onClick={() => navigator.clipboard.writeText(user.teacherInviteCode!)}
+                        className="w-full px-4 py-2 text-left text-sm text-blue-700 hover:bg-blue-50 flex items-center gap-3 border-b border-gray-100"
+                      >
+                        <svg className="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16h8M8 12h8m-6-8h6a2 2 0 012 2v12a2 2 0 01-2 2H8a2 2 0 01-2-2V6a2 2 0 012-2zm0 0V4a2 2 0 012-2h2" />
+                        </svg>
+                        <span className="flex flex-col items-start">
+                          <span className="text-xs font-semibold uppercase tracking-wide">Invite Code</span>
+                          <span className="font-mono text-sm">{user.teacherInviteCode}</span>
+                        </span>
+                      </button>
+                    )}
                     <button className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3">
                       <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />

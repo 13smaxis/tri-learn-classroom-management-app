@@ -1,51 +1,72 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { addDemoTask, getTeacherClasses, getTeacherTasks } from '@/lib/demoStore';
 import StatsCard from '@/components/ui/StatsCard';
 import CreateClassModal from '@/components/teacher/CreateClassModal';
 
 interface TeacherDashboardProps {
   onViewChange: (view: string) => void;
+  classesVersion?: number;
 }
 
-const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange }) => {
+const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, classesVersion }) => {
   const { user } = useAuth();
   const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [tasks, setTasks] = useState<{ id: string; title: string; dueDate: string }[]>([]);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskDueDate, setNewTaskDueDate] = useState('');
 
   useEffect(() => {
     if (user) {
       fetchClasses();
+      fetchTasks();
     }
-  }, [user]);
+  }, [user, classesVersion]);
 
   const fetchClasses = async () => {
     if (!user) return;
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('edu-auth', {
-        body: { action: 'getTeacherClasses', teacherId: user.id }
-      });
 
-      if (data?.classes) {
-        setClasses(data.classes);
-      }
-    } catch (err) {
-      console.error('Error fetching classes:', err);
-    }
+    const demoClasses = getTeacherClasses(user.id);
+    setClasses(demoClasses);
     setLoading(false);
   };
 
+  const fetchTasks = () => {
+    if (!user) return;
+    const teacherTasks = getTeacherTasks(user.id);
+    setTasks(teacherTasks);
+  };
+
   const totalLearners = classes.reduce((acc, cls) => {
-    const learners = cls.class_enrollments?.filter((e: any) => e.role === 'learner') || [];
+    const learners = cls.enrollments?.filter((e: any) => e.role === 'learner') || [];
     return acc + learners.length;
   }, 0);
 
   const totalParents = classes.reduce((acc, cls) => {
-    const parents = cls.class_enrollments?.filter((e: any) => e.role === 'parent') || [];
+    const parents = cls.enrollments?.filter((e: any) => e.role === 'parent') || [];
     return acc + parents.length;
   }, 0);
+
+  // With no marks captured in the demo store yet, the pass rate
+  // simply stays at 0 until assessment data is added.
+  const avgPassRate = 0;
+
+  const handleAddTask = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !newTaskTitle || !newTaskDueDate) return;
+
+    addDemoTask({
+      teacherId: user.id,
+      title: newTaskTitle,
+      dueDate: newTaskDueDate
+    });
+
+    setNewTaskTitle('');
+    setNewTaskDueDate('');
+    fetchTasks();
+  };
 
   const quickActions = [
     { label: 'Take Attendance', icon: '📋', view: 'attendance', color: 'bg-blue-500' },
@@ -65,15 +86,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange }) => 
             <h1 className="text-2xl md:text-3xl font-bold">Welcome back, {user?.fullName?.split(' ')[0]}!</h1>
             <p className="text-blue-100 mt-2">Here's what's happening in your classes today</p>
           </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-5 py-3 bg-white text-blue-600 font-semibold rounded-xl hover:bg-blue-50 transition-all"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            Create New Class
-          </button>
         </div>
       </div>
 
@@ -114,10 +126,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange }) => 
         />
         <StatsCard
           title="Avg Pass Rate"
-          value="78%"
-          subtitle="This term"
+          value={`${avgPassRate}%`}
+          subtitle="This term (demo)"
           color="orange"
-          trend={{ value: 5, isPositive: true }}
           icon={
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -189,9 +200,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange }) => 
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {classes.map((cls) => {
-              const learnerCount = cls.class_enrollments?.filter((e: any) => e.role === 'learner').length || 0;
-              const parentCount = cls.class_enrollments?.filter((e: any) => e.role === 'parent').length || 0;
-              
+              const learnerCount = cls.enrollments?.filter((e: any) => e.role === 'learner').length || 0;
+              const parentCount = cls.enrollments?.filter((e: any) => e.role === 'parent').length || 0;
+
               return (
                 <div
                   key={cls.id}
@@ -200,14 +211,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange }) => 
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <h3 className="font-semibold text-gray-900">{cls.class_name}</h3>
+                      <h3 className="font-semibold text-gray-900">{cls.name}</h3>
                       <p className="text-sm text-gray-500">{cls.grade} • {cls.subject}</p>
                     </div>
                     <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
                       Active
                     </span>
                   </div>
-                  
+
                   <div className="flex items-center gap-4 text-sm text-gray-600">
                     <div className="flex items-center gap-1">
                       <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -240,61 +251,84 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange }) => 
         )}
       </div>
 
-      {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Upcoming Tasks */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">                                                   {/* Recent Activity */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">                                    {/* Upcoming Tasks */}
           <h3 className="font-semibold text-gray-900 mb-4">Upcoming Tasks</h3>
+          <form onSubmit={handleAddTask} className="space-y-3 mb-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                className="
+                            flex-1 rounded-lg 
+                            border border-gray-300 
+                            px-3 py-2 
+                            text-sm 
+                            focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/40
+                          "
+                placeholder="e.g. Mark Grade 10A homework"
+              />
+              <input
+                type="date"
+                value={newTaskDueDate}
+                onChange={(e) => setNewTaskDueDate(e.target.value)}
+                className="
+                            w-full sm:w-40 rounded-lg 
+                            border border-gray-300 
+                            px-3 py-2 
+                            text-sm 
+                            focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/40
+                          "
+              />
+              <button
+                type="submit"
+                className="
+                            w-full sm:w-auto 
+                            px-4 py-2 
+                            rounded-lg 
+                            bg-blue-600 
+                            text-white text-sm font-medium 
+                            hover:bg-blue-700 
+                            transition-all 
+                            disabled:opacity-50
+                          "
+                disabled={!newTaskTitle || !newTaskDueDate}
+              >
+                Add Task
+              </button>
+            </div>
+          </form>
+
           <div className="space-y-3">
-            {[
-              { task: 'Grade Math Assignment 2', due: 'Today', priority: 'high' },
-              { task: 'Submit Term Reports', due: 'Tomorrow', priority: 'medium' },
-              { task: 'Parent Meeting - Grade 10', due: 'Feb 2', priority: 'low' },
-              { task: 'Prepare Science Exam', due: 'Feb 5', priority: 'medium' }
-            ].map((item, idx) => (
-              <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className={`w-2 h-2 rounded-full ${
-                    item.priority === 'high' ? 'bg-red-500' : 
-                    item.priority === 'medium' ? 'bg-orange-500' : 'bg-green-500'
-                  }`}></div>
-                  <span className="text-sm text-gray-700">{item.task}</span>
-                </div>
-                <span className="text-xs text-gray-500">{item.due}</span>
-              </div>
-            ))}
+            {tasks.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-2">
+                No upcoming tasks yet. Add your first task above.
+              </p>
+            ) : (
+              tasks
+                .slice()
+                .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+                .map((task) => (
+                  <div key={task.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span className="text-sm text-gray-700">{task.title}</span>
+                    <span className="text-xs text-gray-500">
+                      {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : ''}
+                    </span>
+                  </div>
+                ))
+            )}
           </div>
         </div>
 
         {/* At-Risk Learners */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <div className="bg-white rounded-xl border border-gray-200 p-5">                                    {/* At-Risk Learners */}
           <h3 className="font-semibold text-gray-900 mb-4">At-Risk Learners</h3>
           <div className="space-y-3">
-            {classes.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-4">No data available yet</p>
-            ) : (
-              [
-                { name: 'John Doe', class: 'Grade 10A', avg: 42, trend: 'down' },
-                { name: 'Sarah Smith', class: 'Grade 10A', avg: 45, trend: 'up' },
-                { name: 'Mike Johnson', class: 'Grade 11B', avg: 48, trend: 'stable' }
-              ].map((learner, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-100">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-red-200 flex items-center justify-center text-red-700 font-medium text-sm">
-                      {learner.name.charAt(0)}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{learner.name}</p>
-                      <p className="text-xs text-gray-500">{learner.class}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-red-600">{learner.avg}%</p>
-                    <p className="text-xs text-gray-500">Average</p>
-                  </div>
-                </div>
-              ))
-            )}
+            <p className="text-sm text-gray-500 text-center py-4">
+              No performance data yet. Once marks are captured, learners who
+              need support will be highlighted here.
+            </p>
           </div>
         </div>
       </div>

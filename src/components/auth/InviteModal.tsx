@@ -13,7 +13,7 @@ const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose, onSwitchToLo
   const { user, validateInvite, joinClass } = useAuth();
   const [inviteCode, setInviteCode] = useState('');
   const [classInfo, setClassInfo] = useState<any>(null);
-  const [inviteType, setInviteType] = useState<string>('');
+  const [selectedRole, setSelectedRole] = useState<'parent' | 'learner'>('parent');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -27,7 +27,7 @@ const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose, onSwitchToLo
 
     if (result.success) {
       setClassInfo(result.classInfo);
-      setInviteType(result.inviteType || '');
+      setSelectedRole('parent');
     } else {
       setError(result.error || 'Invalid invite code');
     }
@@ -37,12 +37,12 @@ const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose, onSwitchToLo
 
   const handleJoin = async () => {
     if (!user) {
-      onSwitchToRegister(inviteType as 'parent' | 'learner');
+      onSwitchToRegister(selectedRole);
       return;
     }
 
     setLoading(true);
-    const result = await joinClass(classInfo.id, inviteType);
+    const result = await joinClass(classInfo.id, selectedRole);
 
     if (result.success) {
       setSuccess(true);
@@ -156,10 +156,34 @@ const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose, onSwitchToLo
             </div>
           </div>
 
-          <div className="rounded-lg bg-gray-50 p-4">
+          <div className="rounded-lg bg-gray-50 p-4 space-y-3">
             <p className="text-sm text-gray-600">
-              You will be joining as a <span className="font-semibold text-blue-600 capitalize">{inviteType}</span>
+              How are you joining this class?
             </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setSelectedRole('parent')}
+                className={`flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition-all ${
+                  selectedRole === 'parent'
+                    ? 'border-blue-600 bg-blue-50 text-blue-700'
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                I'm a Parent
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedRole('learner')}
+                className={`flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition-all ${
+                  selectedRole === 'learner'
+                    ? 'border-blue-600 bg-blue-50 text-blue-700'
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                I'm a Learner
+              </button>
+            </div>
           </div>
 
           {!user && (

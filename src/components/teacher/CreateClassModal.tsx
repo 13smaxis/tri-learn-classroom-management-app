@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Modal from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { createDemoClass } from '@/lib/demoStore';
 
 interface CreateClassModalProps {
   isOpen: boolean;
@@ -62,58 +62,19 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({ isOpen, onClose, on
     setError('');
 
     try {
-      // Generate unique 6-character invite codes
-      const generateInviteCode = () => {
-        return Math.random().toString(36).substring(2, 8).toUpperCase();
-      };
-
-      const learnerInviteCode = generateInviteCode();
-      const parentInviteCode = generateInviteCode();
-
-      console.log('Creating class with data:', {
+      const newClass = createDemoClass({
         name: formData.className,
         grade: formData.grade,
         subject: formData.subject,
-        academic_year: formData.academicYear,
-        teacher_id: user.id,
-        learner_invite_code: learnerInviteCode,
-        parent_invite_code: parentInviteCode,
-        enabled_tools: formData.enabledTools
+        academicYear: formData.academicYear,
+        teacherId: user.id,
+        teacherName: user.fullName,
+        enabledTools: formData.enabledTools
       });
 
-      // Insert class directly into database
-      const { data: classData, error: insertError } = await supabase
-        .from('classes')
-        .insert([
-          {
-            name: formData.className,
-            grade: formData.grade,
-            subject: formData.subject,
-            academic_year: formData.academicYear,
-            teacher_id: user.id,
-            learner_invite_code: learnerInviteCode,
-            parent_invite_code: parentInviteCode,
-            enabled_tools: formData.enabledTools,
-            created_at: new Date().toISOString()
-          }
-        ])
-        .select()
-        .single();
-
-      console.log('Supabase response:', { classData, insertError });
-
-      if (insertError) {
-        console.error('Insert error:', insertError);
-        throw new Error(insertError.message || 'Failed to create class');
-      }
-
-      if (!classData) {
-        throw new Error('No data returned from database');
-      }
-
-      setCreatedClass(classData);
+      setCreatedClass(newClass);
       setStep(3);
-      onClassCreated(classData);
+      onClassCreated(newClass);
     } catch (err: any) {
       console.error('Full error:', err);
       setError(err.message || 'An error occurred while creating the class');
@@ -290,34 +251,30 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({ isOpen, onClose, on
           <div className="space-y-4">
             <div className="rounded-xl border-2 border-purple-200 bg-purple-50 p-5">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-purple-700">Learner Invite Code</span>
-                <button
-                  onClick={() => copyToClipboard(createdClass.learner_invite_code)}
-                  className="text-sm text-purple-600 hover:text-purple-700 font-medium"
-                >
-                  Copy
-                </button>
+                <span className="text-sm font-medium text-purple-700">Invite Code</span>
+                {user?.teacherInviteCode && (
+                  <button
+                    onClick={() => copyToClipboard(user.teacherInviteCode!)}
+                    className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                  >
+                    Copy
+                  </button>
+                )}
               </div>
-              <p className="text-2xl font-mono font-bold text-purple-900 tracking-widest">
-                {createdClass.learner_invite_code}
-              </p>
-              <p className="text-xs text-purple-600 mt-2">Share this code with your learners</p>
-            </div>
-
-            <div className="rounded-xl border-2 border-green-200 bg-green-50 p-5">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-green-700">Parent Invite Code</span>
-                <button
-                  onClick={() => copyToClipboard(createdClass.parent_invite_code)}
-                  className="text-sm text-green-600 hover:text-green-700 font-medium"
-                >
-                  Copy
-                </button>
-              </div>
-              <p className="text-2xl font-mono font-bold text-green-900 tracking-widest">
-                {createdClass.parent_invite_code}
-              </p>
-              <p className="text-xs text-green-600 mt-2">Share this code with parents</p>
+              {user?.teacherInviteCode ? (
+                <>
+                  <p className="text-2xl font-mono font-bold text-purple-900 tracking-widest">
+                    {user.teacherInviteCode}
+                  </p>
+                  <p className="text-xs text-purple-600 mt-2">
+                    Share this single code with both learners and parents for all your classes
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-purple-700">
+                  Your invite code is available in your profile menu.
+                </p>
+              )}
             </div>
           </div>
 

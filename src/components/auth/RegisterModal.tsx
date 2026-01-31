@@ -7,18 +7,23 @@ interface RegisterModalProps {
   onClose: () => void;
   onSwitchToLogin: () => void;
   defaultRole?: 'teacher' | 'parent' | 'learner';
+  onRegisterSuccess?: (role: 'teacher' | 'parent' | 'learner') => void;
 }
 
-const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitchToLogin, defaultRole }) => {
+const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitchToLogin, defaultRole, onRegisterSuccess }) => {
   const { register } = useAuth();
   const [step, setStep] = useState(1);
+  const initialRole = (defaultRole || 'teacher') as 'teacher' | 'parent' | 'learner';
   const [formData, setFormData] = useState({
+    title: '',
+    teacherGrade: '10',
     email: '',
     password: '',
     confirmPassword: '',
     fullName: '',
     phone: '',
-    role: defaultRole || 'teacher' as 'teacher' | 'parent' | 'learner'
+    role: initialRole,
+    schoolInviteCode: initialRole === 'teacher' ? 'JAN021234' : ''
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -28,7 +33,12 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
   };
 
   const handleRoleSelect = (role: 'teacher' | 'parent' | 'learner') => {
-    setFormData({ ...formData, role });
+    setFormData({
+      ...formData,
+      role,
+      teacherGrade: role === 'teacher' ? (formData.teacherGrade || '10') : '',
+      schoolInviteCode: role === 'teacher' ? formData.schoolInviteCode || 'JAN021234' : ''
+    });
     setStep(2);
   };
 
@@ -49,22 +59,34 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
     setLoading(true);
 
     const result = await register({
-      email: formData.email,
+      title: formData.title || undefined,
+      teacherGrade: formData.role === 'teacher' ? formData.teacherGrade || '10' : undefined,
+      email: formData.email || undefined,
       password: formData.password,
       fullName: formData.fullName,
       role: formData.role,
-      phone: formData.phone
+      phone: formData.phone || undefined,
+      schoolInviteCode: formData.schoolInviteCode || undefined
     });
 
     if (result.success) {
+      if (onRegisterSuccess) {
+        onRegisterSuccess(formData.role as 'teacher' | 'parent' | 'learner');
+      }
+
+      // Always close the modal on success; AppLayout will
+      // handle showing a blurred welcome overlay for teachers
       onClose();
       setFormData({
+        title: '',
+        teacherGrade: '10',
         email: '',
         password: '',
         confirmPassword: '',
         fullName: '',
         phone: '',
-        role: 'teacher'
+        role: 'teacher',
+        schoolInviteCode: 'JAN021234'
       });
       setStep(1);
     } else {
@@ -123,7 +145,12 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Create Account" size="md">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Create Account"
+      size="md"
+    >
       {step === 1 && !defaultRole ? (
         <div className="space-y-4">
           <p className="text-gray-600 mb-6">Select your role to get started</p>
@@ -181,7 +208,19 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Title (optional)</label>
+            <input
+              type="text"
+              name="title"
+              value={formData.title}
+              onChange={handleChange}
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+              placeholder="e.g. Mr, Ms, Dr"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
             <input
               type="text"
               name="fullName"
@@ -194,7 +233,7 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Email Address (optional)</label>
             <input
               type="email"
               name="email"
@@ -202,21 +241,67 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
               onChange={handleChange}
               className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
               placeholder="you@example.com"
-              required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number (Optional)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number *</label>
             <input
               type="tel"
               name="phone"
               value={formData.phone}
               onChange={handleChange}
               className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-              placeholder="+27 XX XXX XXXX"
+              placeholder="0821234567"
+              required
             />
           </div>
+
+          {formData.role === 'teacher' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Primary Teaching Grade *</label>
+                <select
+                  name="teacherGrade"
+                  value={formData.teacherGrade}
+                  onChange={handleChange}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  required
+                >
+                  <option value="">Select grade</option>
+                  <option value="1">Grade 1</option>
+                  <option value="2">Grade 2</option>
+                  <option value="3">Grade 3</option>
+                  <option value="4">Grade 4</option>
+                  <option value="5">Grade 5</option>
+                  <option value="6">Grade 6</option>
+                  <option value="7">Grade 7</option>
+                  <option value="8">Grade 8</option>
+                  <option value="9">Grade 9</option>
+                  <option value="10">Grade 10</option>
+                  <option value="11">Grade 11</option>
+                  <option value="12">Grade 12</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">School Invite Code *</label>
+                <input
+                  type="text"
+                  name="schoolInviteCode"
+                  value={formData.schoolInviteCode}
+                  onChange={handleChange}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 font-mono tracking-widest focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  placeholder="e.g. JAN021234"
+                  maxLength={9}
+                  required
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Demo format: first 3 letters of school + district + unique code (for example <span className="font-semibold">JAN021234</span>).
+                </p>
+              </div>
+            </>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>

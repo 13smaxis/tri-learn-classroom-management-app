@@ -1,31 +1,121 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { getTeacherClasses, getUserClasses } from '@/lib/demoStore';
+
+const LEARNERS_STORAGE_KEY = 'eduAttendanceLearnersByClass';
+
+type Learner = { id: string; name: string; number: string };
+
+function loadLearnersForClass(classId: string): Learner[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(LEARNERS_STORAGE_KEY);
+    if (!raw) return [];
+    const map = JSON.parse(raw) as Record<string, Learner[]>;
+    return map[classId] || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLearnersForClass(classId: string, learners: Learner[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const raw = window.localStorage.getItem(LEARNERS_STORAGE_KEY);
+    const map = raw ? (JSON.parse(raw) as Record<string, Learner[]>) : {};
+    map[classId] = learners;
+    window.localStorage.setItem(LEARNERS_STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    // ignore storage errors in demo mode
+  }
+}
 
 const AttendanceView: React.FC = () => {
   const { user } = useAuth();
+  const [classes, setClasses] = useState<any[]>([]);
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [attendance, setAttendance] = useState<Record<string, string>>({});
+  const [learners, setLearners] = useState<Learner[]>([]);
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
 
-  // Mock data
-  const classes = [
-    { id: '1', name: 'Grade 10A - Mathematics' },
-    { id: '2', name: 'Grade 11B - Mathematics' },
-    { id: '3', name: 'Grade 10A - Physical Sciences' }
-  ];
+  useEffect(() => {
+    if (!user) return;
 
-  const learners = [
-    { id: '1', name: 'Alex Johnson', number: '001' },
-    { id: '2', name: 'Sarah Smith', number: '002' },
-    { id: '3', name: 'Mike Brown', number: '003' },
-    { id: '4', name: 'Emily Davis', number: '004' },
-    { id: '5', name: 'James Wilson', number: '005' },
-    { id: '6', name: 'Lisa Anderson', number: '006' },
-    { id: '7', name: 'David Taylor', number: '007' },
-    { id: '8', name: 'Emma Thomas', number: '008' },
-    { id: '9', name: 'Chris Martin', number: '009' },
-    { id: '10', name: 'Sophie White', number: '010' }
-  ];
+    if (user.role === 'teacher') {
+      setClasses(getTeacherClasses(user.id));
+    } else {
+      setClasses(getUserClasses(user.id, user.role));
+    }
+  }, [user]);
+
+  // When a class is selected, load any saved learners for that class
+  useEffect(() => {
+    if (!selectedClass) {
+      setLearners([]);
+      setAttendance({});
+      setUploadStatus(null);
+      setUploadedFileName(null);
+      return;
+    }
+
+    const stored = loadLearnersForClass(selectedClass);
+    setLearners(stored);
+    setAttendance({});
+    setUploadStatus(stored.length ? 'saved' : null);
+    setUploadedFileName(null);
+  }, [selectedClass]);
+
+  const handleCsvUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!selectedClass) {
+      alert('Please select a class before uploading learners.');
+      return;
+    }
+
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = reader.result?.toString() || '';
+      const lines = text
+        .split(/\r?\n/)
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+
+      if (lines.length === 0) return;
+
+      // Assume the first row is a header: Student ID, Name, Surname
+      const dataLines = lines.slice(1);
+
+      const parsed = dataLines.map((line, index) => {
+        const [idRaw, nameRaw, surnameRaw] = line.split(',');
+        const id = (idRaw || '').trim() || String(index + 1);
+        const firstName = (nameRaw || '').trim();
+        const surname = (surnameRaw || '').trim();
+        const fullName = [firstName, surname].filter(Boolean).join(' ') || `Learner ${index + 1}`;
+
+        return {
+          id,
+          name: fullName,
+          number: id
+        };
+      });
+
+      if (parsed.length > 0) {
+        setLearners(parsed);
+        setAttendance({});
+        saveLearnersForClass(selectedClass, parsed);
+        setUploadedFileName(file.name);
+        setUploadStatus('saved');
+      }
+    };
+
+    reader.readAsText(file);
+    // allow re-uploading the same file if needed
+    event.target.value = '';
+  };
 
   const handleAttendanceChange = (learnerId: string, status: string) => {
     setAttendance(prev => ({ ...prev, [learnerId]: status }));
@@ -57,7 +147,7 @@ const AttendanceView: React.FC = () => {
 
       {/* Filters */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
             <select
@@ -79,6 +169,23 @@ const AttendanceView: React.FC = () => {
               onChange={(e) => setSelectedDate(e.target.value)}
               className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Upload Learners (CSV)</label>
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleCsvUpload}
+              className="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Expected columns: Student ID, Student Name, Student Surname
+            </p>
+            {uploadStatus === 'saved' && (
+              <p className="mt-1 text-xs text-green-600">
+                {uploadedFileName ? `Saved from ${uploadedFileName}` : 'Learners list loaded for this class.'}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -127,7 +234,7 @@ const AttendanceView: React.FC = () => {
                   </div>
                   
                   <div className="flex gap-2">
-                    {['present', 'absent', 'late', 'excused'].map((status) => (
+                    {['present', 'absent', 'late', 'excused', 'bunking', 'sick'].map((status) => (
                       <button
                         key={status}
                         onClick={() => handleAttendanceChange(learner.id, status)}
@@ -136,6 +243,8 @@ const AttendanceView: React.FC = () => {
                             ? status === 'present' ? 'bg-green-500 text-white' :
                               status === 'absent' ? 'bg-red-500 text-white' :
                               status === 'late' ? 'bg-orange-500 text-white' :
+                              status === 'bunking' ? 'bg-red-700 text-white' :
+                              status === 'sick' ? 'bg-purple-500 text-white' :
                               'bg-blue-500 text-white'
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         }`}

@@ -101,6 +101,16 @@
   }
 }
 
+/* Hide scrollbars for modals and other scrollable containers using this class */
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
 .markdown-editor {
   @apply font-mono text-base leading-relaxed;
 }

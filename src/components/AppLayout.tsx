@@ -33,9 +33,10 @@ import ChildProgressView from '@/components/parent/ChildProgressView';
 
 
 const AppLayout: React.FC = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, justSignedUp, clearJustSignedUp } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeView, setActiveView] = useState('dashboard');
+  const [classesVersion, setClassesVersion] = useState(0);
   
   // Auth modals
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -45,6 +46,8 @@ const AppLayout: React.FC = () => {
   
   // Teacher modals
   const [showCreateClassModal, setShowCreateClassModal] = useState(false);
+
+  const showWelcomeOverlay = !!user && user.role === 'teacher' && justSignedUp;
 
   if (loading) {
     return (
@@ -121,7 +124,7 @@ const AppLayout: React.FC = () => {
     switch (activeView) {
       case 'dashboard':
         if (user.role === 'teacher') {
-          return <TeacherDashboard onViewChange={setActiveView} />;
+          return <TeacherDashboard onViewChange={setActiveView} classesVersion={classesVersion} />;
         } else if (user.role === 'parent') {
           return <ParentDashboard onViewChange={setActiveView} />;
         } else {
@@ -131,7 +134,8 @@ const AppLayout: React.FC = () => {
       case 'classes':
         return (
           <ClassesView 
-            onCreateClass={user.role === 'teacher' ? () => setShowCreateClassModal(true) : undefined} 
+            onCreateClass={user.role === 'teacher' ? () => setShowCreateClassModal(true) : undefined}
+            classesVersion={classesVersion}
           />
         );
       
@@ -181,37 +185,66 @@ const AppLayout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header
-        onOpenLogin={() => setShowLoginModal(true)}
-        onOpenRegister={() => setShowRegisterModal(true)}
-        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-        sidebarOpen={sidebarOpen}
-      />
-      
-      <div className="flex">
-        <Sidebar
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-          activeView={activeView}
-          onViewChange={setActiveView}
+    <div className={`min-h-screen bg-gray-50 relative ${showWelcomeOverlay ? 'overflow-hidden' : ''}`}>
+      <div className={showWelcomeOverlay ? 'pointer-events-none blur-sm transition-all' : 'transition-all'}>
+        <Header
+          onOpenLogin={() => setShowLoginModal(true)}
+          onOpenRegister={() => setShowRegisterModal(true)}
+          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+          sidebarOpen={sidebarOpen}
         />
         
-        <main className="flex-1 p-4 lg:p-6 overflow-auto">
-          {renderContent()}
-        </main>
+        <div className="flex">
+          <Sidebar
+            isOpen={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+            activeView={activeView}
+            onViewChange={setActiveView}
+          />
+          
+          <main className="flex-1 p-4 lg:p-6 overflow-auto">
+            {renderContent()}
+          </main>
+        </div>
+
+        {/* Teacher Create Class Modal - shared entry point */}
+        {user.role === 'teacher' && (
+          <CreateClassModal
+            isOpen={showCreateClassModal}
+            onClose={() => setShowCreateClassModal(false)}
+            onClassCreated={() => {
+              // Bump the classesVersion so dashboards and class lists refresh
+              // from the demo store immediately after a class is created.
+              setClassesVersion(v => v + 1);
+              setActiveView('classes');
+            }}
+          />
+        )}
       </div>
 
-      {/* Teacher Modals */}
-      {user.role === 'teacher' && (
-        <CreateClassModal
-          isOpen={showCreateClassModal}
-          onClose={() => setShowCreateClassModal(false)}
-          onClassCreated={() => {
-            setShowCreateClassModal(false);
-            setActiveView('classes');
-          }}
-        />
+      {showWelcomeOverlay && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 p-8 text-center">
+            <div className="mx-auto w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
+              <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+              Congratulations, {user.title ? `${user.title} ` : ''}{user.fullName.split(' ')[0]}!
+            </h2>
+            <p className="text-gray-600 mb-6">
+              You're all set! Your classroom is ready — everything you need is right here.
+            </p>
+            <button
+              type="button"
+              onClick={clearJustSignedUp}
+              className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all"
+            >
+              Enter your classroom
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
