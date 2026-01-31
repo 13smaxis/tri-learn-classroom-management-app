@@ -73,10 +73,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Single INVITE CODE generator used for teachers
   const generateInviteCode = (grade: string = '10') => {
-    // Example format: GRD{grade} + 4-digit number, e.g. GRD101234
-    const safeGrade = grade || '10';
+    // New format: TRI + district number (02) + unique 4‑digit code, e.g. TRI020123
+    const district = '02';
     const suffix = Math.floor(1000 + Math.random() * 9000);
-    return `GRD${safeGrade}${suffix}`;
+    return `TRI${district}${suffix}`;
   };
 
   useEffect(() => {

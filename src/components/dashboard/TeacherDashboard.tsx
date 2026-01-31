@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { addDemoTask, getTeacherClasses, getTeacherTasks } from '@/lib/demoStore';
+import { loadAllAttendance } from '@/lib/attendanceStore';
 import StatsCard from '@/components/ui/StatsCard';
 import CreateClassModal from '@/components/teacher/CreateClassModal';
 
@@ -17,6 +18,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
   const [tasks, setTasks] = useState<{ id: string; title: string; dueDate: string }[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDueDate, setNewTaskDueDate] = useState('');
+  const [attendanceRecords, setAttendanceRecords] = useState(0);
 
   useEffect(() => {
     if (user) {
@@ -30,6 +32,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
 
     const demoClasses = getTeacherClasses(user.id);
     setClasses(demoClasses);
+    // After classes load, compute basic attendance summary from saved registers
+    const allAttendance = loadAllAttendance();
+    const teacherClassIds = demoClasses.map((c) => c.id);
+    let records = 0;
+    teacherClassIds.forEach((id) => {
+      const byDate = allAttendance[id] || {};
+      Object.values(byDate).forEach((dateMap) => {
+        records += Object.keys(dateMap).length;
+      });
+    });
+    setAttendanceRecords(records);
     setLoading(false);
   };
 
@@ -48,10 +61,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
     const parents = cls.enrollments?.filter((e: any) => e.role === 'parent') || [];
     return acc + parents.length;
   }, 0);
-
-  // With no marks captured in the demo store yet, the pass rate
-  // simply stays at 0 until assessment data is added.
-  const avgPassRate = 0;
 
   const handleAddTask = (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,13 +134,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
           }
         />
         <StatsCard
-          title="Avg Pass Rate"
-          value={`${avgPassRate}%`}
-          subtitle="This term (demo)"
+          title="Attendance Records"
+          value={attendanceRecords}
+          subtitle="Saved register entries (demo)"
           color="orange"
           icon={
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h18M3 12h18M3 17h18M8 5v2m4-2v2m4-2v2M8 10v2m4-2v2m4-2v2M8 15v2m4-2v2m4-2v2" />
             </svg>
           }
         />

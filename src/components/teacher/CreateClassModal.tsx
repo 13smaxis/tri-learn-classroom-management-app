@@ -12,7 +12,8 @@ interface CreateClassModalProps {
 const grades = ['Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
 
 const subjects = [
-  'Mathematics', 'English', 'Physical Sciences', 'Life Sciences', 'Geography', 
+  'Primary Education',
+  'Mathematics', 'English', 'Physical Sciences', 'Life Sciences', 'Geography',
   'History', 'Accounting', 'Business Studies', 'Economics', 'Life Orientation',
   'Computer Applications Technology', 'Information Technology', 'Agricultural Sciences',
   'Tourism', 'Visual Arts', 'Music', 'Dramatic Arts', 'Consumer Studies'
@@ -57,7 +58,7 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({ isOpen, onClose, on
 
   const handleSubmit = async () => {
     if (!user) return;
-    
+
     setLoading(true);
     setError('');
 
@@ -196,11 +197,10 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({ isOpen, onClose, on
               <button
                 key={tool.id}
                 onClick={() => toggleTool(tool.id)}
-                className={`p-4 rounded-xl border-2 text-left transition-all ${
-                  formData.enabledTools.includes(tool.id)
+                className={`p-4 rounded-xl border-2 text-left transition-all ${formData.enabledTools.includes(tool.id)
                     ? 'border-blue-500 bg-blue-50'
                     : 'border-gray-200 hover:border-gray-300'
-                }`}
+                  }`}
               >
                 <div className="flex items-start gap-3">
                   <span className="text-2xl">{tool.icon}</span>
