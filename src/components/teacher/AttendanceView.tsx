@@ -234,7 +234,7 @@ const AttendanceView: React.FC = () => {
     const weeks: { label: string; days: { label: string; dateKey: string }[] }[] = [];
     const labels = ['M', 'T', 'W', 'T', 'F'];
 
-    for (let w = 0; w < 4; w++) {
+    for (let w = 0; w < 5; w++) {
       const weekStart = new Date(firstMonday);
       weekStart.setDate(firstMonday.getDate() + w * 7);
       const days: { label: string; dateKey: string }[] = [];
@@ -249,6 +249,10 @@ const AttendanceView: React.FC = () => {
 
     return weeks;
   };
+
+  const activeWeekDays = getWeekDays(selectedDate);
+  const monthWeeksForWeekly = getMonthWeeks(selectedDate);
+  const activeWeekDateKeys = new Set(activeWeekDays.map(d => d.dateKey));
 
   return (
     <div className="space-y-6">
@@ -267,7 +271,12 @@ const AttendanceView: React.FC = () => {
             <select
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="
+                          w-full rounded-lg 
+                          border border-gray-300 
+                          px-4 py-3 
+                          focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20
+                        "
             >
               <option value="">Choose a class</option>
               {classes.map(cls => (
@@ -281,7 +290,12 @@ const AttendanceView: React.FC = () => {
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="
+                          w-full rounded-lg 
+                          border border-gray-300 
+                          px-4 py-3 
+                          focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20
+                        "
             />
           </div>
           <div>
@@ -290,7 +304,15 @@ const AttendanceView: React.FC = () => {
               type="file"
               accept=".csv"
               onChange={handleCsvUpload}
-              className="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              className="
+                          block w-full 
+                          text-sm text-gray-700 
+                          file:mr-4 file:py-2 file:px-4 
+                          file:rounded-lg 
+                          file:border-0 
+                          file:text-sm file:font-semibold 
+                          file:bg-blue-50 file:text-blue-700 
+                          hover:file:bg-blue-100"
             />
             <p className="mt-1 text-xs text-gray-500">
               Expected columns: Student ID, Student Name, Student Surname
@@ -322,6 +344,34 @@ const AttendanceView: React.FC = () => {
             Legend: P=Present, A=Absent, L=Late, E=Excused, B=Bunking, S=Sick
           </span>
         </div>
+
+        {viewMode === 'weekly' && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-gray-500">Week:</span>
+            {monthWeeksForWeekly.map((week, index) => {
+              const isActive = week.days.some(day => activeWeekDateKeys.has(day.dateKey));
+              return (
+                <button
+                  key={week.label}
+                  type="button"
+                  onClick={() => {
+                    const currentMonth = new Date(selectedDate).getMonth();
+                    const inMonth = week.days.find(d => new Date(d.dateKey).getMonth() === currentMonth);
+                    const targetDate = inMonth?.dateKey || week.days[0]?.dateKey || selectedDate;
+                    setSelectedDate(targetDate);
+                  }}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                    isActive
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  {`Week ${index + 1}`}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {selectedClass && (
@@ -331,30 +381,15 @@ const AttendanceView: React.FC = () => {
             <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
               <p className="text-3xl font-bold text-green-600">{presentCount}</p>
               <p className="text-sm text-green-700">Present</p>
-            </div>
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
-              <p className="text-3xl font-bold text-red-600">{absentCount}</p>
-              <p className="text-sm text-red-700">Absent</p>
-            </div>
-            <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-center">
-              <p className="text-3xl font-bold text-orange-600">{lateCount}</p>
-              <p className="text-sm text-orange-700">Late</p>
-            </div>
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
-              <p className="text-3xl font-bold text-blue-600">{excusedCount}</p>
-              <p className="text-sm text-blue-700">Excused</p>
-            </div>
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
-              <p className="text-3xl font-bold text-red-700">{bunkingCount}</p>
-              <p className="text-sm text-red-800">Bunking</p>
-            </div>
-            <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 text-center">
-              <p className="text-3xl font-bold text-purple-600">{sickCount}</p>
-              <p className="text-sm text-purple-700">Sick</p>
+              <button
+                onClick={markAllPresent}
+                className="px-4 py-2 text-sm font-medium text-green-600 bg-green-50 rounded-lg hover:bg-green-100 transition-all"
+              >
+                Mark All Present
+              </button>
             </div>
           </div>
 
-          {/* Attendance List / Summaries */}
           {viewMode === 'daily' && (
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <div className="p-4 border-b border-gray-200 flex items-center justify-between">
@@ -366,7 +401,6 @@ const AttendanceView: React.FC = () => {
                   Mark All Present
                 </button>
               </div>
-              
               <div className="divide-y divide-gray-100">
                 {learners.map((learner) => (
                   <div key={learner.id} className="flex items-center justify-between p-4 hover:bg-gray-50">
@@ -379,7 +413,7 @@ const AttendanceView: React.FC = () => {
                         <p className="text-sm text-gray-500">#{learner.number}</p>
                       </div>
                     </div>
-                    
+
                     <div className="flex gap-2">
                       {['present', 'absent', 'late', 'excused', 'bunking', 'sick'].map((status) => (
                         <button
@@ -415,9 +449,12 @@ const AttendanceView: React.FC = () => {
                 <table className="min-w-full text-xs">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-2 text-left font-medium text-gray-700">Learner</th>
-                      {getWeekDays(selectedDate).map(day => (
-                        <th key={day.dateKey} className="px-2 py-2 text-center font-medium text-gray-700">
+                      <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wide text-gray-800">Learner</th>
+                      {activeWeekDays.map(day => (
+                        <th
+                          key={day.dateKey}
+                          className="px-2 py-2 text-center text-xs font-bold uppercase tracking-wide text-gray-800"
+                        >
                           {day.label}
                         </th>
                       ))}
@@ -430,7 +467,7 @@ const AttendanceView: React.FC = () => {
                           <span className="font-medium">{learner.name}</span>
                           <span className="ml-1 text-[10px] text-gray-400">#{learner.number}</span>
                         </td>
-                        {getWeekDays(selectedDate).map(day => {
+                        {activeWeekDays.map(day => {
                           const status = attendanceByDate[day.dateKey]?.[learner.id];
                           const letter = getStatusLetter(status);
                           return (
@@ -450,50 +487,66 @@ const AttendanceView: React.FC = () => {
           )}
 
           {viewMode === 'monthly' && (
-            <div className="space-y-4">
-              {getMonthWeeks(selectedDate).map(week => (
-                <div key={week.label} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                  <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-                    <h3 className="font-semibold text-gray-900">{week.label}</h3>
-                    <span className="text-xs text-gray-500">Mon – Fri</span>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full text-xs">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-2 text-left font-medium text-gray-700">Learner</th>
-                          {week.days.map(day => (
-                            <th key={day.dateKey} className="px-2 py-2 text-center font-medium text-gray-700">
-                              {day.label}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {learners.map(learner => (
-                          <tr key={learner.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-2 text-gray-800">
-                              <span className="font-medium">{learner.name}</span>
-                              <span className="ml-1 text-[10px] text-gray-400">#{learner.number}</span>
-                            </td>
-                            {week.days.map(day => {
-                              const status = attendanceByDate[day.dateKey]?.[learner.id];
-                              const letter = getStatusLetter(status);
-                              return (
-                                <td key={day.dateKey} className="px-2 py-2 text-center">
-                                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-semibold bg-gray-100 text-gray-700">
-                                    {letter}
-                                  </span>
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ))}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 className="font-semibold text-gray-900">Monthly View</h3>
+                <span className="text-xs text-gray-500">Weeks 1–5 • Mon–Fri</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-xs">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wide text-gray-800" rowSpan={2}>
+                        Learner
+                      </th>
+                      {getMonthWeeks(selectedDate).map(week => (
+                        <th
+                          key={week.label}
+                          colSpan={week.days.length}
+                          className="px-2 py-2 text-center font-semibold text-gray-800 border-l border-gray-200"
+                        >
+                          {week.label.toUpperCase()}
+                        </th>
+                      ))}
+                    </tr>
+                    <tr>
+                      {getMonthWeeks(selectedDate).flatMap(week =>
+                        week.days.map(day => (
+                          <th
+                            key={`${week.label}-${day.dateKey}`}
+                            className="px-2 py-1 text-center text-xs font-bold uppercase tracking-wide text-gray-800"
+                          >
+                            {day.label}
+                          </th>
+                        ))
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {learners.map(learner => (
+                      <tr key={learner.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-2 text-gray-800 whitespace-nowrap">
+                          <span className="font-medium">{learner.name}</span>
+                          <span className="ml-1 text-[10px] text-gray-400">#{learner.number}</span>
+                        </td>
+                        {getMonthWeeks(selectedDate).flatMap(week =>
+                          week.days.map(day => {
+                            const status = attendanceByDate[day.dateKey]?.[learner.id];
+                            const letter = getStatusLetter(status);
+                            return (
+                              <td key={`${week.label}-${day.dateKey}-${learner.id}`} className="px-2 py-2 text-center">
+                                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-semibold bg-gray-100 text-gray-700">
+                                  {letter}
+                                </span>
+                              </td>
+                            );
+                          })
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
