@@ -3,7 +3,7 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import jwt from 'jsonwebtoken'
 import { v4 as uuidv4 } from 'uuid'
-import { authMiddleware, corsOptions, errorHandler } from '../shared/middleware/index.js'
+import { authMiddleware, corsOptions, errorHandler } from '../../../shared/middleware/index.js'
 
 dotenv.config()
 
@@ -19,7 +19,7 @@ app.use(express.json())
 app.use(cors(corsOptions))
 
 // Health Check
-app.get('/health', (req: Request, res: Response) => {
+app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
@@ -33,7 +33,8 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'All fields are required' })
     }
 
-    if (password.length < 6) {
+    if (password.length < 6) 
+    {
       return res.status(400).json({ error: 'Password must be at least 6 characters' })
     }
 
@@ -102,7 +103,7 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
 // Protected API Routes (with auth middleware)
 app.use('/api', authMiddleware)
 
-app.get('/api', (req: Request, res: Response) => {
+app.get('/api', (_req: Request, res: Response) => {
   res.json({
     message: 'School Management App Backend',
     version: '1.0.0',
@@ -117,7 +118,7 @@ app.get('/api', (req: Request, res: Response) => {
 })
 
 // 404 Handler
-app.use((req: Request, res: Response) => {
+app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: 'Route not found' })
 })
 

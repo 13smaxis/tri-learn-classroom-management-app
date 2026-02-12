@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { addDemoUser, DemoUser, findUserByEmail, getTeacherClasses, joinDemoClass, loadDemoUsers, updateDemoUser } from '@/lib/demoStore';
+import { api, UserResponse } from '@/lib/api';
 
 export interface User {
   id: string;
@@ -8,10 +8,7 @@ export interface User {
   fullName: string;
   role: 'teacher' | 'parent' | 'learner';
   avatarUrl?: string;
-   // For teachers, this is the single invite code that
-   // parents and learners use across all of their classes
-   teacherInviteCode?: string;
-  // For teachers, their selected grade (e.g. "10")
+  teacherInviteCode?: string;
   teacherGrade?: string;
 }
 
@@ -40,88 +37,49 @@ interface RegisterData {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Built-in demo users available for quick logins and invite validation
-const builtInDemoUsers: DemoUser[] = [
-  {
-    id: 'teacher-1',
-    email: 'teacher@school.com',
-    fullName: 'John Smith',
-    role: 'teacher',
-    password: 'teacher123',
-    teacherInviteCode: 'GRD101234'
-  },
-  {
-    id: 'learner-1',
-    email: 'learner@school.com',
-    fullName: 'Sarah Johnson',
-    role: 'learner',
-    password: 'learner123'
-  },
-  {
-    id: 'parent-1',
-    email: 'parent@school.com',
-    fullName: 'Michael Brown',
-    role: 'parent',
-    password: 'parent123'
-  }
-];
+function apiUserToUser(u: UserResponse): User {
+  return {
+    id: u.userId,
+    title: u.title,
+    email: u.email,
+    fullName: u.fullName,
+    role: u.role as 'teacher' | 'parent' | 'learner',
+    avatarUrl: u.avatarUrl,
+    teacherInviteCode: u.teacherInviteCode,
+    teacherGrade: u.teacherGrade,
+  };
+}
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [justSignedUp, setJustSignedUp] = useState(false);
 
-  // Single INVITE CODE generator used for teachers
-  const generateInviteCode = (grade: string = '10') => {
-    // New format: TRI + district number (02) + unique 4‑digit code, e.g. TRI020123
-    const district = '02';
-    const suffix = Math.floor(1000 + Math.random() * 9000);
-    return `TRI${district}${suffix}`;
-  };
-
+  // On mount, check for stored token and fetch current user
   useEffect(() => {
-    const storedUser = localStorage.getItem('eduUser');
-    if (storedUser) {
-      try {
-        const parsed = JSON.parse(storedUser) as User;
-        // Backfill INVITE CODE for any already-stored teacher user
-        if (parsed.role === 'teacher' && !parsed.teacherInviteCode) {
-          const code = generateInviteCode(parsed.teacherGrade || '10');
-          const updated: User = { ...parsed, teacherInviteCode: code };
-          setUser(updated);
-          localStorage.setItem('eduUser', JSON.stringify(updated));
-          // Best-effort: update corresponding demo user if it exists
-          updateDemoUser(parsed.id, { teacherInviteCode: code });
-        } else {
-          setUser(parsed);
-        }
-      } catch {
-        setUser(null);
-      }
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      api.me()
+        .then((data) => {
+          setUser(apiUserToUser(data));
+        })
+        .catch(() => {
+          localStorage.removeItem('authToken');
+          setUser(null);
+        })
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
-      const allUsers: DemoUser[] = [...builtInDemoUsers, ...loadDemoUsers()];
-      const found = allUsers.find(u => u.email && u.email.toLowerCase() === email.toLowerCase());
-
-      if (!found || found.password !== password) {
-        return { success: false, error: 'Invalid credentials' };
+      const data = await api.login({ email, password });
+      if (data.token) {
+        localStorage.setItem('authToken', data.token);
       }
-
-      // Backfill a teacher invite code for any older teacher accounts
-      if (found.role === 'teacher' && !found.teacherInviteCode) {
-        const code = generateInviteCode(found.teacherGrade || '10');
-        found.teacherInviteCode = code;
-        // Only persisted users live in the demo store
-        updateDemoUser(found.id, { teacherInviteCode: code });
-      }
-
-      const { password: _pw, ...userData } = found;
-      setUser(userData);
-      localStorage.setItem('eduUser', JSON.stringify(userData));
+      setUser(apiUserToUser(data));
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err?.message || 'Login failed' };
@@ -130,98 +88,60 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const register = async (registerData: RegisterData) => {
     try {
-      const id = `user-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const teacherInviteCode = registerData.role === 'teacher'
-        ? generateInviteCode(registerData.teacherGrade || '10')
-        : undefined;
-      const newUser: DemoUser = {
-        id,
-        teacherGrade: registerData.teacherGrade,
-        title: registerData.title,
-        email: registerData.email,
+      const data = await api.register({
         fullName: registerData.fullName,
-        role: registerData.role,
+        email: registerData.email || '',
         password: registerData.password,
-        teacherInviteCode
-      };
+        role: registerData.role,
+        title: registerData.title,
+        phone: registerData.phone,
+        teacherGrade: registerData.teacherGrade,
+        schoolInviteCode: registerData.schoolInviteCode,
+      });
 
-      // Prevent duplicate emails in demo store
-      if (registerData.email && findUserByEmail(registerData.email)) {
-        return { success: false, error: 'An account with this email already exists in the demo data' };
+      if (data.token) {
+        localStorage.setItem('authToken', data.token);
       }
 
-      addDemoUser(newUser);
-
-      const { password: _pw, ...userData } = newUser;
+      const userData = apiUserToUser(data);
       setUser(userData);
+
       if (registerData.role === 'teacher') {
         setJustSignedUp(true);
       }
-      localStorage.setItem('eduUser', JSON.stringify(userData));
+
       return { success: true, user: userData };
     } catch (err: any) {
-      return { success: false, error: err.message };
+      return { success: false, error: err?.message || 'Registration failed' };
     }
   };
 
   const logout = () => {
+    api.logout().catch(() => {}); // best-effort server logout
+    localStorage.removeItem('authToken');
     setUser(null);
     setJustSignedUp(false);
-    localStorage.removeItem('eduUser');
   };
 
   const validateInvite = async (code: string) => {
+    // TODO: implement backend endpoint for invite validation
+    // For now, return a not-implemented error
     try {
-      const normalized = code.toUpperCase();
-      const allUsers: DemoUser[] = [...builtInDemoUsers, ...loadDemoUsers()];
-
-      // Find the teacher whose single INVITE CODE matches this code
-      const teacher = allUsers.find(
-        u => u.role === 'teacher' && u.teacherInviteCode && u.teacherInviteCode.toUpperCase() === normalized
-      );
-
-      if (!teacher) {
-        return { success: false, error: 'Invalid invite code' };
-      }
-
-      const teacherClasses = getTeacherClasses(teacher.id);
-
-      if (!teacherClasses.length) {
-        return { success: false, error: 'This teacher has not created any classes yet' };
-      }
-
-      const demoClass = teacherClasses[0];
-      const classInfo = {
-        id: demoClass.id,
-        className: demoClass.name,
-        grade: demoClass.grade,
-        subject: demoClass.subject,
-        teacherName: demoClass.teacherName
-      };
-
-      return { success: true, classInfo };
+      // Once /auth/validate-invite is built, call it here
+      return { success: false, error: 'Invite validation not yet connected to backend' };
     } catch (err: any) {
       return { success: false, error: err.message };
     }
   };
 
-  const joinClass = async (classId: string, role: string, linkedLearnerId?: string) => {
+  const joinClass = async (classId: string, _role: string, linkedLearnerId?: string) => {
     if (!user) return { success: false, error: 'Not logged in' };
 
     try {
-      const ok = joinDemoClass(classId, {
-        userId: user.id,
-        role: role as any,
-        linkedLearnerId
-      });
-
-      if (!ok) {
-        return { success: false, error: 'Class not found in demo data' };
-      }
-
+      await api.joinClass(classId, linkedLearnerId);
       return { success: true };
     } catch (err: any) {
-      return { success: false, error: err.message };
+      return { success: false, error: err?.message || 'Failed to join class' };
     }
   };
 

@@ -10,13 +10,15 @@
  */
 
 import { v4 as uuidv4 } from 'uuid'
-import { User } from '../../shared/models/index.js'
+import { User } from '../../../shared/models/index.js'
 
-export class AuthService {
-  /**
-   * Register a new user
-   */
-  async registerUser(userData: {
+/**
+ * Register a new user
+ */
+export class AuthService 
+{
+  async registerUser(userData: 
+  {
     email: string
     password: string
     firstName: string
@@ -35,16 +37,14 @@ export class AuthService {
       linkedClassIds: [],
     }
 
-    // Save to database
-    console.log('User registered:', user)
-
+    console.log('User registered:', user)                                                                       //-Save to database
     return user
   }
 
   /**
    * Authenticate user
    */
-  async loginUser(email: string, password: string): Promise<{ user: User; token: string }> {
+  async loginUser(email: string, _password: string): Promise<{ user: User; token: string }> {
     // TODO: Integrate with AWS Cognito
     const user: User = {
       userId: uuidv4(),
@@ -58,14 +58,14 @@ export class AuthService {
     }
 
     const token = 'mock-jwt-token'
-
     return { user, token }
   }
 
   /**
-   * Verify JWT token
+   * Verify Json Web Token (JWT)  
+   * Return the user ID if valid
    */
-  verifyToken(token: string): { valid: boolean; userId?: string } {
+  verifyToken(_token: string): { valid: boolean; userId?: string } {
     // TODO: Verify JWT token
     return { valid: true, userId: 'user-id' }
   }
@@ -73,7 +73,7 @@ export class AuthService {
   /**
    * Get user by ID
    */
-  async getUserById(userId: string): Promise<User | null> {
+  async getUserById(_userId: string): Promise<User | null> {
     // TODO: Fetch from database
     return null
   }

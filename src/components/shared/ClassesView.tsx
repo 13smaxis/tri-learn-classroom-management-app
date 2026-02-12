@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getTeacherClasses, getUserClasses } from '@/lib/demoStore';
+import { api } from '@/lib/api';
 
 interface ClassesViewProps {
   onCreateClass?: () => void;
@@ -21,11 +21,12 @@ const ClassesView: React.FC<ClassesViewProps> = ({ onCreateClass, classesVersion
 
   const fetchClasses = async () => {
     if (!user) return;
-    
-    if (user.role === 'teacher') {
-      setClasses(getTeacherClasses(user.id));
-    } else {
-      setClasses(getUserClasses(user.id, user.role));
+    try {
+      const data = await api.getMyClasses();
+      setClasses(data || []);
+    } catch (err) {
+      console.error('Failed to fetch classes:', err);
+      setClasses([]);
     }
     setLoading(false);
   };
