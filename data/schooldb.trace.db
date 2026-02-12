@@ -294,3 +294,7 @@ Caused by: org.h2.jdbc.JdbcSQLNonTransientConnectionException: The connection wa
 org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "LEANERS" not found; SQL statement:
 Select *
 from leaners [42102-224]
+2026-02-12 22:04:30.924232+02:00 jdbc[13]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "ATTENDENCE_RECORDS" not found; SQL statement:
+select *
+from attendence_records [42102-224]
