@@ -13,7 +13,6 @@ public class LearnerDTO {
         this.fullName = fullName;
     }
 
-    // Getters and Setters
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
 

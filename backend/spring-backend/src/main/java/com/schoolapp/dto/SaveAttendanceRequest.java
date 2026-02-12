@@ -5,7 +5,7 @@ import java.util.Map;
 public class SaveAttendanceRequest {
     private String classId;
     private String date;
-    private Map<String, String> attendance; // learnerId -> status
+    private Map<String, String> attendance;
 
     public SaveAttendanceRequest() {}
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface SidebarProps {
@@ -31,6 +31,18 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { user, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
+
+  /* ─── Swipe-to-close on mobile ─── */
+  const touchStartX = useRef<number | null>(null);
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  }, []);
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    if (dx < -60) onClose();          // swiped left ≥ 60px → close
+    touchStartX.current = null;
+  }, [onClose]);
 
   const roleColors: Record<string, string> = {
     teacher: 'bg-blue-100 text-blue-700',
@@ -164,6 +176,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           w-64
         `}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
       >
         <div className="flex flex-col h-full">
           <div className="flex items-center gap-3 px-4 py-10 border-b border-gray-200">                        {/* ─── App Logo / Brand ─── */}

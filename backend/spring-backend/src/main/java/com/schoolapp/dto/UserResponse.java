@@ -14,7 +14,7 @@ public class UserResponse {
     private String token;
     private LocalDateTime createdAt;
 
-    // Getters and Setters
+    public UserResponse() {}
 
     public String getUserId() { return userId; }
     public void setUserId(String userId) { this.userId = userId; }
