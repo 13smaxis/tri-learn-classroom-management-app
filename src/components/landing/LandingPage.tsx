@@ -1,104 +1,158 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
-interface LandingPageProps {
+interface LandingPageProps 
+{
   onOpenLogin: () => void;
   onOpenRegister: () => void;
   onOpenInvite: () => void;
 }
 
+/**
+ * Each ball needs separate X and Y keyframes so it "bounces" off walls independently 
+ */
+const bounceKeyframes = `
+@keyframes bx0{0%{left:5%}50%{left:85%}100%{left:5%}}
+@keyframes by0{0%{top:8%}50%{top:75%}100%{top:8%}}
+@keyframes bx1{0%{left:80%}50%{left:10%}100%{left:80%}}
+@keyframes by1{0%{top:70%}50%{top:5%}100%{top:70%}}
+@keyframes bx2{0%{left:45%}33%{left:5%}66%{left:90%}100%{left:45%}}
+@keyframes by2{0%{top:5%}50%{top:80%}100%{top:5%}}
+@keyframes bx3{0%{left:15%}50%{left:75%}100%{left:15%}}
+@keyframes by3{0%{top:65%}50%{top:10%}100%{top:65%}}
+@keyframes bx4{0%{left:70%}33%{left:20%}66%{left:85%}100%{left:70%}}
+@keyframes by4{0%{top:40%}50%{top:80%}100%{top:40%}}
+@keyframes bx5{0%{left:35%}50%{left:80%}100%{left:35%}}
+@keyframes by5{0%{top:75%}50%{top:15%}100%{top:75%}}
+@keyframes pop-in {
+  0% { opacity:0; transform:scale(0.3); }
+  60% { opacity:1; transform:scale(1.1); }
+  100% { opacity:1; transform:scale(1); }
+}
+@keyframes pulse-glow {
+  0%,100% { filter: brightness(1); }
+  50% { filter: brightness(1.15); }
+}
+`;
+
+/**
+ * Landing page with animated feature bubbles and role-based sections. 
+ * This is a separate component from the main AppLayout to avoid loading all the dashboard data and components 
+ *  for unauthenticated users who just want to see the landing page.
+ * @param param0  - handlers to open login, register and invite modals in the parent AppLayout component
+ * @returns component with animated features and role sections and CTA buttons to open login/register modals 
+ */
 const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, onOpenInvite }) => {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setMounted(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
+
   const features = [
     {
       icon: (
-        <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" 
                 strokeLinejoin="round" 
                 strokeWidth={2} 
-                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 
+                   002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" 
+          />
         </svg>
       ),
       title: 'Class Register',
-      description: 'Track daily attendance with ease. Mark present, absent, or late with one click.',
-      bgColor: 'bg-blue-50',
-      iconBg: 'bg-blue-100',
-      iconColor: 'text-blue-600'
+      gradient: 'radial-gradient(circle at 35% 30%, #93c5fd, #3b82f6 50%, #1e40af)',
+      shadowColor: 'rgba(59,130,246,0.5)',
+      iconColor: 'text-blue-900'
     },
     {
       icon: (
-        <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" 
                 strokeLinejoin="round" 
                 strokeWidth={2} 
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 
+                   01.293.707V19a2 2 0 01-2 2z" 
+          />
         </svg>
       ),
-      title: 'Assignment Manager',
-      description: 'Create, distribute, and grade assignments. Track submissions in real-time.',
-      bgColor: 'bg-purple-50',
-      iconBg: 'bg-purple-100',
-      iconColor: 'text-purple-600'
+      title: 'Assignments',
+      gradient: 'radial-gradient(circle at 35% 30%, #d8b4fe, #a855f7 50%, #7e22ce)',
+      shadowColor: 'rgba(168,85,247,0.5)',
+      iconColor: 'text-blue-900'
     },
     {
       icon: (
-        <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" 
                 strokeLinejoin="round" 
                 strokeWidth={2} 
-                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 
+                   012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 
+                   2 0 01-2-2z" 
+          />
         </svg>
       ),
       title: 'Mark Capture',
-      description: 'Record marks with automatic weighted calculations. 10% classwork, 25% assignments, 40% exam.',
-      bgColor: 'bg-pink-50',
-      iconBg: 'bg-pink-100',
-      iconColor: 'text-pink-600'
+      gradient: 'radial-gradient(circle at 35% 30%, #fda4af, #f43f5e 50%, #be123c)',
+      shadowColor: 'rgba(244,63,94,0.5)',
+      iconColor: 'text-blue-900'
     },
     {
       icon: (
-        <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" 
                 strokeLinejoin="round" 
                 strokeWidth={2} 
-                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 
+                   20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" 
+          />
         </svg>
       ),
-      title: 'Unified Messaging',
-      description: 'Send messages to parents and learners simultaneously. Keep everyone informed.',
-      bgColor: 'bg-green-50',
-      iconBg: 'bg-green-100',
-      iconColor: 'text-green-600'
+      title: 'Messaging',
+      gradient: 'radial-gradient(circle at 35% 30%, #86efac, #22c55e 50%, #15803d)',
+      shadowColor: 'rgba(34,197,94,0.5)',
+      iconColor: 'text-blue-900'
     },
     {
       icon: (
-        <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" 
                 strokeLinejoin="round" 
                 strokeWidth={2} 
                 d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
         </svg>
       ),
-      title: 'Progress Tracking',
-      description: 'Monitor class pass rates and identify at-risk learners early.',
-      bgColor: 'bg-orange-50',
-      iconBg: 'bg-orange-100',
-      iconColor: 'text-orange-600'
+      title: 'Progress',
+      gradient: 'radial-gradient(circle at 35% 30%, #fdba74, #f97316 50%, #c2410c)',
+      shadowColor: 'rgba(249,115,22,0.5)',
+      iconColor: 'text-blue-900'
     },
     {
       icon: (
-        <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" 
                 strokeLinejoin="round" 
                 strokeWidth={2} 
                 d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
         </svg>
       ),
-      title: 'Works Everywhere',
-      description: 'Responsive design for laptops, tablets, and phones. Install as a PWA for offline access.',
-      bgColor: 'bg-cyan-50',
-      iconBg: 'bg-cyan-100',
-      iconColor: 'text-cyan-600'
+      title: 'PWA Ready',
+      gradient: 'radial-gradient(circle at 35% 30%, #67e8f9, #06b6d4 50%, #0e7490)',
+      shadowColor: 'rgba(6,182,212,0.5)',
+      iconColor: 'text-blue-900'
     }
   ];
+
+  /**
+   * Balls have randomised timings to create organic feel
+   * X and Y durations differ so the path isn't a straight line — creates DVD-logo style bouncing 
+   */
+  const popDelays = [0, 0.12, 0.24, 0.36, 0.48, 0.6];
+  const xDurations = [18, 22, 16, 24, 19, 26];
+  const yDurations = [24, 17, 21, 18, 26, 16];
+  const glowDurations = [3, 3.5, 2.8, 4, 3.2, 2.5];
 
   const roles = [
     {
@@ -123,6 +177,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
 
   return (
     <div className="min-h-screen">
+      <style>{bounceKeyframes}</style>
       <section className="
                           relative overflow-hidden 
                           bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 
@@ -142,31 +197,42 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
           </div>
         </div>
 
-                        <div className="max-w-7xl mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="max-w-4xl mx-auto px-4 pb-20">                                                          {/* Bouncing bubbles box */}
+          <div className="relative w-full h-52 sm:h-64 rounded-3xl overflow-hidden">
             {features.map((feature, idx) => (
-              <div key={idx} className={`
-                                          p-6 rounded-2xl 
-                                          border border-gray-200 
-                                          hover:border-blue-200 hover:shadow-lg 
-                                          transition-all 
-                                          ${feature.bgColor}
-                                        `}
-              >                                                                                                 {/* Feature Card   */}
-                <div className={`
-                                  w-14 h-14 
-                                  rounded-xl 
-                                  ${feature.iconBg} 
-                                  ${feature.iconColor} 
-                                  flex items-center 
-                                  justify-center 
-                                  mb-4
-                                `}
+              <div
+                key={idx}
+                className="absolute"
+                style={{
+                  animation: mounted
+                    ? `pop-in 0.4s ${popDelays[idx]}s both, bx${idx} ${xDurations[idx]}s ${popDelays[idx] + 0.4}s ease-in-out infinite, by${idx} ${yDurations[idx]}s ${popDelays[idx] + 0.4}s ease-in-out infinite`
+                    : 'none',
+                  opacity: mounted ? undefined : 0,
+                }}
+              >
+                <div
+                  className={`
+                    w-20 h-20 sm:w-24 sm:h-24
+                    rounded-full
+                    flex flex-col items-center justify-center
+                    cursor-default select-none
+                    hover:scale-110 transition-transform duration-200
+                  `}
+                  style={{
+                    background: feature.gradient,
+                    boxShadow: `inset -4px -6px 12px rgba(0,0,0,0.25), inset 3px 3px 8px rgba(255,255,255,0.35), 0 8px 24px ${feature.shadowColor}`,
+                    animation: `pulse-glow ${glowDurations[idx]}s ease-in-out infinite`,
+                  }}
+                  title={feature.title}
                 >
-                  {feature.icon}
+                  <div className={`${feature.iconColor} mb-0.5 drop-shadow-sm`}>
+                    {feature.icon}
+                  </div>
+                  <span className="
+                                    text-[10px] sm:text-xs font-bold text-gray-800 leading-tight text-center px-1 drop-shadow-[0_1px_1px_rgba(255,255,255,0.4)]">
+                    {feature.title}
+                  </span>
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">{feature.title}</h3>
-                <p className="text-gray-600">{feature.description}</p>
               </div>
             ))}
           </div>
