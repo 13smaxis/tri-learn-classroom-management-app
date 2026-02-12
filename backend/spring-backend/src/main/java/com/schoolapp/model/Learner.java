@@ -1,46 +1,26 @@
 package com.schoolapp.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
-import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
-@Table(name = "learners", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"learner_number", "class_id"})
-})
+@Table(name = "learners")
 public class Learner {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private String id;
+    @Column(length = 36)
+    private String id = UUID.randomUUID().toString();
 
-    @NotBlank
+    @Column(nullable = false)
     private String learnerNumber;
 
-    @NotBlank
+    @Column(nullable = false)
     private String fullName;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "class_id", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private SchoolClass schoolClass;
 
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = createdAt;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
-
-    // Constructors
     public Learner() {}
 
     public Learner(String learnerNumber, String fullName, SchoolClass schoolClass) {
@@ -49,7 +29,7 @@ public class Learner {
         this.schoolClass = schoolClass;
     }
 
-    // Getters and Setters
+    // ── Getters & Setters ──
 
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
@@ -62,7 +42,4 @@ public class Learner {
 
     public SchoolClass getSchoolClass() { return schoolClass; }
     public void setSchoolClass(SchoolClass schoolClass) { this.schoolClass = schoolClass; }
-
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
 }

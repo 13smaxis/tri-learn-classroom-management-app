@@ -1,29 +1,15 @@
 package com.schoolapp.dto;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-
 public class RegisterRequest {
-
-    @NotBlank
     private String fullName;
-
-    @Email
-    @NotBlank
     private String email;
-
-    @NotBlank
     private String password;
-
-    @NotBlank
-    private String role; // "teacher", "parent", "learner"
-
+    private String role;
     private String title;
     private String phone;
     private String teacherGrade;
-    private String schoolInviteCode;
 
-    // Getters and Setters
+    public RegisterRequest() {}
 
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }
@@ -45,7 +31,4 @@ public class RegisterRequest {
 
     public String getTeacherGrade() { return teacherGrade; }
     public void setTeacherGrade(String teacherGrade) { this.teacherGrade = teacherGrade; }
-
-    public String getSchoolInviteCode() { return schoolInviteCode; }
-    public void setSchoolInviteCode(String schoolInviteCode) { this.schoolInviteCode = schoolInviteCode; }
 }

@@ -1,55 +1,33 @@
 package com.schoolapp.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
-@Table(name = "attendance_records", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"learner_id", "attendance_date"})
-})
+@Table(name = "attendance_records",
+       uniqueConstraints = @UniqueConstraint(columnNames = {"learner_id", "attendance_date"}))
 public class AttendanceRecord {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private String id;
+    @Column(length = 36)
+    private String id = UUID.randomUUID().toString();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "learner_id", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Learner learner;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "class_id", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private SchoolClass schoolClass;
 
-    @NotNull
+    @Column(nullable = false)
     private LocalDate attendanceDate;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private AttendanceStatus status;
 
-    private String notes;
-
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = createdAt;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
-
-    // Constructors
     public AttendanceRecord() {}
 
     public AttendanceRecord(Learner learner, SchoolClass schoolClass, LocalDate attendanceDate, AttendanceStatus status) {
@@ -59,7 +37,7 @@ public class AttendanceRecord {
         this.status = status;
     }
 
-    // Getters and Setters
+    // ── Getters & Setters ──
 
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
@@ -75,10 +53,4 @@ public class AttendanceRecord {
 
     public AttendanceStatus getStatus() { return status; }
     public void setStatus(AttendanceStatus status) { this.status = status; }
-
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
-
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
 }

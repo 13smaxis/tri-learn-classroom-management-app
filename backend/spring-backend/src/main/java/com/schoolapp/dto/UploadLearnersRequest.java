@@ -6,24 +6,6 @@ public class UploadLearnersRequest {
     private String classId;
     private List<LearnerData> learners;
 
-    public static class LearnerData {
-        private String learnerNumber;
-        private String fullName;
-
-        public LearnerData() {}
-
-        public LearnerData(String learnerNumber, String fullName) {
-            this.learnerNumber = learnerNumber;
-            this.fullName = fullName;
-        }
-
-        public String getLearnerNumber() { return learnerNumber; }
-        public void setLearnerNumber(String learnerNumber) { this.learnerNumber = learnerNumber; }
-
-        public String getFullName() { return fullName; }
-        public void setFullName(String fullName) { this.fullName = fullName; }
-    }
-
     public UploadLearnersRequest() {}
 
     public String getClassId() { return classId; }
@@ -31,4 +13,17 @@ public class UploadLearnersRequest {
 
     public List<LearnerData> getLearners() { return learners; }
     public void setLearners(List<LearnerData> learners) { this.learners = learners; }
+
+    public static class LearnerData {
+        private String learnerNumber;
+        private String fullName;
+
+        public LearnerData() {}
+
+        public String getLearnerNumber() { return learnerNumber; }
+        public void setLearnerNumber(String learnerNumber) { this.learnerNumber = learnerNumber; }
+
+        public String getFullName() { return fullName; }
+        public void setFullName(String fullName) { this.fullName = fullName; }
+    }
 }

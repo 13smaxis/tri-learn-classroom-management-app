@@ -11,11 +11,11 @@ import java.util.Optional;
 @Repository
 public interface AttendanceRepository extends JpaRepository<AttendanceRecord, String> {
 
+    Optional<AttendanceRecord> findByLearnerIdAndAttendanceDate(String learnerId, LocalDate date);
+
     List<AttendanceRecord> findBySchoolClassIdAndAttendanceDate(String classId, LocalDate date);
 
     List<AttendanceRecord> findBySchoolClassIdAndAttendanceDateBetween(String classId, LocalDate startDate, LocalDate endDate);
-
-    Optional<AttendanceRecord> findByLearnerIdAndAttendanceDate(String learnerId, LocalDate date);
 
     List<AttendanceRecord> findByLearnerId(String learnerId);
 }

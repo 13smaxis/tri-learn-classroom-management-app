@@ -1,51 +1,37 @@
 package com.schoolapp.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "school_classes")
 public class SchoolClass {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private String id;
+    @Column(length = 36)
+    private String id = UUID.randomUUID().toString();
 
-    @NotBlank
+    @Column(nullable = false)
     private String name;
 
-    @NotBlank
     private String grade;
-
-    @NotBlank
     private String subject;
-
     private String academicYear;
+
+    @Column(unique = true)
+    private String inviteToken;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "teacher_id", nullable = false)
-    @JsonIgnoreProperties({"password", "hibernateLazyInitializer", "handler"})
     private AppUser teacher;
 
-    private String inviteToken;
+    @Column(updatable = false)
+    private LocalDateTime createdAt = LocalDateTime.now();
 
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    public SchoolClass() {}
 
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = createdAt;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
-
-    // Getters and Setters
+    // ── Getters & Setters ──
 
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
@@ -62,12 +48,12 @@ public class SchoolClass {
     public String getAcademicYear() { return academicYear; }
     public void setAcademicYear(String academicYear) { this.academicYear = academicYear; }
 
-    public AppUser getTeacher() { return teacher; }
-    public void setTeacher(AppUser teacher) { this.teacher = teacher; }
-
     public String getInviteToken() { return inviteToken; }
     public void setInviteToken(String inviteToken) { this.inviteToken = inviteToken; }
 
+    public AppUser getTeacher() { return teacher; }
+    public void setTeacher(AppUser teacher) { this.teacher = teacher; }
+
     public LocalDateTime getCreatedAt() { return createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

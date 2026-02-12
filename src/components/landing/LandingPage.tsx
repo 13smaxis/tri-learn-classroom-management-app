@@ -7,10 +7,16 @@ interface LandingPageProps
   onOpenInvite: () => void;
 }
 
-/**
- * Each ball needs separate X and Y keyframes so it "bounces" off walls independently 
- */
-const bounceKeyframes = `
+const animKeyframes = `
+@keyframes pop-in {
+  0% { opacity:0; transform:scale(0.3); }
+  60% { opacity:1; transform:scale(1.1); }
+  100% { opacity:1; transform:scale(1); }
+}
+@keyframes pulse-glow {
+  0%,100% { filter: brightness(1); }
+  50% { filter: brightness(1.15); }
+}
 @keyframes bx0{0%{left:5%}50%{left:85%}100%{left:5%}}
 @keyframes by0{0%{top:8%}50%{top:75%}100%{top:8%}}
 @keyframes bx1{0%{left:80%}50%{left:10%}100%{left:80%}}
@@ -23,30 +29,91 @@ const bounceKeyframes = `
 @keyframes by4{0%{top:40%}50%{top:80%}100%{top:40%}}
 @keyframes bx5{0%{left:35%}50%{left:80%}100%{left:35%}}
 @keyframes by5{0%{top:75%}50%{top:15%}100%{top:75%}}
-@keyframes pop-in {
-  0% { opacity:0; transform:scale(0.3); }
-  60% { opacity:1; transform:scale(1.1); }
-  100% { opacity:1; transform:scale(1); }
+@keyframes slide-fade-in {
+  0%   { opacity:0; transform:translateY(18px); }
+  100% { opacity:1; transform:translateY(0); }
 }
-@keyframes pulse-glow {
-  0%,100% { filter: brightness(1); }
-  50% { filter: brightness(1.15); }
+@keyframes slide-fade-out {
+  0%   { opacity:1; transform:translateY(0); }
+  100% { opacity:0; transform:translateY(-18px); }
+}
+@keyframes card-enter {
+  0%   { opacity:0; transform:translateY(24px) scale(0.92); }
+  100% { opacity:1; transform:translateY(0) scale(1); }
 }
 `;
 
-/**
- * Landing page with animated feature bubbles and role-based sections. 
- * This is a separate component from the main AppLayout to avoid loading all the dashboard data and components 
- *  for unauthenticated users who just want to see the landing page.
- * @param param0  - handlers to open login, register and invite modals in the parent AppLayout component
- * @returns component with animated features and role sections and CTA buttons to open login/register modals 
- */
+/* Slide definitions for the cycling area below the hero */
+interface Slide {
+  type: 'text' | 'card';
+  heading?: string;
+  sub?: string;
+  card?: { title: string; description: string; color: string; features: string[] };
+}
+
+const slides: Slide[] = [
+  {
+    type: 'text',
+    heading: 'Keep your classroom organised and efficient',
+    sub: 'Choose from a variety of features designed to streamline your teaching experience',
+  },
+  {
+    type: 'text',
+    heading: 'One App, Three Roles',
+    sub: 'Same platform, different experiences tailored to each user',
+  },
+  {
+    type: 'card',
+    card: {
+      title: 'Teachers',
+      description: 'Create classes, manage attendance, assignments, and communicate with parents and learners.',
+      color: 'blue',
+      features: ['Create unlimited classes', 'Track attendance', 'Grade assignments', 'Message parents & learners'],
+    },
+  },
+  {
+    type: 'card',
+    card: {
+      title: 'Parents',
+      description: "Stay connected with your child's education journey and communicate with teachers.",
+      color: 'green',
+      features: ['View child progress', 'Track attendance', 'See upcoming assignments', 'Message teachers'],
+    },
+  },
+  {
+    type: 'card',
+    card: {
+      title: 'Learners',
+      description: 'Access assignments, view grades, and stay on top of your studies.',
+      color: 'purple',
+      features: ['View assignments', 'Submit homework', 'Track grades', 'Message teachers'],
+    },
+  },
+];
+
+const SLIDE_DURATION = 4000; // ms each slide is visible
+const TRANSITION_MS  = 500;  // fade transition duration
+
 const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, onOpenInvite }) => {
   const [mounted, setMounted] = useState(false);
+  const [slideIdx, setSlideIdx] = useState(0);
+  const [phase, setPhase] = useState<'in' | 'out'>('in');
 
   useEffect(() => {
     const timer = setTimeout(() => setMounted(true), 100);
     return () => clearTimeout(timer);
+  }, []);
+
+  /* Cycle slides indefinitely */
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setPhase('out');
+      setTimeout(() => {
+        setSlideIdx((prev) => (prev + 1) % slides.length);
+        setPhase('in');
+      }, TRANSITION_MS);
+    }, SLIDE_DURATION);
+    return () => clearInterval(iv);
   }, []);
 
   const features = [
@@ -154,51 +221,30 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
   const yDurations = [24, 17, 21, 18, 26, 16];
   const glowDurations = [3, 3.5, 2.8, 4, 3.2, 2.5];
 
-  const roles = [
-    {
-      title: 'Teachers',
-      description: 'Create classes, manage attendance, assignments, and communicate with parents and learners.',
-      color: 'blue',
-      features: ['Create unlimited classes', 'Track attendance', 'Grade assignments', 'Message parents & learners']
-    },
-    {
-      title: 'Parents',
-      description: 'Stay connected with your child\'s education journey and communicate with teachers.',
-      color: 'green',
-      features: ['View child progress', 'Track attendance', 'See upcoming assignments', 'Message teachers']
-    },
-    {
-      title: 'Learners',
-      description: 'Access assignments, view grades, and stay on top of your studies.',
-      color: 'purple',
-      features: ['View assignments', 'Submit homework', 'Track grades', 'Message teachers']
-    }
-  ];
+  const currentSlide = slides[slideIdx];
+
+  /* ──── colour helpers for role cards ──── */
+  const cardBorder: Record<string, string> = { blue: 'border-blue-300', green: 'border-green-300', purple: 'border-purple-300' };
+  const cardIcon: Record<string, string>   = { blue: 'bg-blue-100 text-blue-600', green: 'bg-green-100 text-green-600', purple: 'bg-purple-100 text-purple-600' };
+  const checkColor: Record<string, string> = { blue: 'text-blue-500', green: 'text-green-500', purple: 'text-purple-500' };
 
   return (
-    <div className="min-h-screen">
-      <style>{bounceKeyframes}</style>
-      <section className="
-                          relative overflow-hidden 
-                          bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 
-                          text-white
-                          min-h-[70vh]
-                          "
-      >                                                                                                         {/* Hero Section */}
-        <div className="relative max-w-7xl mx-auto px-4 py-20 sm:py-32">
-          <div className="text-center">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6">
-              Classroom Management Made Simple
-            </h1>
-            <p className="text-xl text-blue-100 max-w-3xl mx-auto mb-8">
-              Connect teachers, parents and learners on one powerful platform. <br/> 
-            </p>
-            <div className="mb-16"></div>
-          </div>
-        </div>
+    <div className="flex flex-col overflow-hidden" style={{ height: '100dvh' }}>
+      <style>{animKeyframes}</style>
 
-        <div className="max-w-4xl mx-auto px-4 pb-20">                                                          {/* Bouncing bubbles box */}
-          <div className="relative w-full h-52 sm:h-64 rounded-3xl overflow-hidden">
+      {/* ═══════ Top: Hero (70% of viewport) ═══════ */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 text-white" style={{ height: '80dvh', minHeight: 0 }}>
+        <div className="relative h-full flex flex-col items-center justify-center px-4">
+          {/* Heading */}
+          <h1 className="text-[clamp(1.25rem,4vw,3rem)] font-bold mb-[1vh] text-center leading-tight">
+            Classroom Management Made Simple
+          </h1>
+          <p className="text-[clamp(0.75rem,2vw,1.125rem)] text-blue-100 max-w-2xl mx-auto mb-[2vh] text-center">
+            Connect teachers, parents and learners on one powerful platform.
+          </p>
+
+          {/* Bouncing feature bubbles */}
+          <div className="relative w-full max-w-3xl" style={{ height: 'clamp(6rem, 20vh, 11rem)' }}>
             {features.map((feature, idx) => (
               <div
                 key={idx}
@@ -211,25 +257,18 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
                 }}
               >
                 <div
-                  className={`
-                    w-20 h-20 sm:w-24 sm:h-24
-                    rounded-full
-                    flex flex-col items-center justify-center
-                    cursor-default select-none
-                    hover:scale-110 transition-transform duration-200
-                  `}
+                  className="rounded-full flex flex-col items-center justify-center cursor-default select-none hover:scale-110 transition-transform duration-200"
                   style={{
+                    width: 'clamp(3rem, 8vh, 5rem)',
+                    height: 'clamp(3rem, 8vh, 5rem)',
                     background: feature.gradient,
                     boxShadow: `inset -4px -6px 12px rgba(0,0,0,0.25), inset 3px 3px 8px rgba(255,255,255,0.35), 0 8px 24px ${feature.shadowColor}`,
                     animation: `pulse-glow ${glowDurations[idx]}s ease-in-out infinite`,
                   }}
                   title={feature.title}
                 >
-                  <div className={`${feature.iconColor} mb-0.5 drop-shadow-sm`}>
-                    {feature.icon}
-                  </div>
-                  <span className="
-                                    text-[10px] sm:text-xs font-bold text-gray-800 leading-tight text-center px-1 drop-shadow-[0_1px_1px_rgba(255,255,255,0.4)]">
+                  <div className={`${feature.iconColor} mb-0.5 drop-shadow-sm`}>{feature.icon}</div>
+                  <span className="text-[9px] sm:text-[10px] font-bold text-gray-800 leading-tight text-center px-1 drop-shadow-[0_1px_1px_rgba(255,255,255,0.4)]">
                     {feature.title}
                   </span>
                 </div>
@@ -238,169 +277,69 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
           </div>
         </div>
 
-        <div className="
-                        absolute 
-                        bottom-0 left-0 right-0 
-                        h-20 
-                        bg-gradient-to-t from-white to-transparent
-                      "
+        {/* Gradient fade into bottom area */}
+        <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent" />
+      </section>
+
+      {/* ═══════ Bottom: Animated sliding content (30% of viewport) ═══════ */}
+      <section className="bg-white flex items-center justify-center px-4 py-1" style={{ height: '20dvh', minHeight: 0, flexShrink: 0 }}>
+        <div
+          key={slideIdx}
+          className="w-full max-w-xl flex flex-col items-center text-center"
+          style={{
+            animation: `${phase === 'in' ? 'slide-fade-in' : 'slide-fade-out'} ${TRANSITION_MS}ms ease both`,
+          }}
         >
-        </div>
-      </section>
+          {/* ── Text slides ── */}
+          {currentSlide.type === 'text' && (
+            <>
+              <h2
+                className="font-extrabold text-gray-900 mb-[0.5vh] leading-tight"
+                style={{ fontFamily: "'Poppins','Inter',-apple-system,BlinkMacSystemFont,sans-serif", letterSpacing: '-0.02em', fontSize: 'clamp(0.875rem, 2.5vh, 1.25rem)' }}
+              >
+                {currentSlide.heading}
+              </h2>
+              <p className="text-gray-500 max-w-md" style={{ fontSize: 'clamp(0.65rem, 1.5vh, 0.875rem)' }}>{currentSlide.sub}</p>
+            </>
+          )}
 
-      <section className="py-20 bg-white">                                                                    {/* Features Section */}
-        <div className="text-center mb-16">
-          <h2 className="
-                            text-3xl text-center sm:text-4xl lg:text-5xl font-extrabold 
-                            mt-12 
-                            tracking-tight leading-tight 
-                            animate-in fade-in slide-in-from-bottom-4 
-                            duration-700
-                            mb-4
-                          "
-            style={{
-                    fontFamily: "'Poppins', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                    letterSpacing: '-0.02em'
-                  }}
-          >
-            Keep your classroom organised and efficient
-          </h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Chose from a variety of features designed to streamline your teaching experience
-          </p>
-        </div>
-      </section>
-
-      <section className="py-20 bg-gray-50">                                                                  {/* Roles Section */}
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-              One App, Three Roles
-            </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Same platform, different experiences tailored to each user
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {roles.map((role, idx) => (
-              <div key={idx} className={`p-8 rounded-2xl bg-white border-2 ${
-                role.color === 'blue' ? 'border-blue-200' :
-                role.color === 'green' ? 'border-green-200' : 'border-purple-200'
-              } hover:shadow-xl transition-all`}>
-                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-6 ${
-                  role.color === 'blue' ? 'bg-blue-100 text-blue-600' :
-                  role.color === 'green' ? 'bg-green-100 text-green-600' : 'bg-purple-100 text-purple-600'
-                }`}>
-                  <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" 
-                          strokeLinejoin="round" 
-                          strokeWidth={2} 
-                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
+          {/* ── Card slides ── */}
+          {currentSlide.type === 'card' && currentSlide.card && (() => {
+            const c = currentSlide.card;
+            return (
+              <div
+                className={`w-full max-w-sm rounded-xl bg-white border ${cardBorder[c.color]} shadow-md`}
+                style={{ animation: `card-enter ${TRANSITION_MS}ms ease both`, padding: 'clamp(0.5rem, 1.5vh, 1rem)' }}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <div className={`w-6 h-6 rounded-md flex items-center justify-center ${cardIcon[c.color]}`}>
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                  <h3 className="font-bold text-gray-900" style={{ fontSize: 'clamp(0.75rem, 1.8vh, 1rem)' }}>{c.title}</h3>
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-3">{role.title}</h3>
-                <p className="text-gray-600 mb-6">{role.description}</p>
-                <ul className="space-y-3">
-                  {role.features.map((feature, fidx) => (
-                    <li key={fidx} className="flex items-center gap-2 text-gray-700">
-                      <svg className={`h-5 w-5 ${
-                        role.color === 'blue' ? 'text-blue-500' :
-                        role.color === 'green' ? 'text-green-500' : 'text-purple-500'
-                      }`} fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" 
-                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                <p className="text-gray-600 mb-1" style={{ fontSize: 'clamp(0.6rem, 1.3vh, 0.75rem)' }}>{c.description}</p>
+                <ul className="text-left" style={{ gap: 'clamp(0, 0.3vh, 0.25rem)', display: 'flex', flexDirection: 'column' }}>
+                  {c.features.map((f, fi) => (
+                    <li key={fi} className="flex items-center gap-1.5 text-gray-700" style={{ fontSize: 'clamp(0.6rem, 1.2vh, 0.75rem)' }}>
+                      <svg className={`h-3 w-3 flex-shrink-0 ${checkColor[c.color]}`} fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                          clipRule="evenodd" />
                       </svg>
-                      {feature}
+                      {f}
                     </li>
                   ))}
                 </ul>
               </div>
-            ))}
-          </div>
+            );
+          })()}
+
+
         </div>
       </section>
-
-      {/* CTA Section */}
-      <section className="relative overflow-hidden py-20 bg-gradient-to-tl from-blue-600 via-indigo-600 to-purple-700 text-white">
-        <div className="
-                        absolute 
-                        top-0 left-0 right-0 
-                        h-20 
-                        bg-gradient-to-b from-white to-transparent
-                      "
-        >
-        </div>
-        <div className="relative max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold mb-6">
-            Ready to Transform Your Classroom?
-          </h2>
-          <p className="text-xl text-blue-100 mb-10">
-            Join thousands of educators already using TriLearn to streamline their teaching.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button
-              onClick={onOpenRegister}
-              className="px-8 py-4 bg-white text-blue-600 font-semibold rounded-xl hover:bg-blue-50 transition-all"
-            >
-              Start Teaching Today
-            </button>
-            <button
-              onClick={onOpenLogin}
-              className="px-8 py-4 bg-transparent text-white font-semibold rounded-xl hover:bg-white/10 transition-all border-2 border-white"
-            >
-              Sign In
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-gray-400 py-12">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
-                  <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                </div>
-                <span className="text-xl font-bold text-white">TriLearn</span>
-              </div>
-              <p className="text-sm">
-                Connecting teachers, parents, and learners for better education outcomes.
-              </p>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-4">Product</h4>
-              <ul className="space-y-2 text-sm">
-                <li><a href="#" className="hover:text-white transition-colors">Features</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Pricing</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Security</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-4">Support</h4>
-              <ul className="space-y-2 text-sm">
-                <li><a href="#" className="hover:text-white transition-colors">Help Center</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Contact Us</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Status</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-4">Legal</h4>
-              <ul className="space-y-2 text-sm">
-                <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Cookie Policy</a></li>
-              </ul>
-            </div>
-          </div>
-          <div className="border-t border-gray-800 mt-12 pt-8 text-center text-sm">
-            <p>&copy; 2026 TriLearn. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };

@@ -51,7 +51,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
                     if (userOpt.isPresent()) {
                         AppUser user = userOpt.get();
-                        var authorities = List.of(
+                        List<SimpleGrantedAuthority> authorities = List.of(
                                 new SimpleGrantedAuthority("ROLE_" + user.getRole().name())
                         );
                         var auth = new UsernamePasswordAuthenticationToken(user, null, authorities);

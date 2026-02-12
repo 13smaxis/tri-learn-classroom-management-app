@@ -1,43 +1,36 @@
 package com.schoolapp.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
-@Table(name = "enrollments", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"user_id", "class_id"})
-})
+@Table(name = "enrollments")
 public class Enrollment {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private String id;
+    @Column(length = 36)
+    private String id = UUID.randomUUID().toString();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    @JsonIgnoreProperties({"password", "hibernateLazyInitializer", "handler"})
     private AppUser user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "class_id", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private SchoolClass schoolClass;
 
     @Enumerated(EnumType.STRING)
     private Role role;
 
-    /** For parents: the learner they are linked to */
     private String linkedLearnerId;
 
-    private LocalDateTime joinedAt;
+    @Column(updatable = false)
+    private LocalDateTime createdAt = LocalDateTime.now();
 
-    @PrePersist
-    protected void onCreate() {
-        joinedAt = LocalDateTime.now();
-    }
+    public Enrollment() {}
 
-    // Getters and Setters
+    // ── Getters & Setters ──
 
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
@@ -54,5 +47,6 @@ public class Enrollment {
     public String getLinkedLearnerId() { return linkedLearnerId; }
     public void setLinkedLearnerId(String linkedLearnerId) { this.linkedLearnerId = linkedLearnerId; }
 
-    public LocalDateTime getJoinedAt() { return joinedAt; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

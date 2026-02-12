@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,7 +39,7 @@ public class AttendanceService {
      */
     @Transactional
     public List<LearnerDTO> uploadLearners(UploadLearnersRequest request) {
-        SchoolClass schoolClass = classRepository.findById(request.getClassId())
+        SchoolClass schoolClass = classRepository.findById(Objects.requireNonNull(request.getClassId()))
             .orElseThrow(() -> new RuntimeException("Class not found"));
 
         // Delete existing learners for this class
@@ -73,7 +74,7 @@ public class AttendanceService {
      */
     @Transactional
     public void saveAttendance(SaveAttendanceRequest request) {
-        SchoolClass schoolClass = classRepository.findById(request.getClassId())
+        SchoolClass schoolClass = classRepository.findById(Objects.requireNonNull(request.getClassId()))
             .orElseThrow(() -> new RuntimeException("Class not found"));
 
         LocalDate date = LocalDate.parse(request.getDate());
@@ -82,7 +83,7 @@ public class AttendanceService {
             String learnerId = entry.getKey();
             String statusStr = entry.getValue().toUpperCase();
 
-            Learner learner = learnerRepository.findById(learnerId)
+            Learner learner = learnerRepository.findById(Objects.requireNonNull(learnerId))
                 .orElseThrow(() -> new RuntimeException("Learner not found: " + learnerId));
 
             AttendanceStatus status = AttendanceStatus.valueOf(statusStr);
