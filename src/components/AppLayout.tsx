@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Layout components
-import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
 
 // Auth modals
@@ -63,18 +62,25 @@ const AppLayout: React.FC = () => {
   // Show landing page for unauthenticated users
   if (!user) {
     return (
-      <>
-        <Header
-          onOpenLogin={() => setShowLoginModal(true)}
-          onOpenRegister={() => setShowRegisterModal(true)}
-          onToggleSidebar={() => {}}
-          sidebarOpen={false}
-        />
-        <LandingPage
+      <div className="min-h-screen bg-gray-50 flex">
+        <Sidebar
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onToggle={() => setSidebarOpen(!sidebarOpen)}
+          activeView={activeView}
+          onViewChange={setActiveView}
           onOpenLogin={() => setShowLoginModal(true)}
           onOpenRegister={() => setShowRegisterModal(true)}
           onOpenInvite={() => setShowInviteModal(true)}
         />
+        
+        <main className="flex-1 overflow-auto">
+          <LandingPage
+            onOpenLogin={() => setShowLoginModal(true)}
+            onOpenRegister={() => setShowRegisterModal(true)}
+            onOpenInvite={() => setShowInviteModal(true)}
+          />
+        </main>
         
         <LoginModal
           isOpen={showLoginModal}
@@ -115,7 +121,7 @@ const AppLayout: React.FC = () => {
             setShowRegisterModal(true);
           }}
         />
-      </>
+      </div>
     );
   }
 
@@ -186,26 +192,21 @@ const AppLayout: React.FC = () => {
 
   return (
     <div className={`min-h-screen bg-gray-50 relative ${showWelcomeOverlay ? 'overflow-hidden' : ''}`}>
-      <div className={showWelcomeOverlay ? 'pointer-events-none blur-sm transition-all' : 'transition-all'}>
-        <Header
+      <div className={`flex h-screen ${showWelcomeOverlay ? 'pointer-events-none blur-sm transition-all' : 'transition-all'}`}>
+        <Sidebar
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onToggle={() => setSidebarOpen(!sidebarOpen)}
+          activeView={activeView}
+          onViewChange={setActiveView}
           onOpenLogin={() => setShowLoginModal(true)}
           onOpenRegister={() => setShowRegisterModal(true)}
-          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-          sidebarOpen={sidebarOpen}
+          onOpenInvite={() => setShowInviteModal(true)}
         />
-        
-        <div className="flex">
-          <Sidebar
-            isOpen={sidebarOpen}
-            onClose={() => setSidebarOpen(false)}
-            activeView={activeView}
-            onViewChange={setActiveView}
-          />
           
-          <main className="flex-1 p-4 lg:p-6 overflow-auto">
-            {renderContent()}
-          </main>
-        </div>
+        <main className="flex-1 p-4 lg:p-6 overflow-auto">
+          {renderContent()}
+        </main>
 
         {/* Teacher Create Class Modal - shared entry point */}
         {user.role === 'teacher' && (

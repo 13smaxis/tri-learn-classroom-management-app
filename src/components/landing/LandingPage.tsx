@@ -133,42 +133,45 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
         <div className="relative max-w-7xl mx-auto px-4 py-20 sm:py-32">
           <div className="text-center">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6">
-              Education Management Made Simple
+              Classroom Management Made Simple
             </h1>
             <p className="text-xl text-blue-100 max-w-3xl mx-auto mb-8">
-              Connect teachers, parents, and learners on one powerful platform. 
-              Track attendance, manage assignments, capture marks, and communicate seamlessly.
+              Connect teachers, parents and learners on one powerful platform. <br/> 
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-              <button
-                onClick={onOpenRegister}
-                className="
-                            px-8 py-4 
-                            bg-white 
-                            text-blue-600 font-semibold 
-                            rounded-xl hover:bg-blue-50 
-                            transition-all 
-                            shadow-lg
-                          "
-              >
-                SignUp
-              </button>
-              <button
-                onClick={onOpenInvite}
-                  className=" px-8 py-4 
-                            bg-blue-500/30 
-                            text-white font-semibold 
-                            rounded-xl 
-                            hover:bg-blue-500/40 
-                            transition-all 
-                            border border-white/30
-                          "
-              >
-                Join with Invite Code
-              </button>
-            </div>
+            <div className="mb-16"></div>
           </div>
         </div>
+
+                        <div className="max-w-7xl mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {features.map((feature, idx) => (
+              <div key={idx} className={`
+                                          p-6 rounded-2xl 
+                                          border border-gray-200 
+                                          hover:border-blue-200 hover:shadow-lg 
+                                          transition-all 
+                                          ${feature.bgColor}
+                                        `}
+              >                                                                                                 {/* Feature Card   */}
+                <div className={`
+                                  w-14 h-14 
+                                  rounded-xl 
+                                  ${feature.iconBg} 
+                                  ${feature.iconColor} 
+                                  flex items-center 
+                                  justify-center 
+                                  mb-4
+                                `}
+                >
+                  {feature.icon}
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">{feature.title}</h3>
+                <p className="text-gray-600">{feature.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="
                         absolute 
                         bottom-0 left-0 right-0 
@@ -197,37 +200,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
             Keep your classroom organised and efficient
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Chose from a viarity of features designed to streamline your teaching experience
+            Chose from a variety of features designed to streamline your teaching experience
           </p>
-        </div>
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {features.map((feature, idx) => (
-              <div key={idx} className={`
-                                          p-6 rounded-2xl 
-                                          border border-gray-200 
-                                          hover:border-blue-200 hover:shadow-lg 
-                                          transition-all 
-                                          ${feature.bgColor}
-                                        `}
-              >                                                                                               {/* Feature Card   */}
-                <div className={`
-                                  w-14 h-14 
-                                  rounded-xl 
-                                  ${feature.iconBg} 
-                                  ${feature.iconColor} 
-                                  flex items-center 
-                                  justify-center 
-                                  mb-4
-                                `}
-                >
-                  {feature.icon}
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">{feature.title}</h3>
-                <p className="text-gray-600">{feature.description}</p>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 

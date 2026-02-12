@@ -3,8 +3,8 @@
 
 ## Project Information
 - **Project path**: c:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\SM_Axis Pty Ltd\Axis-Apps\school-app\backend\spring-backend
-- **Working branch**: appmod/java-upgrade-20260201150634
-  - Note: <span style="color:#FF9900">There are uncommitted changes in the project, which will be stashed before upgrading according to user setting "appModernization.uncommittedChangesAction".</span>
+- **Working branch**: appmod/java-upgrade-20260201154027
+
 - **Java version**: 17
 
 ## Development Environment
@@ -35,8 +35,8 @@
 1. Set up the development environment using tool #setup_upgrade_environment.
     - Install required build tool and JDKs.
     - Validate the specified/installed build tool and JDKs.
-    - Clean up working tree (stash uncommitted changes).
-    - Create working branch `appmod/java-upgrade-20260201150634`.
+    
+    - Create working branch `appmod/java-upgrade-20260201154027`.
 2. Perform preliminary checks to ensure everything is ready.
 3. Achieve the objectives set for each milestone one by one until the final upgrade goal is reached. At this stage, focus only on upgrading the required dependencies and Java version to meet the upgrade targets and ensuring the project can be built.
     - Milestone 1: Upgrade project to use `Java 21`

@@ -1,35 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getTeacherClasses, getUserClasses } from '@/lib/demoStore';
-import { AttendanceByDate, loadAttendanceForClass, saveAttendanceForClass } from '@/lib/attendanceStore';
+import { api } from '@/lib/api';
+import StudentUploadWidget, { ParsedLearner } from '@/components/shared/StudentUploadWidget';
 
-const LEARNERS_STORAGE_KEY = 'eduAttendanceLearnersByClass';
+export type AttendanceByDate = Record<string, Record<string, string>>;
 
 type Learner = { id: string; name: string; number: string };
-
-function loadLearnersForClass(classId: string): Learner[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = window.localStorage.getItem(LEARNERS_STORAGE_KEY);
-    if (!raw) return [];
-    const map = JSON.parse(raw) as Record<string, Learner[]>;
-    return map[classId] || [];
-  } catch {
-    return [];
-  }
-}
-
-function saveLearnersForClass(classId: string, learners: Learner[]): void {
-  if (typeof window === 'undefined') return;
-  try {
-    const raw = window.localStorage.getItem(LEARNERS_STORAGE_KEY);
-    const map = raw ? (JSON.parse(raw) as Record<string, Learner[]>) : {};
-    map[classId] = learners;
-    window.localStorage.setItem(LEARNERS_STORAGE_KEY, JSON.stringify(map));
-  } catch {
-    // ignore storage errors in demo mode
-  }
-}
 
 const AttendanceView: React.FC = () => {
   const { user } = useAuth();
@@ -42,15 +18,23 @@ const AttendanceView: React.FC = () => {
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [attendanceByDate, setAttendanceByDate] = useState<AttendanceByDate>({});
   const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [showUploadPanel, setShowUploadPanel] = useState(false);
+  const [uploadingStu, setUploadingStu] = useState(false);
+  const [stuProgress, setStuProgress] = useState(0);
+  const [uploadMode, setUploadMode] = useState<'csv' | 'manual'>('csv');
+  const [csvParsedLearners, setCsvParsedLearners] = useState<ParsedLearner[]>([]);
+  const [csvFileName, setCsvFileName] = useState<string | null>(null);
+  const csvFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!user) return;
 
-    if (user.role === 'teacher') {
-      setClasses(getTeacherClasses(user.id));
-    } else {
-      setClasses(getUserClasses(user.id, user.role));
-    }
+    api.getMyClasses()
+      .then(data => setClasses(data || []))
+      .catch(err => {
+        console.error('Failed to fetch classes:', err);
+        setClasses([]);
+      });
   }, [user]);
 
   // When a class is selected, load any saved learners for that class
@@ -61,72 +45,147 @@ const AttendanceView: React.FC = () => {
       setAttendanceByDate({});
       setUploadStatus(null);
       setUploadedFileName(null);
+      setShowUploadPanel(false);
+      setCsvParsedLearners([]);
+      setCsvFileName(null);
       return;
     }
 
-    const storedLearners = loadLearnersForClass(selectedClass);
-    const storedAttendance = loadAttendanceForClass(selectedClass);
-    setLearners(storedLearners);
-    setAttendance({});
-    setAttendanceByDate(storedAttendance || {});
-    setUploadStatus(storedLearners.length ? 'saved' : null);
-    setUploadedFileName(null);
+    // Load learners from backend
+    api.getLearners(selectedClass)
+      .then(data => {
+        const mappedLearners = data.map((l: any) => ({
+          id: l.id,
+          name: l.fullName,
+          number: l.learnerNumber
+        }));
+        setLearners(mappedLearners);
+        setUploadStatus(mappedLearners.length ? 'saved' : null);
+      })
+      .catch(err => {
+        console.error('Failed to load learners:', err);
+        setLearners([]);
+      });
+
+    // Load attendance for the selected date
+    api.getAttendanceForDate(selectedClass, selectedDate)
+      .then(data => {
+        setAttendanceByDate({ [selectedDate]: data });
+        setAttendance(data);
+      })
+      .catch(err => {
+        console.error('Failed to load attendance:', err);
+        setAttendanceByDate({});
+        setAttendance({});
+      });
   }, [selectedClass]);
 
   // Keep per-date attendance map in sync with the selected date
   useEffect(() => {
-    const current = attendanceByDate[selectedDate] || {};
-    setAttendance(current);
-  }, [selectedDate, attendanceByDate]);
+    if (!selectedClass || !selectedDate) return;
 
-  const handleCsvUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!selectedClass) {
-      alert('Please select a class before uploading learners.');
+    // Check if we already have this date loaded
+    if (attendanceByDate[selectedDate]) {
+      setAttendance(attendanceByDate[selectedDate]);
       return;
     }
 
-    const file = event.target.files?.[0];
+    // Load attendance for the new date from backend
+    api.getAttendanceForDate(selectedClass, selectedDate)
+      .then(data => {
+        setAttendanceByDate(prev => ({ ...prev, [selectedDate]: data }));
+        setAttendance(data);
+      })
+      .catch(err => {
+        console.error('Failed to load attendance for date:', err);
+        setAttendance({});
+      });
+  }, [selectedDate, selectedClass]);
+
+  const handleCsvUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    // Legacy handler kept for backward compat – unused now
+  };
+
+  // Direct CSV file pick from the file explorer
+  const handleDirectCsvPick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
+    setCsvFileName(file.name);
 
     const reader = new FileReader();
     reader.onload = () => {
       const text = reader.result?.toString() || '';
-      const lines = text
-        .split(/\r?\n/)
-        .map(line => line.trim())
-        .filter(line => line.length > 0);
-
-      if (lines.length === 0) return;
-
-      // Assume the first row is a header: Student ID, Name, Surname
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      if (lines.length < 2) {
+        alert('File is empty or has no data rows.');
+        return;
+      }
       const dataLines = lines.slice(1);
-
-      const parsed = dataLines.map((line, index) => {
+      const parsed: ParsedLearner[] = dataLines.map((line, idx) => {
         const [idRaw, nameRaw, surnameRaw] = line.split(',');
-        const id = (idRaw || '').trim() || String(index + 1);
+        const learnerNumber = (idRaw || '').trim() || String(idx + 1);
         const firstName = (nameRaw || '').trim();
         const surname = (surnameRaw || '').trim();
-        const fullName = [firstName, surname].filter(Boolean).join(' ') || `Learner ${index + 1}`;
-
-        return {
-          id,
-          name: fullName,
-          number: id
-        };
+        const fullName = [firstName, surname].filter(Boolean).join(' ') || `Learner ${idx + 1}`;
+        return { learnerNumber, fullName };
       });
-
-      if (parsed.length > 0) {
-        setLearners(parsed);
-        setAttendance({});
-        saveLearnersForClass(selectedClass, parsed);
-        setUploadedFileName(file.name);
-        setUploadStatus('saved');
-      }
+      setCsvParsedLearners(parsed);
+      setUploadMode('csv');
+      setShowUploadPanel(true);
     };
-
     reader.readAsText(file);
-    // allow re-uploading the same file if needed
-    event.target.value = '';
+    e.target.value = '';
+  };
+
+  const handleCsvConfirmUpload = () => {
+    if (csvParsedLearners.length === 0) return;
+    handleStudentsReady(csvParsedLearners);
+  };
+
+  const handleStudentsReady = async (parsedLearners: ParsedLearner[]) => {
+    if (!selectedClass) {
+      alert('Please select a class before uploading learners.');
+      return;
+    }
+    setUploadingStu(true);
+    setStuProgress(0);
+
+    // Simulate progress for large uploads
+    const interval = setInterval(() => {
+      setStuProgress(prev => {
+        if (prev >= 90) { clearInterval(interval); return prev; }
+        return prev + Math.random() * 15;
+      });
+    }, 300);
+
+    try {
+      const data = await api.uploadLearners({
+        classId: selectedClass,
+        learners: parsedLearners,
+      });
+      clearInterval(interval);
+      setStuProgress(100);
+      await new Promise(r => setTimeout(r, 400));
+
+      const mappedLearners = data.map((l: any) => ({
+        id: l.id,
+        name: l.fullName,
+        number: l.learnerNumber,
+      }));
+      setLearners(mappedLearners);
+      setAttendance({});
+      setUploadStatus('saved');
+      setUploadedFileName('upload');
+      setShowUploadPanel(false);
+      setCsvParsedLearners([]);
+      setCsvFileName(null);
+    } catch (err: any) {
+      clearInterval(interval);
+      alert('Failed to upload learners: ' + err.message);
+    } finally {
+      setUploadingStu(false);
+      setStuProgress(0);
+    }
   };
 
   const handleAttendanceChange = (learnerId: string, status: string) => {
@@ -158,21 +217,26 @@ const AttendanceView: React.FC = () => {
   const handleSave = () => {
     if (!selectedClass) return;
 
-    setAttendanceByDate(prevByDate => {
-      const currentForDate = prevByDate[selectedDate] || {};
-      const updatedForDate = { ...currentForDate, ...attendance };
-      const nextByDate = { ...prevByDate, [selectedDate]: updatedForDate };
+    const currentForDate = attendanceByDate[selectedDate] || {};
+    const updatedForDate = { ...currentForDate, ...attendance };
 
-      saveAttendanceForClass(selectedClass, nextByDate);
-      console.log('Saving attendance register:', {
-        selectedClass,
-        selectedDate,
-        attendanceByDate: nextByDate,
+    // Save attendance to backend
+    api.saveAttendance({
+      classId: selectedClass,
+      date: selectedDate,
+      attendance: updatedForDate
+    })
+      .then(() => {
+        setAttendanceByDate(prevByDate => ({
+          ...prevByDate,
+          [selectedDate]: updatedForDate
+        }));
+        alert(`Attendance register for ${selectedDate} has been saved to database.`);
+      })
+      .catch(err => {
+        console.error('Failed to save attendance:', err);
+        alert('Failed to save attendance: ' + err.message);
       });
-      alert(`Attendance register for ${selectedDate} has been saved.`);
-
-      return nextByDate;
-    });
   };
 
   const presentCount = Object.values(attendance).filter(s => s === 'present').length;
@@ -299,31 +363,136 @@ const AttendanceView: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Upload Learners (CSV)</label>
-            <input
-              type="file"
-              accept=".csv"
-              onChange={handleCsvUpload}
-              className="
-                          block w-full 
-                          text-sm text-gray-700 
-                          file:mr-4 file:py-2 file:px-4 
-                          file:rounded-lg 
-                          file:border-0 
-                          file:text-sm file:font-semibold 
-                          file:bg-blue-50 file:text-blue-700 
-                          hover:file:bg-blue-100"
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              Expected columns: Student ID, Student Name, Student Surname
-            </p>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Learners {learners.length > 0 && <span className="text-green-600 font-normal">({learners.length} loaded)</span>}
+            </label>
+            {/* Hidden file input for CSV */}
+            <input ref={csvFileRef} type="file" accept=".csv" onChange={handleDirectCsvPick} className="hidden" />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => selectedClass && csvFileRef.current?.click()}
+                disabled={!selectedClass}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border text-sm font-semibold transition-all ${
+                  selectedClass
+                    ? 'border-gray-300 text-blue-700 bg-blue-50 hover:border-blue-400 hover:bg-blue-100/50 cursor-pointer'
+                    : 'border-gray-200 text-gray-400 bg-gray-100 cursor-not-allowed'
+                }`}
+              >
+                <span>📄</span> Upload CSV
+              </button>
+              <button
+                type="button"
+                onClick={() => { if (!selectedClass) return; setUploadMode('manual'); setShowUploadPanel(true); }}
+                disabled={!selectedClass}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border text-sm font-semibold transition-all ${
+                  selectedClass
+                    ? 'border-gray-300 text-blue-700 bg-blue-50 hover:border-blue-400 hover:bg-blue-100/50 cursor-pointer'
+                    : 'border-gray-200 text-gray-400 bg-gray-100 cursor-not-allowed'
+                }`}
+              >
+                <span>✏️</span> Capture
+              </button>
+            </div>
+            {!selectedClass && (
+              <p className="mt-1 text-xs text-gray-400">Select a class first to upload or capture students.</p>
+            )}
             {uploadStatus === 'saved' && (
               <p className="mt-1 text-xs text-green-600">
-                {uploadedFileName ? `Saved from ${uploadedFileName}` : 'Learners list loaded for this class.'}
+                Learners list loaded for this class.
               </p>
             )}
           </div>
         </div>
+
+        {/* CSV preview after file picked */}
+        {showUploadPanel && uploadMode === 'csv' && csvParsedLearners.length > 0 && (
+          <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50/30 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-medium text-gray-800">📄 {csvFileName} — {csvParsedLearners.length} student(s) found</p>
+              <button
+                type="button"
+                onClick={() => { setShowUploadPanel(false); setCsvParsedLearners([]); setCsvFileName(null); }}
+                className="text-gray-400 hover:text-gray-600 text-lg leading-none"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="rounded-lg border border-gray-200 max-h-48 overflow-y-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-50 sticky top-0">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700">#</th>
+                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700">ID</th>
+                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700">Full Name</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {csvParsedLearners.map((l, i) => (
+                    <tr key={i} className="hover:bg-gray-50">
+                      <td className="px-3 py-1.5 text-gray-500">{i + 1}</td>
+                      <td className="px-3 py-1.5 text-gray-700">{l.learnerNumber}</td>
+                      <td className="px-3 py-1.5 text-gray-900 font-medium">{l.fullName}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {uploadingStu && (
+              <div className="w-full mt-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium text-blue-700">Uploading…</span>
+                  <span className="text-xs font-medium text-blue-700">{Math.round(stuProgress)}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-300 ease-out"
+                    style={{ width: `${stuProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {!uploadingStu && (
+              <div className="flex justify-end mt-3">
+                <button
+                  type="button"
+                  onClick={handleCsvConfirmUpload}
+                  className="px-4 py-2 text-sm bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-all"
+                >
+                  Upload Students
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Manual capture panel */}
+        {showUploadPanel && uploadMode === 'manual' && selectedClass && (
+          <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50/30 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-medium text-gray-800">✏️ Capture Students</p>
+              <button
+                type="button"
+                onClick={() => setShowUploadPanel(false)}
+                className="text-gray-400 hover:text-gray-600 text-lg leading-none"
+              >
+                ✕
+              </button>
+            </div>
+            <StudentUploadWidget
+              onLearnersReady={handleStudentsReady}
+              allowManualCapture={true}
+              isSaving={uploadingStu}
+              saveProgress={stuProgress}
+              uploadLabel="Upload Students"
+              initialMode="manual"
+              onCancel={() => setShowUploadPanel(false)}
+            />
+          </div>
+        )}
+
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <span className="text-xs font-medium text-gray-500">View:</span>
           {['daily', 'weekly', 'monthly'].map(mode => (
@@ -346,10 +515,10 @@ const AttendanceView: React.FC = () => {
         </div>
 
         {viewMode === 'weekly' && (
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-gray-500">Week:</span>
+          <div className="mt-4 flex items-end gap-0 border-b border-gray-300">
             {monthWeeksForWeekly.map((week, index) => {
               const isActive = week.days.some(day => activeWeekDateKeys.has(day.dateKey));
+              const rangeLabel = `${week.days[0]?.dateKey.slice(5)} – ${week.days[4]?.dateKey.slice(5)}`;
               return (
                 <button
                   key={week.label}
@@ -360,13 +529,20 @@ const AttendanceView: React.FC = () => {
                     const targetDate = inMonth?.dateKey || week.days[0]?.dateKey || selectedDate;
                     setSelectedDate(targetDate);
                   }}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                    isActive
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-                  }`}
+                  className={`
+                    relative px-4 py-2 text-xs font-semibold transition-all
+                    rounded-t-md border border-b-0
+                    ${isActive
+                      ? 'bg-white text-blue-700 border-gray-300 z-10 -mb-px shadow-[0_-1px_3px_rgba(0,0,0,0.06)]'
+                      : 'bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-50 hover:text-gray-700'
+                    }
+                  `}
+                  title={rangeLabel}
                 >
-                  {`Week ${index + 1}`}
+                  <span className="block leading-tight">{`Week ${index + 1}`}</span>
+                  <span className={`block text-[10px] font-normal leading-tight mt-0.5 ${isActive ? 'text-blue-500' : 'text-gray-400'}`}>
+                    {rangeLabel}
+                  </span>
                 </button>
               );
             })}
@@ -381,14 +557,38 @@ const AttendanceView: React.FC = () => {
             <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
               <p className="text-3xl font-bold text-green-600">{presentCount}</p>
               <p className="text-sm text-green-700">Present</p>
+            </div>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+              <p className="text-3xl font-bold text-red-600">{absentCount}</p>
+              <p className="text-sm text-red-700">Absent</p>
+            </div>
+            <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-center">
+              <p className="text-3xl font-bold text-orange-600">{lateCount}</p>
+              <p className="text-sm text-orange-700">Late</p>
+            </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+              <p className="text-3xl font-bold text-blue-600">{excusedCount}</p>
+              <p className="text-sm text-blue-700">Excused</p>
+            </div>
+            <div className="bg-red-50 border border-red-300 rounded-xl p-4 text-center">
+              <p className="text-3xl font-bold text-red-700">{bunkingCount}</p>
+              <p className="text-sm text-red-800">Bunking</p>
+            </div>
+            <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 text-center">
+              <p className="text-3xl font-bold text-purple-600">{sickCount}</p>
+              <p className="text-sm text-purple-700">Sick</p>
+            </div>
+          </div>
+          {learners.length > 0 && (
+            <div className="flex justify-start">
               <button
                 onClick={markAllPresent}
-                className="px-4 py-2 text-sm font-medium text-green-600 bg-green-50 rounded-lg hover:bg-green-100 transition-all"
+                className="px-4 py-2 text-sm font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-all"
               >
                 Mark All Present
               </button>
             </div>
-          </div>
+          )}
 
           {viewMode === 'daily' && (
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">

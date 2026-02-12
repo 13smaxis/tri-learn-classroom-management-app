@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { addDemoTask, getTeacherClasses, getTeacherTasks } from '@/lib/demoStore';
-import { loadAllAttendance } from '@/lib/attendanceStore';
+import { api } from '@/lib/api';
 import StatsCard from '@/components/ui/StatsCard';
 import CreateClassModal from '@/components/teacher/CreateClassModal';
 
@@ -29,27 +28,21 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
 
   const fetchClasses = async () => {
     if (!user) return;
-
-    const demoClasses = getTeacherClasses(user.id);
-    setClasses(demoClasses);
-    // After classes load, compute basic attendance summary from saved registers
-    const allAttendance = loadAllAttendance();
-    const teacherClassIds = demoClasses.map((c) => c.id);
-    let records = 0;
-    teacherClassIds.forEach((id) => {
-      const byDate = allAttendance[id] || {};
-      Object.values(byDate).forEach((dateMap) => {
-        records += Object.keys(dateMap).length;
-      });
-    });
-    setAttendanceRecords(records);
+    try {
+      const data = await api.getMyClasses();
+      setClasses(data || []);
+    } catch (err) {
+      console.error('Failed to fetch classes:', err);
+      setClasses([]);
+    }
+    setAttendanceRecords(0); // TODO: fetch from backend
     setLoading(false);
   };
 
   const fetchTasks = () => {
     if (!user) return;
-    const teacherTasks = getTeacherTasks(user.id);
-    setTasks(teacherTasks);
+    // TODO: fetch tasks from backend
+    setTasks([]);
   };
 
   const totalLearners = classes.reduce((acc, cls) => {
@@ -66,11 +59,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
     e.preventDefault();
     if (!user || !newTaskTitle || !newTaskDueDate) return;
 
-    addDemoTask({
-      teacherId: user.id,
-      title: newTaskTitle,
-      dueDate: newTaskDueDate
-    });
+    // TODO: save task to backend
+    const newTask = { id: `task-${Date.now()}`, title: newTaskTitle, dueDate: newTaskDueDate };
+    setTasks(prev => [...prev, newTask]);
 
     setNewTaskTitle('');
     setNewTaskDueDate('');
