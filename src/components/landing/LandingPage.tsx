@@ -91,8 +91,8 @@ const slides: Slide[] = [
   },
 ];
 
-const SLIDE_DURATION = 4000; // ms each slide is visible
-const TRANSITION_MS  = 500;  // fade transition duration
+const SLIDE_DURATION = 7000; // ms each slide is visible
+const TRANSITION_MS  = 600;  // fade transition duration
 
 const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, onOpenInvite }) => {
   const [mounted, setMounted] = useState(false);
