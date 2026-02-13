@@ -1,6 +1,13 @@
+
 package com.schoolapp.dto;
 
-public class AttendanceRecordDTO {
+/**
+ * Data Transfer Object for Attendance Records.
+ * This class encapsulates the attendance information for a learner on a specific date.
+ * Used by an API to send and receive attendance information in a structured format.
+ */
+public class AttendanceRecordDTO 
+{
     private String id;
     private String learnerId;
     private String learnerNumber;
@@ -8,9 +15,17 @@ public class AttendanceRecordDTO {
     private String date;
     private String status;
 
-    public AttendanceRecordDTO() {}
+    public AttendanceRecordDTO() {}                                                                             //-Default constructor for frameworks that require it
 
-    public AttendanceRecordDTO(String id, String learnerId, String learnerNumber, String learnerName, String date, String status) {
+    public AttendanceRecordDTO(
+                                String id, 
+                                String learnerId, 
+                                String learnerNumber, 
+                                String learnerName, 
+                                String date, 
+                                String status
+                                ) 
+    {
         this.id = id;
         this.learnerId = learnerId;
         this.learnerNumber = learnerNumber;
