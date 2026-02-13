@@ -1,12 +1,11 @@
-const CACHE_NAME = 'educonnect-v1';
+const CACHE_NAME = 'educonnect-v2';
 const urlsToCache = [
-  '/',
-  '/index.html',
   '/manifest.json'
 ];
 
-// Install event
+// Install event - skip waiting to activate immediately
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
@@ -16,34 +15,68 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Fetch event
+// Fetch event - network-first for navigation, cache-first for static assets
 self.addEventListener('fetch', (event) => {
+  const { request } = event;
+
+  // Network-first for HTML / navigation requests (always get latest version)
+  if (request.mode === 'navigate' || request.destination === 'document') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          // Cache the latest HTML for offline fallback
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(request, responseToCache);
+          });
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // Network-first for JS/CSS bundles (Vite hashed assets are fine to cache after)
+  if (request.destination === 'script' || request.destination === 'style') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseToCache);
+            });
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // Cache-first for images, fonts, and other static assets
   event.respondWith(
-    caches.match(event.request)
+    caches.match(request)
       .then((response) => {
-        // Return cached version or fetch from network
         if (response) {
           return response;
         }
-        return fetch(event.request)
+        return fetch(request)
           .then((response) => {
-            // Don't cache non-successful responses
             if (!response || response.status !== 200 || response.type !== 'basic') {
               return response;
             }
-            // Clone the response
             const responseToCache = response.clone();
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseToCache);
+            });
             return response;
           });
       })
   );
 });
 
-// Activate event
+// Activate event - claim clients immediately and purge old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -55,7 +88,7 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
 });
 
