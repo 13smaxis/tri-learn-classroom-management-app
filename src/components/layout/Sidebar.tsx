@@ -432,11 +432,11 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </aside>
 
-      {/* Mobile hamburger FAB — shown when sidebar is closed on mobile */}
+      {/* Mobile hamburger button — shown when sidebar is closed on mobile */}
       {!isOpen && (
         <button
           onClick={onToggle}
-          className="lg:hidden fixed bottom-5 left-5 z-40 w-14 h-14 rounded-full bg-blue-600 text-white shadow-lg flex items-center justify-center hover:bg-blue-700 transition-colors"
+          className="lg:hidden fixed top-3 right-3 z-40 w-10 h-10 rounded-full bg-blue-600 text-white shadow-lg flex items-center justify-center hover:bg-blue-700 transition-colors"
         >
           <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
