@@ -6,16 +6,21 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "attendance_records",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"learner_id", "attendance_date"}))
-public class AttendanceRecord {
+       uniqueConstraints = @UniqueConstraint(columnNames = {"learner_id", "attendance_date"}))                  //-Ensure a learner can only have one attendance record per date
 
+/**
+ * Defines how attendance data is stored and structured in the database.
+ * Creates and manages a table called attendance_records with these columns and relationships
+ */
+public class AttendanceRecord 
+{
     @Id
     @Column(length = 36)
-    private String id = UUID.randomUUID().toString();
+    private String id = UUID.randomUUID().toString();                                                           //-Generates a unique ID for each attendance record
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "learner_id", nullable = false)
-    private Learner learner;
+    private Learner learner;                                                                                    //-Each attendance record is associated with one learner
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "class_id", nullable = false)
@@ -30,7 +35,17 @@ public class AttendanceRecord {
 
     public AttendanceRecord() {}
 
-    public AttendanceRecord(Learner learner, SchoolClass schoolClass, LocalDate attendanceDate, AttendanceStatus status) {
+    /**
+     * Constructor to create a new attendance record with the specified learner, class, date, and status.
+     * 
+     */
+    public AttendanceRecord(
+                                Learner learner, 
+                                SchoolClass schoolClass, 
+                                LocalDate attendanceDate, 
+                                AttendanceStatus status
+                            ) 
+    {
         this.learner = learner;
         this.schoolClass = schoolClass;
         this.attendanceDate = attendanceDate;

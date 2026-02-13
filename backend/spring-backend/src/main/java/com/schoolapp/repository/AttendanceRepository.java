@@ -9,8 +9,14 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface AttendanceRepository extends JpaRepository<AttendanceRecord, String> {
 
+/**
+ * Repository interface for managing attendance records in the database.
+ * Runs SQL queries to perform CRUD operations on attendance records and return results to the service layer.
+ * Provides methods to find attendance records by learner ID, class ID, and date.
+ */
+public interface AttendanceRepository extends JpaRepository<AttendanceRecord, String> 
+{
     Optional<AttendanceRecord> findByLearnerIdAndAttendanceDate(String learnerId, LocalDate date);
 
     List<AttendanceRecord> findBySchoolClassIdAndAttendanceDate(String classId, LocalDate date);
