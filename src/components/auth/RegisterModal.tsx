@@ -1,18 +1,15 @@
 import React, { useState } from 'react';
-import Modal from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
 
-interface RegisterModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+interface RegisterViewProps {
   onSwitchToLogin: () => void;
   defaultRole?: 'teacher' | 'parent' | 'learner';
   onRegisterSuccess?: (role: 'teacher' | 'parent' | 'learner') => void;
 }
 
-const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitchToLogin, defaultRole, onRegisterSuccess }) => {
+const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, defaultRole, onRegisterSuccess }) => {
   const { register } = useAuth();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(defaultRole ? 2 : 1);
   const initialRole = (defaultRole || 'teacher') as 'teacher' | 'parent' | 'learner';
   const [formData, setFormData] = useState({
     title: '',
@@ -25,6 +22,8 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
     role: initialRole,
     schoolInviteCode: initialRole === 'teacher' ? 'JAN021234' : ''
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -73,10 +72,6 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
       if (onRegisterSuccess) {
         onRegisterSuccess(formData.role as 'teacher' | 'parent' | 'learner');
       }
-
-      // Always close the modal on success; AppLayout will
-      // handle showing a blurred welcome overlay for teachers
-      onClose();
       setFormData({
         title: '',
         teacherGrade: '10',
@@ -96,243 +91,174 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
     setLoading(false);
   };
 
+  const inputClass = "w-full rounded-lg border border-white/30 bg-white text-gray-900 px-4 py-2.5 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300/40 transition-all placeholder:text-gray-400";
+  const labelClass = "block text-sm font-medium text-blue-100 mb-1.5";
+
   const roleOptions = [
     {
       role: 'teacher' as const,
       title: 'Teacher',
-      description: 'Create and manage classes, track student progress',
-      icon: (
-        <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-        </svg>
-      ),
+      description: 'Create and manage classes',
       color: 'blue'
     },
     {
       role: 'parent' as const,
       title: 'Parent',
-      description: 'Monitor your child\'s progress and communicate with teachers',
-      icon: (
-        <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-      ),
+      description: "Monitor your child's progress",
       color: 'green'
     },
     {
       role: 'learner' as const,
       title: 'Learner',
-      description: 'Access assignments, view grades, and submit work',
-      icon: (
-        <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-        </svg>
-      ),
+      description: 'Access assignments & grades',
       color: 'purple'
     }
   ];
 
   const colorClasses: Record<string, string> = {
-    blue: 'border-blue-200 bg-blue-50 hover:bg-blue-100 hover:border-blue-300',
-    green: 'border-green-200 bg-green-50 hover:bg-green-100 hover:border-green-300',
-    purple: 'border-purple-200 bg-purple-50 hover:bg-purple-100 hover:border-purple-300'
+    blue: 'border-blue-300/50 bg-blue-500/20 hover:bg-blue-500/30 text-white',
+    green: 'border-green-300/50 bg-green-500/20 hover:bg-green-500/30 text-white',
+    purple: 'border-purple-300/50 bg-purple-500/20 hover:bg-purple-500/30 text-white'
   };
 
-  const iconColorClasses: Record<string, string> = {
-    blue: 'text-blue-600',
-    green: 'text-green-600',
-    purple: 'text-purple-600'
-  };
+  const EyeToggle = ({ show, onToggle }: { show: boolean; onToggle: () => void }) => (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+      tabIndex={-1}
+    >
+      {show ? (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+        </svg>
+      ) : (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+      )}
+    </button>
+  );
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Create Account"
-      size="md"
-    >
+    <div className="w-full max-w-md mx-auto space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold text-white">Create Account</h1>
+        <p className="text-sm text-blue-100 mt-1">Join the platform</p>
+      </div>
+
       {step === 1 && !defaultRole ? (
-        <div className="space-y-4">
-          <p className="text-gray-600 mb-6">Select your role to get started</p>
+        <div className="space-y-3">
+          <p className="text-blue-100 text-sm">Select your role to get started</p>
           
           {roleOptions.map((option) => (
             <button
               key={option.role}
               onClick={() => handleRoleSelect(option.role)}
-              className={`w-full rounded-xl border-2 p-5 text-left transition-all ${colorClasses[option.color]}`}
+              className={`w-full rounded-xl border-2 p-4 text-left transition-all ${colorClasses[option.color]}`}
             >
-              <div className="flex items-start gap-4">
-                <div className={iconColorClasses[option.color]}>
-                  {option.icon}
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">{option.title}</h3>
-                  <p className="text-sm text-gray-600 mt-1">{option.description}</p>
-                </div>
-              </div>
+              <h3 className="font-semibold text-white">{option.title}</h3>
+              <p className="text-sm text-blue-100 mt-0.5">{option.description}</p>
             </button>
           ))}
 
-          <div className="pt-4 text-center">
+          <div className="pt-2 text-center">
             <button
               onClick={onSwitchToLogin}
-              className="text-sm text-blue-600 hover:text-blue-700"
+              className="text-sm text-blue-200 hover:text-white transition-colors"
             >
               Already have an account? Sign in
             </button>
           </div>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-3">
           {error && (
-            <div className="rounded-lg bg-red-50 p-4 text-sm text-red-600 border border-red-100">
+            <div className="rounded-lg bg-red-500/20 border border-red-300/30 p-3 text-sm text-red-100">
               {error}
             </div>
           )}
 
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-2">
             {!defaultRole && (
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-blue-200 hover:text-white"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
             )}
-            <span className="text-sm font-medium text-gray-600">
-              Registering as <span className="text-blue-600 capitalize">{formData.role}</span>
+            <span className="text-sm font-medium text-blue-100">
+              Registering as <span className="text-white capitalize font-semibold">{formData.role}</span>
             </span>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Title (optional)</label>
-            <input
-              type="text"
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-              placeholder="e.g. Mr, Ms, Dr"
-            />
+            <label className={labelClass}>Title (optional)</label>
+            <input type="text" name="title" value={formData.title} onChange={handleChange} className={inputClass} placeholder="e.g. Mr, Ms, Dr" />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
-            <input
-              type="text"
-              name="fullName"
-              value={formData.fullName}
-              onChange={handleChange}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-              placeholder="Enter your full name"
-              required
-            />
+            <label className={labelClass}>Full Name *</label>
+            <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} className={inputClass} placeholder="Enter your full name" required />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Email Address (optional)</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-              placeholder="you@example.com"
-            />
+            <label className={labelClass}>Email Address (optional)</label>
+            <input type="email" name="email" value={formData.email} onChange={handleChange} className={inputClass} placeholder="you@example.com" />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number *</label>
-            <input
-              type="tel"
-              name="phone"
-              value={formData.phone}
-              onChange={handleChange}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-              placeholder="0821234567"
-              required
-            />
+            <label className={labelClass}>Phone Number *</label>
+            <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className={inputClass} placeholder="0821234567" required />
           </div>
 
           {formData.role === 'teacher' && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Primary Teaching Grade *</label>
-                <select
-                  name="teacherGrade"
-                  value={formData.teacherGrade}
-                  onChange={handleChange}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-                  required
-                >
+                <label className={labelClass}>Primary Teaching Grade *</label>
+                <select name="teacherGrade" value={formData.teacherGrade} onChange={handleChange} className={inputClass} required>
                   <option value="">Select grade</option>
-                  <option value="1">Grade 1</option>
-                  <option value="2">Grade 2</option>
-                  <option value="3">Grade 3</option>
-                  <option value="4">Grade 4</option>
-                  <option value="5">Grade 5</option>
-                  <option value="6">Grade 6</option>
-                  <option value="7">Grade 7</option>
-                  <option value="8">Grade 8</option>
-                  <option value="9">Grade 9</option>
-                  <option value="10">Grade 10</option>
-                  <option value="11">Grade 11</option>
-                  <option value="12">Grade 12</option>
+                  {Array.from({ length: 12 }, (_, i) => (
+                    <option key={i + 1} value={String(i + 1)}>Grade {i + 1}</option>
+                  ))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">School Invite Code *</label>
-                <input
-                  type="text"
-                  name="schoolInviteCode"
-                  value={formData.schoolInviteCode}
-                  onChange={handleChange}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 font-mono tracking-widest focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-                  placeholder="e.g. JAN021234"
-                  maxLength={9}
-                  required
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  Demo format: first 3 letters of school + district + unique code (for example <span className="font-semibold">JAN021234</span>).
+                <label className={labelClass}>School Invite Code *</label>
+                <input type="text" name="schoolInviteCode" value={formData.schoolInviteCode} onChange={handleChange} className={`${inputClass} font-mono tracking-widest`} placeholder="e.g. JAN021234" maxLength={9} required />
+                <p className="mt-0.5 text-xs text-blue-200">
+                  Demo format: first 3 letters of school + district + unique code
                 </p>
               </div>
             </>
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-              placeholder="At least 6 characters"
-              required
-            />
+            <label className={labelClass}>Password *</label>
+            <div className="relative">
+              <input type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange} className={`${inputClass} pr-12`} placeholder="At least 6 characters" required />
+              <EyeToggle show={showPassword} onToggle={() => setShowPassword(!showPassword)} />
+            </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
-            <input
-              type="password"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-              placeholder="Confirm your password"
-              required
-            />
+            <label className={labelClass}>Confirm Password *</label>
+            <div className="relative">
+              <input type={showConfirm ? 'text' : 'password'} name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} className={`${inputClass} pr-12`} placeholder="Confirm your password" required />
+              <EyeToggle show={showConfirm} onToggle={() => setShowConfirm(!showConfirm)} />
+            </div>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="w-full rounded-lg bg-blue-600 px-4 py-2.5 font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             {loading ? (
               <span className="flex items-center justify-center">
@@ -346,18 +272,14 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
           </button>
 
           <div className="text-center">
-            <button
-              type="button"
-              onClick={onSwitchToLogin}
-              className="text-sm text-blue-600 hover:text-blue-700"
-            >
+            <button type="button" onClick={onSwitchToLogin} className="text-sm text-blue-200 hover:text-white transition-colors">
               Already have an account? Sign in
             </button>
           </div>
         </form>
       )}
-    </Modal>
+    </div>
   );
 };
 
-export default RegisterModal;
+export default RegisterView;

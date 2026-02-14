@@ -44,11 +44,11 @@ export class AuthService
   /**
    * Authenticate user
    */
-  async loginUser(email: string, _password: string): Promise<{ user: User; token: string }> {
+  async loginUser(phone: string, _password: string): Promise<{ user: User; token: string }> {
     // TODO: Integrate with AWS Cognito
     const user: User = {
       userId: uuidv4(),
-      email,
+      email: '',
       firstName: 'John',
       lastName: 'Doe',
       role: 'teacher',

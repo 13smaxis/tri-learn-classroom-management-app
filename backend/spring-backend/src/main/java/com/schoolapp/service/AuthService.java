@@ -27,7 +27,13 @@ public class AuthService {
     }
 
     public UserResponse register(RegisterRequest req) {
-        if (userRepository.existsByEmail(req.getEmail())) {
+        // Check phone uniqueness (phone is the primary identifier)
+        if (req.getPhone() != null && userRepository.existsByPhone(req.getPhone())) {
+            throw new RuntimeException("Phone number already registered");
+        }
+
+        // Check email uniqueness only if provided
+        if (req.getEmail() != null && !req.getEmail().isBlank() && userRepository.existsByEmail(req.getEmail())) {
             throw new RuntimeException("Email already registered");
         }
 
@@ -35,7 +41,9 @@ public class AuthService {
 
         AppUser user = new AppUser();
         user.setFullName(req.getFullName());
-        user.setEmail(req.getEmail());
+        // Store null instead of blank so the unique constraint allows multiple no-email users
+        String email = (req.getEmail() != null && !req.getEmail().isBlank()) ? req.getEmail() : null;
+        user.setEmail(email);
         user.setPassword(passwordEncoder.encode(req.getPassword()));
         user.setRole(role);
         user.setTitle(req.getTitle());
@@ -50,20 +58,20 @@ public class AuthService {
         }
 
         AppUser saved = userRepository.save(user);
-        String token = jwtUtil.generateToken(saved.getId(), saved.getEmail(), saved.getRole().name());
+        String token = jwtUtil.generateToken(saved.getId(), saved.getPhone(), saved.getRole().name());
 
         return toResponse(saved, token);
     }
 
     public UserResponse login(LoginRequest req) {
-        AppUser user = userRepository.findByEmail(req.getEmail())
-                .orElseThrow(() -> new RuntimeException("Invalid email or password"));
+        AppUser user = userRepository.findByPhone(req.getPhone())
+                .orElseThrow(() -> new RuntimeException("Invalid phone number or password"));
 
         if (!passwordEncoder.matches(req.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Invalid email or password");
+            throw new RuntimeException("Invalid phone number or password");
         }
 
-        String token = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getRole().name());
+        String token = jwtUtil.generateToken(user.getId(), user.getPhone(), user.getRole().name());
         return toResponse(user, token);
     }
 

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { api, UserResponse } from '@/lib/api';
+import { AlignVerticalJustifyEnd } from 'lucide-react';
 
 export interface User {
   id: string;
@@ -12,11 +13,16 @@ export interface User {
   teacherGrade?: string;
 }
 
-interface AuthContextType {
+/**
+ * AuthContext provides authentication state and functions to the app.
+ * It manages the current user, loading state, and provides methods for login, registration, logout, and invite validation.
+ */
+interface AuthContextType 
+{
   user: User | null;
   loading: boolean;
   justSignedUp: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (phone: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (data: RegisterData) => Promise<{ success: boolean; error?: string; user?: User }>;
   logout: () => void;
   validateInvite: (code: string) => Promise<{ success: boolean; classInfo?: any; error?: string }>;
@@ -73,9 +79,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (phone: string, password: string) => {
     try {
-      const data = await api.login({ email, password });
+      const data = await api.login({ phone, password });
       if (data.token) {
         localStorage.setItem('authToken', data.token);
       }

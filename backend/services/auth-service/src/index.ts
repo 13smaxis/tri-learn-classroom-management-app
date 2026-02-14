@@ -71,17 +71,23 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
 
 app.post('/api/auth/login', async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body
+    const { phone, password } = req.body
 
     // Validate input
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' })
+    if (!phone || !password) {
+      return res.status(400).json({ error: 'Phone number and password are required' })
     }
 
-    // Find user
-    const userData = users.get(email)
+    // Find user by phone
+    let userData: any = null
+    for (const [, u] of users) {
+      if (u.phone === phone) {
+        userData = u
+        break
+      }
+    }
     if (!userData || userData.password !== password) {
-      return res.status(401).json({ error: 'Invalid email or password' })
+      return res.status(401).json({ error: 'Invalid phone number or password' })
     }
 
     // Generate JWT token
