@@ -1,9 +1,7 @@
 com\schoolapp\model\AttendanceStatus.class
 com\schoolapp\model\Learner.class
-com\schoolapp\dto\ApiResponse.class
 com\schoolapp\dto\UserResponse.class
 com\schoolapp\repository\EnrollmentRepository.class
-com\schoolapp\dto\ApiResponse$ErrorDetail.class
 com\schoolapp\repository\ClassRepository.class
 com\schoolapp\dto\LearnerDTO.class
 com\schoolapp\SchoolAppApplication.class
@@ -14,15 +12,11 @@ com\schoolapp\repository\UserRepository.class
 com\schoolapp\dto\UploadLearnersRequest.class
 com\schoolapp\model\Role.class
 com\schoolapp\model\Enrollment.class
-com\schoolapp\controller\AttendanceController.class
-com\schoolapp\controller\ClassController.class
 com\schoolapp\model\AttendanceRecord.class
-com\schoolapp\controller\UserController.class
 com\schoolapp\dto\LoginRequest.class
 com\schoolapp\security\JwtUtil.class
 com\schoolapp\repository\AttendanceRepository.class
 com\schoolapp\dto\SaveAttendanceRequest.class
-com\schoolapp\controller\AuthController.class
 com\schoolapp\security\JwtAuthFilter.class
 com\schoolapp\model\AppUser.class
 com\schoolapp\model\SchoolClass.class
@@ -30,4 +24,3 @@ com\schoolapp\service\AttendanceService.class
 com\schoolapp\service\AuthService.class
 com\schoolapp\dto\RegisterRequest.class
 com\schoolapp\repository\LearnerRepository.class
-com\schoolapp\SecurityConfig.class

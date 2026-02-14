@@ -19,8 +19,8 @@ self.addEventListener('install', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
-  // Network-first for HTML / navigation requests (always get latest version)
-  if (request.mode === 'navigate' || request.destination === 'document') {
+  if (request.mode === 'navigate' || request.destination === 'document')                                        //-Network-first for HTML / navigation requests (always get latest version)
+  {
     event.respondWith(
       fetch(request)
         .then((response) => {

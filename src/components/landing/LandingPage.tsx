@@ -1,10 +1,18 @@
 import React, { useEffect, useState } from 'react';
+import LoginView from '@/components/auth/LoginModal';
+import RegisterView from '@/components/auth/RegisterModal';
 
 interface LandingPageProps 
 {
   onOpenLogin: () => void;
   onOpenRegister: () => void;
   onOpenInvite: () => void;
+  showLogin?: boolean;
+  showRegister?: boolean;
+  registerRole?: 'teacher' | 'parent' | 'learner';
+  onSwitchToRegister?: () => void;
+  onSwitchToInvite?: () => void;
+  onSwitchToLogin?: () => void;
 }
 
 const animKeyframes = `
@@ -94,7 +102,7 @@ const slides: Slide[] = [
 const SLIDE_DURATION = 7000; // ms each slide is visible
 const TRANSITION_MS  = 600;  // fade transition duration
 
-const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, onOpenInvite }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, onOpenInvite, showLogin, showRegister, registerRole, onSwitchToRegister, onSwitchToInvite, onSwitchToLogin }) => {
   const [mounted, setMounted] = useState(false);
   const [slideIdx, setSlideIdx] = useState(0);
   const [phase, setPhase] = useState<'in' | 'out'>('in');
@@ -235,19 +243,31 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
       {/* ═══════ Top: Hero (70% of viewport) ═══════ */}
       <section className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 text-white" style={{ height: '80dvh', minHeight: 0 }}>
         <div className="relative h-full flex flex-col items-center justify-center px-4">
-          {/* Heading */}
-          <h1 className="text-[clamp(1.25rem,4vw,3rem)] font-bold mb-[1vh] text-center leading-tight">
-            Classroom Management Made Simple
-          </h1>
-          <p className="text-[clamp(0.75rem,2vw,1.125rem)] text-blue-100 max-w-2xl mx-auto mb-[2vh] text-center">
-            Connect teachers, parents and learners on one powerful platform.
-          </p>
+          {showLogin ? (
+            <LoginView
+              onSwitchToRegister={onSwitchToRegister || onOpenRegister}
+              onSwitchToInvite={onSwitchToInvite || onOpenInvite}
+            />
+          ) : showRegister ? (
+            <RegisterView
+              onSwitchToLogin={onSwitchToLogin || onOpenLogin}
+              defaultRole={registerRole}
+            />
+          ) : (
+            <>
+              {/* Heading */}
+              <h1 className="text-[clamp(1.25rem,4vw,3rem)] font-bold mb-[1vh] text-center leading-tight">
+                Classroom Management Made Simple
+              </h1>
+              <p className="text-[clamp(0.75rem,2vw,1.125rem)] text-blue-100 max-w-2xl mx-auto mb-[2vh] text-center">
+                Connect teachers, parents and learners on one powerful platform.
+              </p>
 
-          {/* Bouncing feature bubbles */}
-          <div className="relative w-full max-w-3xl" style={{ height: 'clamp(6rem, 20vh, 11rem)' }}>
-            {features.map((feature, idx) => (
-              <div
-                key={idx}
+              {/* Bouncing feature bubbles */}
+              <div className="relative w-full max-w-3xl" style={{ height: 'clamp(6rem, 20vh, 11rem)' }}>
+                {features.map((feature, idx) => (
+                  <div
+                    key={idx}
                 className="absolute"
                 style={{
                   animation: mounted
@@ -275,6 +295,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
               </div>
             ))}
           </div>
+            </>
+          )}
         </div>
 
         {/* Gradient fade into bottom area */}

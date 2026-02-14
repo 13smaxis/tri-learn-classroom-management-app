@@ -1,12 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Layout components
 import Sidebar from '@/components/layout/Sidebar';
 
 // Auth modals
-import LoginModal from '@/components/auth/LoginModal';
-import RegisterModal from '@/components/auth/RegisterModal';
 import InviteModal from '@/components/auth/InviteModal';
 
 // Landing page
@@ -48,6 +46,14 @@ const AppLayout: React.FC = () => {
 
   const showWelcomeOverlay = !!user && user.role === 'teacher' && justSignedUp;
 
+  // Reset to hero view after sign-out
+  useEffect(() => {
+    if (!user) {
+      setShowLoginModal(false);
+      setShowRegisterModal(false);
+    }
+  }, [user]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -79,34 +85,23 @@ const AppLayout: React.FC = () => {
             onOpenLogin={() => setShowLoginModal(true)}
             onOpenRegister={() => setShowRegisterModal(true)}
             onOpenInvite={() => setShowInviteModal(true)}
+            showLogin={showLoginModal}
+            showRegister={showRegisterModal}
+            registerRole={registerRole}
+            onSwitchToRegister={() => {
+              setShowLoginModal(false);
+              setShowRegisterModal(true);
+            }}
+            onSwitchToInvite={() => {
+              setShowLoginModal(false);
+              setShowInviteModal(true);
+            }}
+            onSwitchToLogin={() => {
+              setShowRegisterModal(false);
+              setShowLoginModal(true);
+            }}
           />
         </main>
-        
-        <LoginModal
-          isOpen={showLoginModal}
-          onClose={() => setShowLoginModal(false)}
-          onSwitchToRegister={() => {
-            setShowLoginModal(false);
-            setShowRegisterModal(true);
-          }}
-          onSwitchToInvite={() => {
-            setShowLoginModal(false);
-            setShowInviteModal(true);
-          }}
-        />
-        
-        <RegisterModal
-          isOpen={showRegisterModal}
-          onClose={() => {
-            setShowRegisterModal(false);
-            setRegisterRole(undefined);
-          }}
-          onSwitchToLogin={() => {
-            setShowRegisterModal(false);
-            setShowLoginModal(true);
-          }}
-          defaultRole={registerRole}
-        />
         
         <InviteModal
           isOpen={showInviteModal}

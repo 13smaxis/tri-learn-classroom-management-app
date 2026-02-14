@@ -20,15 +20,29 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
-public class AttendanceService {
 
+/**
+ * Service for managing attendance records and learners. 
+ * Handles uploading learners for a class, saving attendance records, and retrieving attendance data.
+ *      Decides what should happen
+        Coordinates repositories
+        Applies business rules
+        Converts entities to DTOs
+        Controls transactions
+ *
+ */
+public class AttendanceService 
+{
     private final LearnerRepository learnerRepository;
     private final AttendanceRepository attendanceRepository;
     private final ClassRepository classRepository;
 
-    public AttendanceService(LearnerRepository learnerRepository,
-                           AttendanceRepository attendanceRepository,
-                           ClassRepository classRepository) {
+    public AttendanceService(
+                                LearnerRepository learnerRepository,
+                                AttendanceRepository attendanceRepository,
+                                ClassRepository classRepository
+                            )
+    {
         this.learnerRepository = learnerRepository;
         this.attendanceRepository = attendanceRepository;
         this.classRepository = classRepository;
@@ -38,21 +52,21 @@ public class AttendanceService {
      * Upload/replace learners for a class
      */
     @Transactional
-    public List<LearnerDTO> uploadLearners(UploadLearnersRequest request) {
+    public List<LearnerDTO> uploadLearners(UploadLearnersRequest request) 
+    {
         SchoolClass schoolClass = classRepository.findById(Objects.requireNonNull(request.getClassId()))
             .orElseThrow(() -> new RuntimeException("Class not found"));
 
-        // Delete existing learners for this class
-        learnerRepository.deleteBySchoolClassId(request.getClassId());
+        learnerRepository.deleteBySchoolClassId(request.getClassId());                                          //-Delete existing learners for this class
 
-        // Create new learners
-        List<Learner> learners = new ArrayList<>();
-        for (UploadLearnersRequest.LearnerData data : request.getLearners()) {
+        List<Learner> learners = new ArrayList<>();                                                             //-Create new learners
+        for (UploadLearnersRequest.LearnerData data : request.getLearners())                                    //-Iterate over the provided learner data and create Learner entities
+        {
             Learner learner = new Learner(data.getLearnerNumber(), data.getFullName(), schoolClass);
             learners.add(learner);
         }
 
-        learners = learnerRepository.saveAll(learners);
+        learners = learnerRepository.saveAll(learners);                                                         //-Save new learners to the database
 
         return learners.stream()
             .map(l -> new LearnerDTO(l.getId(), l.getLearnerNumber(), l.getFullName()))
@@ -62,7 +76,8 @@ public class AttendanceService {
     /**
      * Get all learners for a class
      */
-    public List<LearnerDTO> getLearnersForClass(String classId) {
+    public List<LearnerDTO> getLearnersForClass(String classId) 
+    {
         List<Learner> learners = learnerRepository.findBySchoolClassId(classId);
         return learners.stream()
             .map(l -> new LearnerDTO(l.getId(), l.getLearnerNumber(), l.getFullName()))
@@ -79,7 +94,8 @@ public class AttendanceService {
 
         LocalDate date = LocalDate.parse(request.getDate());
 
-        for (Map.Entry<String, String> entry : request.getAttendance().entrySet()) {
+        for (Map.Entry<String, String> entry : request.getAttendance().entrySet())                              //-Iterate over the attendance data, where the key is the learner ID and the value is the attendance status (e.g., "present", "absent")
+        {
             String learnerId = entry.getKey();
             String statusStr = entry.getValue().toUpperCase();
 
@@ -101,7 +117,8 @@ public class AttendanceService {
     /**
      * Get attendance records for a class on a specific date
      */
-    public Map<String, String> getAttendanceForDate(String classId, String dateStr) {
+    public Map<String, String> getAttendanceForDate(String classId, String dateStr) 
+    {
         LocalDate date = LocalDate.parse(dateStr);
         List<AttendanceRecord> records = attendanceRepository
             .findBySchoolClassIdAndAttendanceDate(classId, date);
@@ -116,7 +133,8 @@ public class AttendanceService {
     /**
      * Get all attendance records for a class within a date range
      */
-    public List<AttendanceRecordDTO> getAttendanceForDateRange(String classId, String startDateStr, String endDateStr) {
+    public List<AttendanceRecordDTO> getAttendanceForDateRange(String classId, String startDateStr, String endDateStr) 
+    {
         LocalDate startDate = LocalDate.parse(startDateStr);
         LocalDate endDate = LocalDate.parse(endDateStr);
 
@@ -138,7 +156,8 @@ public class AttendanceService {
     /**
      * Get all attendance records for a specific learner
      */
-    public List<AttendanceRecordDTO> getAttendanceForLearner(String learnerId) {
+    public List<AttendanceRecordDTO> getAttendanceForLearner(String learnerId) 
+    {
         List<AttendanceRecord> records = attendanceRepository.findByLearnerId(learnerId);
 
         return records.stream()
