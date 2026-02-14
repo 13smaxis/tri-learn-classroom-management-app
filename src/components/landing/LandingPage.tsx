@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import LoginView from '@/components/auth/LoginModal';
 import RegisterView from '@/components/auth/RegisterModal';
+import InviteView from '@/components/auth/InviteView';
 
 interface LandingPageProps 
 {
@@ -9,8 +10,9 @@ interface LandingPageProps
   onOpenInvite: () => void;
   showLogin?: boolean;
   showRegister?: boolean;
+  showInvite?: boolean;
   registerRole?: 'teacher' | 'parent' | 'learner';
-  onSwitchToRegister?: () => void;
+  onSwitchToRegister?: (role?: 'parent' | 'learner') => void;
   onSwitchToInvite?: () => void;
   onSwitchToLogin?: () => void;
 }
@@ -102,7 +104,7 @@ const slides: Slide[] = [
 const SLIDE_DURATION = 7000; // ms each slide is visible
 const TRANSITION_MS  = 600;  // fade transition duration
 
-const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, onOpenInvite, showLogin, showRegister, registerRole, onSwitchToRegister, onSwitchToInvite, onSwitchToLogin }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, onOpenInvite, showLogin, showRegister, showInvite, registerRole, onSwitchToRegister, onSwitchToInvite, onSwitchToLogin }) => {
   const [mounted, setMounted] = useState(false);
   const [slideIdx, setSlideIdx] = useState(0);
   const [phase, setPhase] = useState<'in' | 'out'>('in');
@@ -252,6 +254,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
             <RegisterView
               onSwitchToLogin={onSwitchToLogin || onOpenLogin}
               defaultRole={registerRole}
+            />
+          ) : showInvite ? (
+            <InviteView
+              onSwitchToLogin={onSwitchToLogin || onOpenLogin}
+              onSwitchToRegister={(role) => onSwitchToRegister ? onSwitchToRegister(role) : onOpenRegister()}
             />
           ) : (
             <>

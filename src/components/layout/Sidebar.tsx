@@ -10,6 +10,7 @@ interface SidebarProps {
   onOpenLogin: () => void;
   onOpenRegister: () => void;
   onOpenInvite: () => void;
+  onGoHome?: () => void;
 }
 
 interface MenuItem {
@@ -28,6 +29,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onOpenLogin,
   onOpenRegister,
   onOpenInvite,
+  onGoHome,
 }) => {
   const { user, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -180,7 +182,12 @@ const Sidebar: React.FC<SidebarProps> = ({
         onTouchEnd={handleTouchEnd}
       >
         <div className="flex flex-col h-full">
-          <div className="flex items-center gap-3 px-4 py-10 border-b border-gray-200">                        {/* ─── App Logo / Brand ─── */}
+          <div 
+            className="flex items-center gap-3 px-4 py-10 border-b border-gray-200 cursor-pointer"
+            onClick={() => { onClose(); onGoHome?.(); }}
+            role="button"
+            tabIndex={0}
+          >
             <div className="
                               w-10 h-10 
                               rounded-xl 
@@ -259,7 +266,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               </p>
               <div className="space-y-2">
                 <button
-                  onClick={onOpenLogin}
+                  onClick={() => { onClose(); onOpenLogin(); }}
                   className="
                                 w-full 
                                 flex items-center 
@@ -286,7 +293,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   Sign In
                 </button>
                 <button
-                  onClick={onOpenRegister}
+                  onClick={() => { onClose(); onOpenRegister(); }}
                   className="
                     w-full flex items-center gap-3 rounded-xl text-sm font-semibold transition-all
                     px-4 py-2.5
@@ -310,7 +317,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   Register using a class invite code
                 </p>
                 <button
-                  onClick={onOpenInvite}
+                  onClick={() => { onClose(); onOpenInvite(); }}
                   className="w-full flex items-center justify-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-all"
                 >
 

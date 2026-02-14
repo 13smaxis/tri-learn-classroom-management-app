@@ -41,8 +41,7 @@ public class AuthService {
 
         AppUser user = new AppUser();
         user.setFullName(req.getFullName());
-        // Store null instead of blank so the unique constraint allows multiple no-email users
-        String email = (req.getEmail() != null && !req.getEmail().isBlank()) ? req.getEmail() : null;
+        String email = (req.getEmail() != null && !req.getEmail().isBlank()) ? req.getEmail() : null;           //- Store null instead of blank so the unique constraint allows multiple no-email users
         user.setEmail(email);
         user.setPassword(passwordEncoder.encode(req.getPassword()));
         user.setRole(role);

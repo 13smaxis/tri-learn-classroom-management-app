@@ -1,10 +1,15 @@
 package com.schoolapp.dto;
 
-public class LoginRequest {
+/**
+ * Data Transfer Object for login requests, containing the user's phone number and password.
+ * This class is used to encapsulate the login credentials sent from the client to the server during authentication.
+ */
+public class LoginRequest 
+{
     private String phone;
     private String password;
 
-    public LoginRequest() {}
+    public LoginRequest() {}                                                                                    //- Default constructor for deserialization
 
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }

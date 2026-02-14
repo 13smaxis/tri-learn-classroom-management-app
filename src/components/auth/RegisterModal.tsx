@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { api } from '@/lib/api';
 
 interface RegisterViewProps {
   onSwitchToLogin: () => void;
@@ -7,9 +8,18 @@ interface RegisterViewProps {
   onRegisterSuccess?: (role: 'teacher' | 'parent' | 'learner') => void;
 }
 
+interface ClassInfo {
+  classId: string;
+  name: string;
+  grade: string;
+  subject: string;
+  teacherName: string;
+}
+
 const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, defaultRole, onRegisterSuccess }) => {
   const { register } = useAuth();
-  const [step, setStep] = useState(defaultRole ? 2 : 1);
+  // Steps: 1=role select, 1.5='invite' (invite code for parent/learner), 2=form
+  const [step, setStep] = useState<'role' | 'invite' | 'form'>(defaultRole ? (defaultRole === 'teacher' ? 'form' : 'invite') : 'role');
   const initialRole = (defaultRole || 'teacher') as 'teacher' | 'parent' | 'learner';
   const [formData, setFormData] = useState({
     title: '',
@@ -27,6 +37,12 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, defaultRol
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Invite code gate state
+  const [inviteCode, setInviteCode] = useState('');
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteError, setInviteError] = useState('');
+  const [classInfo, setClassInfo] = useState<ClassInfo | null>(null);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -38,7 +54,36 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, defaultRol
       teacherGrade: role === 'teacher' ? (formData.teacherGrade || '10') : '',
       schoolInviteCode: role === 'teacher' ? formData.schoolInviteCode || 'JAN021234' : ''
     });
-    setStep(2);
+    // Teachers go straight to form; parents/learners must enter invite code first
+    if (role === 'teacher') {
+      setStep('form');
+    } else {
+      setInviteCode('');
+      setInviteError('');
+      setClassInfo(null);
+      setStep('invite');
+    }
+  };
+
+  const handleValidateInvite = async () => {
+    if (!inviteCode.trim()) {
+      setInviteError('Please enter an invite code');
+      return;
+    }
+    setInviteLoading(true);
+    setInviteError('');
+    try {
+      const data = await api.validateInviteCode(inviteCode.trim().toUpperCase());
+      setClassInfo(data);
+    } catch (err: any) {
+      setInviteError(err?.message || 'Invalid invite code');
+      setClassInfo(null);
+    }
+    setInviteLoading(false);
+  };
+
+  const handleInviteContinue = () => {
+    setStep('form');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -83,7 +128,9 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, defaultRol
         role: 'teacher',
         schoolInviteCode: 'JAN021234'
       });
-      setStep(1);
+      setInviteCode('');
+      setClassInfo(null);
+      setStep('role');
     } else {
       setError(result.error || 'Registration failed');
     }
@@ -142,13 +189,13 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, defaultRol
   );
 
   return (
-    <div className="w-full max-w-md mx-auto space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+    <div className="w-full max-w-md mx-auto space-y-4 max-h-[70vh] overflow-y-auto no-scrollbar border border-white/20 rounded-2xl p-6 bg-white/5 backdrop-blur-sm">
       <div className="text-center">
         <h1 className="text-2xl font-bold text-white">Create Account</h1>
         <p className="text-sm text-blue-100 mt-1">Join the platform</p>
       </div>
 
-      {step === 1 && !defaultRole ? (
+      {step === 'role' && !defaultRole ? (
         <div className="space-y-3">
           <p className="text-blue-100 text-sm">Select your role to get started</p>
           
@@ -172,6 +219,87 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, defaultRol
             </button>
           </div>
         </div>
+      ) : step === 'invite' ? (
+        /* ── Invite code gate for parent/learner ── */
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            {!defaultRole && (
+              <button type="button" onClick={() => { setStep('role'); setClassInfo(null); setInviteError(''); }} className="text-blue-200 hover:text-white">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+            )}
+            <span className="text-sm font-medium text-blue-100">
+              Joining as <span className="text-white capitalize font-semibold">{formData.role}</span>
+            </span>
+          </div>
+
+          <div>
+            <label className={labelClass}>Teacher's Class Invite Code *</label>
+            <p className="text-xs text-blue-200 mb-2">Ask your teacher for the 8-character class invite code</p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={inviteCode}
+                onChange={(e) => { setInviteCode(e.target.value.toUpperCase()); setInviteError(''); setClassInfo(null); }}
+                className={`${inputClass} font-mono tracking-widest flex-1`}
+                placeholder="e.g. A3F2B1C4"
+                maxLength={8}
+              />
+              <button
+                type="button"
+                onClick={handleValidateInvite}
+                disabled={inviteLoading || !inviteCode.trim()}
+                className="rounded-lg bg-blue-600 px-4 py-2.5 font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all whitespace-nowrap"
+              >
+                {inviteLoading ? (
+                  <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                ) : 'Verify'}
+              </button>
+            </div>
+          </div>
+
+          {inviteError && (
+            <div className="rounded-lg bg-red-500/20 border border-red-300/30 p-3 text-sm text-red-100">
+              {inviteError}
+            </div>
+          )}
+
+          {classInfo && (
+            <div className="rounded-xl border border-green-300/40 bg-green-500/15 p-4 space-y-2">
+              <div className="flex items-center gap-2 text-green-200">
+                <svg className="w-5 h-5 text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="font-semibold text-green-100">Valid Invite Code</span>
+              </div>
+              <div className="text-sm text-blue-100 space-y-1">
+                <p><span className="text-blue-200">Class:</span> <span className="text-white font-medium">{classInfo.name}</span></p>
+                <p><span className="text-blue-200">Grade:</span> <span className="text-white font-medium">{classInfo.grade}</span></p>
+                {classInfo.subject && <p><span className="text-blue-200">Subject:</span> <span className="text-white font-medium">{classInfo.subject}</span></p>}
+                <p><span className="text-blue-200">Teacher:</span> <span className="text-white font-medium">{classInfo.teacherName}</span></p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleInviteContinue}
+                className="w-full mt-3 rounded-lg bg-green-600 px-4 py-2.5 font-semibold text-white hover:bg-green-700 transition-all"
+              >
+                Continue to Registration
+              </button>
+            </div>
+          )}
+
+          <div className="text-center">
+            <button type="button" onClick={onSwitchToLogin} className="text-sm text-blue-200 hover:text-white transition-colors">
+              Already have an account? Sign in
+            </button>
+          </div>
+        </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-3">
           {error && (
@@ -184,7 +312,7 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, defaultRol
             {!defaultRole && (
               <button
                 type="button"
-                onClick={() => setStep(1)}
+                onClick={() => formData.role === 'teacher' ? setStep('role') : setStep('invite')}
                 className="text-blue-200 hover:text-white"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -196,6 +324,16 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, defaultRol
               Registering as <span className="text-white capitalize font-semibold">{formData.role}</span>
             </span>
           </div>
+
+          {/* Show class info for parent/learner */}
+          {classInfo && formData.role !== 'teacher' && (
+            <div className="rounded-lg border border-green-300/30 bg-green-500/10 p-3 text-xs text-blue-100 flex items-center gap-2">
+              <svg className="w-4 h-4 text-green-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Joining <span className="text-white font-medium">{classInfo.name}</span> — {classInfo.grade} — {classInfo.teacherName}</span>
+            </div>
+          )}
 
           <div>
             <label className={labelClass}>Title (optional)</label>

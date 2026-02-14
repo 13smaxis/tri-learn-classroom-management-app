@@ -98,6 +98,9 @@ export const    api = {
   getClassStudents: (classId: string) =>
     request<any[]>(`/class/${classId}/students`),
 
+  validateInviteCode: (code: string) =>
+    request<{ classId: string; name: string; grade: string; subject: string; teacherName: string }>(`/class/validate-invite?code=${encodeURIComponent(code)}`),
+
   joinClass: (inviteToken: string, linkedLearnerId?: string) =>
     request<any>('/class/join', {
       method: 'POST',

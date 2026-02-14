@@ -41,6 +41,7 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/auth/register",
                     "/auth/login",
+                    "/class/validate-invite",
                     "/health",
                     "/h2-console/**"
                 ).permitAll()
@@ -53,7 +54,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+    public CorsConfigurationSource corsConfigurationSource()                                                    //-Allows cross-origin requests from the specified origins, enabling the frontend applications to communicate with the backend without CORS issues.
+    {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000", "http://localhost:8080"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));

@@ -22,8 +22,8 @@ interface AuthContextType
   user: User | null;
   loading: boolean;
   justSignedUp: boolean;
-  login: (phone: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (data: RegisterData) => Promise<{ success: boolean; error?: string; user?: User }>;
+  login: (phone: string, password: string) => Promise<{ success: boolean; error?: string }>;                    //-Returns success status and error message if failed
+  register: (data: RegisterData) => Promise<{ success: boolean; error?: string; user?: User }>;                 //-Returns success status, error message if failed, and user data if successful
   logout: () => void;
   validateInvite: (code: string) => Promise<{ success: boolean; classInfo?: any; error?: string }>;
   joinClass: (classId: string, role: string, linkedLearnerId?: string) => Promise<{ success: boolean; error?: string }>;
@@ -130,13 +130,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const validateInvite = async (code: string) => {
-    // TODO: implement backend endpoint for invite validation
-    // For now, return a not-implemented error
     try {
-      // Once /auth/validate-invite is built, call it here
-      return { success: false, error: 'Invite validation not yet connected to backend' };
+      const data = await api.validateInviteCode(code);
+      return { success: true, classInfo: data };
     } catch (err: any) {
-      return { success: false, error: err.message };
+      return { success: false, error: err?.message || 'Invalid invite code' };
     }
   };
 
