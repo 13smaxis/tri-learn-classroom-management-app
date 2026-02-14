@@ -6,22 +6,22 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "app_users")
-public class AppUser {
-
+public class AppUser 
+{
     @Id
     @Column(length = 36)
     private String id = UUID.randomUUID().toString();
 
-    @Column(nullable = false)
+    @Column(nullable = false)                                                                                   //- Full name of the user, cannot be null in the database.
     private String fullName;
 
-    @Column(unique = true)
+    @Column(unique = true)                                                                                      //- Email address of the user, must be unique across all users in the database.
     private String email;
 
     @Column(nullable = false)
     private String password;
 
-    @Enumerated(EnumType.STRING)
+    @Enumerated(EnumType.STRING)                                                                                //- Role of the user (e.g., STUDENT, TEACHER, ADMIN), stored as a string in the database, cannot be null.
     @Column(nullable = false)
     private Role role;
 

@@ -11,18 +11,25 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+/**
+ * This controller handles authentication-related endpoints such as registration, login, fetching current user info, and logout.
+ * It's sole function is to receive HTTP requests related to authentication, delegate the processing to the AuthService and return appropriate HTTP responses.
+ * It uses the AuthService to perform the actual business logic.
+ */
 @RestController
 @RequestMapping("/auth")
-public class AuthController {
-
+public class AuthController 
+{
     private final AuthService authService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService) 
+    {
         this.authService = authService;
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody RegisterRequest req) {
+    public ResponseEntity<?> register(@RequestBody RegisterRequest req) 
+    {
         try {
             UserResponse user = authService.register(req);
             return ResponseEntity.status(201).body(Map.of("success", true, "data", user));

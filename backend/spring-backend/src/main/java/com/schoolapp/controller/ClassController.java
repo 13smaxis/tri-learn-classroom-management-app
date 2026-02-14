@@ -103,6 +103,23 @@ public class ClassController {
         }
     }
 
+    // ── GET /class/validate-invite?code=XXXX (public, no auth required) ──
+    @GetMapping("/validate-invite")
+    public ResponseEntity<?> validateInvite(@RequestParam String code) {
+        try {
+            SchoolClass sc = classService.findByInviteToken(code);
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("classId", sc.getId());
+            data.put("name", sc.getName());
+            data.put("grade", sc.getGrade());
+            data.put("subject", sc.getSubject());
+            data.put("teacherName", sc.getTeacher().getFullName());
+            return ResponseEntity.ok(Map.of("success", true, "data", data));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", Map.of("message", e.getMessage())));
+        }
+    }
+
     // ── Helper ──
     private Map<String, Object> classToMap(SchoolClass sc) {
         Map<String, Object> m = new LinkedHashMap<>();

@@ -55,6 +55,11 @@ public class ClassService {
         return enrollmentRepository.findBySchoolClassId(classId);
     }
 
+    public SchoolClass findByInviteToken(@NonNull String inviteToken) {
+        return classRepository.findByInviteToken(inviteToken)
+                .orElseThrow(() -> new RuntimeException("Invalid invite code"));
+    }
+
     public Enrollment joinClass(@NonNull String userId, String inviteToken, String linkedLearnerId) {
         SchoolClass sc = classRepository.findByInviteToken(inviteToken)
                 .orElseThrow(() -> new RuntimeException("Invalid invite token"));

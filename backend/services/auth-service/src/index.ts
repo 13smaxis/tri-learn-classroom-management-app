@@ -11,8 +11,7 @@ const app: Express = express()
 const PORT = process.env.PORT || 3000
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production'
 
-// In-memory user storage (replace with DynamoDB in production)
-const users = new Map()
+const users = new Map()                                                                                         //-In-memory user storage (replace with DynamoDB in production)
 
 // Middleware
 app.use(express.json())
