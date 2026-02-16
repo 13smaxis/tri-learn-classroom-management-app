@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAppContext } from '@/contexts/AppContext';
 import { api } from '@/lib/api';
 import StudentUploadWidget, { ParsedLearner } from '@/components/shared/StudentUploadWidget';
 
@@ -9,6 +10,7 @@ type Learner = { id: string; name: string; number: string };
 
 const AttendanceView: React.FC = () => {
   const { user } = useAuth();
+  const { forceRefreshKey } = useAppContext();
   const [classes, setClasses] = useState<any[]>([]);
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -35,7 +37,8 @@ const AttendanceView: React.FC = () => {
         console.error('Failed to fetch classes:', err);
         setClasses([]);
       });
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, forceRefreshKey]);
 
   // When a class is selected, load any saved learners for that class
   useEffect(() => {

@@ -46,6 +46,18 @@ public class ClassService {
         return classRepository.findByTeacherId(teacherId);
     }
 
+    public List<SchoolClass> getClassesForUser(AppUser user) {
+        // Teachers see classes they own
+        if (user.getRole() == com.schoolapp.model.Role.TEACHER) {
+            return classRepository.findByTeacherId(user.getId());
+        }
+        // Parents/Learners see classes they've enrolled in
+        List<Enrollment> enrollments = enrollmentRepository.findByUserId(user.getId());
+        return enrollments.stream()
+                .map(Enrollment::getSchoolClass)
+                .toList();
+    }
+
     public SchoolClass getClassById(@NonNull String classId) {
         return classRepository.findById(classId)
                 .orElseThrow(() -> new RuntimeException("Class not found"));

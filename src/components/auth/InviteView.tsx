@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 
-interface InviteViewProps {
+interface InviteViewProps 
+{
   onSwitchToLogin: () => void;
   onSwitchToRegister: (role: 'parent' | 'learner') => void;
 }
 
-interface ClassInfo {
+interface ClassInfo 
+{
   classId: string;
   name: string;
   grade: string;

@@ -15,9 +15,20 @@ const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onSwitchToInv
   const [loading, setLoading] = useState(false);
   const [selectedRole, setSelectedRole] = useState<'teacher' | 'learner' | 'parent' | null>(null);
 
+  // Reset form fields when role changes
+  React.useEffect(() => {
+    setPhone('');
+    setPassword('');
+    setError('');
+  }, [selectedRole]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (!selectedRole) {
+      setError('Please select a role before signing in.');
+      return;
+    }
     setLoading(true);
 
     const result = await login(phone, password);
@@ -112,6 +123,13 @@ const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onSwitchToInv
               className="w-full rounded-lg border border-white/30 bg-white text-gray-900 px-4 py-3 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300/40 transition-all placeholder:text-gray-400"
               placeholder="0821234567"
               required
+              disabled={!selectedRole}
+              onFocus={() => {
+                if (!selectedRole) setError('Please select a role before entering your phone number.');
+              }}
+              onClick={() => {
+                if (!selectedRole) setError('Please select a role before entering your phone number.');
+              }}
             />
           </div>
 
@@ -126,6 +144,13 @@ const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onSwitchToInv
                 className="w-full rounded-lg border border-white/30 bg-white text-gray-900 px-4 py-3 pr-12 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300/40 transition-all placeholder:text-gray-400"
                 placeholder="Enter your password"
                 required
+                disabled={!selectedRole}
+                onFocus={() => {
+                  if (!selectedRole) setError('Please select a role before entering your password.');
+                }}
+                onClick={() => {
+                  if (!selectedRole) setError('Please select a role before entering your password.');
+                }}
               />
               <button
                 type="button"
@@ -150,8 +175,11 @@ const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onSwitchToInv
           {/* Sign In Button */}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !selectedRole}
             className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            onClick={() => {
+              if (!selectedRole) setError('Please select a role before signing in.');
+            }}
           >
             {loading ? (
               <span className="flex items-center justify-center">
