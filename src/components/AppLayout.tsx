@@ -46,6 +46,7 @@ const AppLayout: React.FC = () => {
 
   const showWelcomeOverlay = !!user && user.role === 'teacher' && justSignedUp;
 
+
   // Reset to hero view after sign-out
   useEffect(() => {
     if (!user) {
@@ -54,6 +55,36 @@ const AppLayout: React.FC = () => {
       setShowInviteModal(false);
     }
   }, [user]);
+
+  // Auto logout after 2 minutes of inactivity
+  useEffect(() => {
+    if (!user) return;
+    let timer: NodeJS.Timeout;
+    const resetTimer = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (user) {
+          // Call logout from context
+          window.dispatchEvent(new Event('auto-logout'));
+        }
+      }, 2 * 60 * 1000); // 2 minutes
+    };
+    const events = ['mousemove', 'keydown', 'mousedown', 'touchstart'];
+    events.forEach(e => window.addEventListener(e, resetTimer));
+    resetTimer();
+    return () => {
+      clearTimeout(timer);
+      events.forEach(e => window.removeEventListener(e, resetTimer));
+    };
+  }, [user]);
+
+  // Listen for auto-logout event and call logout
+  const { logout } = useAuth();
+  useEffect(() => {
+    const handler = () => logout();
+    window.addEventListener('auto-logout', handler);
+    return () => window.removeEventListener('auto-logout', handler);
+  }, [logout]);
 
   const goHome = () => {
     setShowLoginModal(false);

@@ -42,6 +42,16 @@ const StudentUploadWidget: React.FC<StudentUploadWidgetProps> = ({
   ]);
 
   // ── CSV handling ──────────────────────────────────────────
+  // Helper to generate a unique 6-digit ID
+  const generateUniqueId = (existing: Set<string>) => {
+    let id;
+    do {
+      id = Math.floor(100000 + Math.random() * 900000).toString();
+    } while (existing.has(id));
+    existing.add(id);
+    return id;
+  };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     setParseError('');
     setCsvLearners([]);
@@ -58,9 +68,19 @@ const StudentUploadWidget: React.FC<StudentUploadWidgetProps> = ({
         return;
       }
       const dataLines = lines.slice(1); // skip header
+      const usedIds = new Set<string>();
       const parsed: ParsedLearner[] = dataLines.map((line, idx) => {
         const [idRaw, nameRaw, surnameRaw] = line.split(',');
-        const learnerNumber = (idRaw || '').trim() || String(idx + 1);
+        let learnerNumber = (idRaw || '').trim();
+        if (!learnerNumber || learnerNumber.length !== 6 || isNaN(Number(learnerNumber))) {
+          learnerNumber = generateUniqueId(usedIds);
+        } else {
+          if (usedIds.has(learnerNumber)) {
+            learnerNumber = generateUniqueId(usedIds);
+          } else {
+            usedIds.add(learnerNumber);
+          }
+        }
         const firstName = (nameRaw || '').trim();
         const surname = (surnameRaw || '').trim();
         const fullName = [firstName, surname].filter(Boolean).join(' ') || `Learner ${idx + 1}`;
@@ -97,12 +117,25 @@ const StudentUploadWidget: React.FC<StudentUploadWidgetProps> = ({
   };
 
   const handleManualUpload = () => {
+    const usedIds = new Set<string>();
     const parsed: ParsedLearner[] = manualRows
       .filter(r => r.name.trim() || r.surname.trim())
-      .map((r, idx) => ({
-        learnerNumber: r.id.trim() || String(idx + 1),
-        fullName: [r.name.trim(), r.surname.trim()].filter(Boolean).join(' '),
-      }));
+      .map((r, idx) => {
+        let learnerNumber = r.id.trim();
+        if (!learnerNumber || learnerNumber.length !== 6 || isNaN(Number(learnerNumber))) {
+          learnerNumber = generateUniqueId(usedIds);
+        } else {
+          if (usedIds.has(learnerNumber)) {
+            learnerNumber = generateUniqueId(usedIds);
+          } else {
+            usedIds.add(learnerNumber);
+          }
+        }
+        return {
+          learnerNumber,
+          fullName: [r.name.trim(), r.surname.trim()].filter(Boolean).join(' '),
+        };
+      });
     if (parsed.length === 0) return;
     onLearnersReady(parsed);
   };

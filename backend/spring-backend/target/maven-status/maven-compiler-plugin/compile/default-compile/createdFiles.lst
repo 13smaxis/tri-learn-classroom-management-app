@@ -1,5 +1,6 @@
 com\schoolapp\model\AttendanceStatus.class
 com\schoolapp\model\Learner.class
+com\schoolapp\controller\HealthController.class
 com\schoolapp\dto\UserResponse.class
 com\schoolapp\repository\EnrollmentRepository.class
 com\schoolapp\repository\ClassRepository.class

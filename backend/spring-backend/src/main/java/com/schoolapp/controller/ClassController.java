@@ -3,6 +3,7 @@ package com.schoolapp.controller;
 import com.schoolapp.model.AppUser;
 import com.schoolapp.model.Enrollment;
 import com.schoolapp.model.SchoolClass;
+import com.schoolapp.repository.EnrollmentRepository;
 import com.schoolapp.service.ClassService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -17,9 +18,11 @@ import java.util.Map;
 public class ClassController {
 
     private final ClassService classService;
+    private final EnrollmentRepository enrollmentRepository;
 
-    public ClassController(ClassService classService) {
+    public ClassController(ClassService classService, EnrollmentRepository enrollmentRepository) {
         this.classService = classService;
+        this.enrollmentRepository = enrollmentRepository;
     }
 
     // ── POST /class/create ──
@@ -45,7 +48,7 @@ public class ClassController {
     public ResponseEntity<?> myClasses(Authentication auth) {
         try {
             AppUser user = (AppUser) auth.getPrincipal();
-            List<SchoolClass> classes = classService.getClassesByTeacher(user.getId());
+            List<SchoolClass> classes = classService.getClassesForUser(user);
             List<Map<String, Object>> data = classes.stream().map(this::classToMap).toList();
             return ResponseEntity.ok(Map.of("success", true, "data", data));
         } catch (RuntimeException e) {
@@ -123,6 +126,7 @@ public class ClassController {
     // ── Helper ──
     private Map<String, Object> classToMap(SchoolClass sc) {
         Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", sc.getId());
         m.put("classId", sc.getId());
         m.put("name", sc.getName());
         m.put("grade", sc.getGrade());
@@ -130,7 +134,22 @@ public class ClassController {
         m.put("academicYear", sc.getAcademicYear());
         m.put("inviteToken", sc.getInviteToken());
         m.put("teacherId", sc.getTeacher().getId());
+        m.put("teacherName", sc.getTeacher().getFullName());
         m.put("createdAt", sc.getCreatedAt() != null ? sc.getCreatedAt().toString() : null);
+
+        // Include enrollments so frontend can display learner/parent counts
+        List<Enrollment> enrollments = enrollmentRepository.findBySchoolClassId(sc.getId());
+        List<Map<String, Object>> enrollmentData = enrollments.stream().map(e -> {
+            Map<String, Object> em = new LinkedHashMap<>();
+            em.put("enrollmentId", e.getId());
+            em.put("userId", e.getUser().getId());
+            em.put("fullName", e.getUser().getFullName());
+            em.put("role", e.getRole().name().toLowerCase());
+            em.put("linkedLearnerId", e.getLinkedLearnerId());
+            return em;
+        }).toList();
+        m.put("enrollments", enrollmentData);
+
         return m;
     }
 }

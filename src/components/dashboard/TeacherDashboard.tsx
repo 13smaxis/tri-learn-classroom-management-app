@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAppContext } from '@/contexts/AppContext';
 import { api } from '@/lib/api';
 import StatsCard from '@/components/ui/StatsCard';
 import CreateClassModal from '@/components/teacher/CreateClassModal';
@@ -11,6 +12,7 @@ interface TeacherDashboardProps {
 
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, classesVersion }) => {
   const { user } = useAuth();
+  const { forceRefreshKey } = useAppContext();
   const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -24,7 +26,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
       fetchClasses();
       fetchTasks();
     }
-  }, [user, classesVersion]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, classesVersion, forceRefreshKey]);
 
   const fetchClasses = async () => {
     if (!user) return;

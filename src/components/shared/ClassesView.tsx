@@ -15,6 +15,7 @@ const ClassesView: React.FC<ClassesViewProps> = ({ onCreateClass, classesVersion
 
   useEffect(() => {
     if (user) {
+      setLoading(true); // Force spinner and re-fetch
       fetchClasses();
     }
   }, [user, classesVersion]);
