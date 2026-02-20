@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAppContext } from '@/contexts/AppContext';
 
 // Layout components
 import Sidebar from '@/components/layout/Sidebar';
@@ -22,6 +23,7 @@ import AssignmentsView from '@/components/teacher/AssignmentsView';
 import HomeworkView from '@/components/teacher/HomeworkView';
 import MessagesView from '@/components/shared/MessagesView';
 import ClassesView from '@/components/shared/ClassesView';
+import ClassDetailsView from '@/components/shared/ClassDetailsView';
 import GradesView from '@/components/shared/GradesView';
 import CreateClassModal from '@/components/teacher/CreateClassModal';
 import LearnerAssignmentsView from '@/components/learner/LearnerAssignmentsView';
@@ -31,8 +33,10 @@ import ChildProgressView from '@/components/parent/ChildProgressView';
 
 const AppLayout: React.FC = () => {
   const { user, loading, justSignedUp, clearJustSignedUp } = useAuth();
+  const { forceGlobalRefresh } = useAppContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeView, setActiveView] = useState('dashboard');
+  const [selectedClass, setSelectedClass] = useState<any>(null);
   const [classesVersion, setClassesVersion] = useState(0);
   
   // Auth modals
@@ -53,6 +57,9 @@ const AppLayout: React.FC = () => {
       setShowLoginModal(false);
       setShowRegisterModal(false);
       setShowInviteModal(false);
+      setActiveView('dashboard');
+    } else {
+      setActiveView('dashboard');
     }
   }, [user]);
 
@@ -85,6 +92,13 @@ const AppLayout: React.FC = () => {
     window.addEventListener('auto-logout', handler);
     return () => window.removeEventListener('auto-logout', handler);
   }, [logout]);
+
+  // Reset class details when navigating to My Classes
+  useEffect(() => {
+    if (activeView === 'classes') {
+      setSelectedClass(null);
+    }
+  }, [activeView]);
 
   const goHome = () => {
     setShowLoginModal(false);
@@ -164,10 +178,21 @@ const AppLayout: React.FC = () => {
       
       case 'classes':
         return (
-          <ClassesView 
-            onCreateClass={user.role === 'teacher' ? () => setShowCreateClassModal(true) : undefined}
-            classesVersion={classesVersion}
-          />
+          <div className="flex h-full">
+            <div className="w-[30%] min-w-[180px] max-w-[400px] border-r bg-gray-50 overflow-auto">
+              <ClassesView
+                classesVersion={classesVersion}
+                onSelectClass={setSelectedClass}
+              />
+            </div>
+            <div className="w-[70%] flex-1 overflow-auto">
+              <ClassDetailsView
+                selectedClass={selectedClass}
+                canCreateClass={user.role === 'teacher'}
+                onCreateClass={user.role === 'teacher' ? () => setShowCreateClassModal(true) : undefined}
+              />
+            </div>
+          </div>
         );
       
       case 'create-class':
@@ -238,11 +263,11 @@ const AppLayout: React.FC = () => {
           <CreateClassModal
             isOpen={showCreateClassModal}
             onClose={() => setShowCreateClassModal(false)}
-            onClassCreated={() => {
+            onClassCreated={(newClass) => {
               // Bump the classesVersion so dashboards and class lists refresh
               // from the demo store immediately after a class is created.
               setClassesVersion(v => v + 1);
-              setActiveView('classes');
+              forceGlobalRefresh();
             }}
           />
         )}

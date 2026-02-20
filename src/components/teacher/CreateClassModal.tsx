@@ -344,27 +344,27 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({ isOpen, onClose, on
             <div className="rounded-xl border-2 border-purple-200 bg-purple-50 p-5">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-purple-700">Invite Code</span>
-                {user?.teacherInviteCode && (
+                {createdClass?.inviteToken && (
                   <button
-                    onClick={() => copyToClipboard(user.teacherInviteCode!)}
+                    onClick={() => copyToClipboard(createdClass.inviteToken)}
                     className="text-sm text-purple-600 hover:text-purple-700 font-medium"
                   >
                     Copy
                   </button>
                 )}
               </div>
-              {user?.teacherInviteCode ? (
+              {createdClass?.inviteToken ? (
                 <>
                   <p className="text-2xl font-mono font-bold text-purple-900 tracking-widest">
-                    {user.teacherInviteCode}
+                    {createdClass.inviteToken}
                   </p>
                   <p className="text-xs text-purple-600 mt-2">
-                    Share this single code with both learners and parents for all your classes
+                    Share this class code with learners and parents to join this class
                   </p>
                 </>
               ) : (
                 <p className="text-sm text-purple-700">
-                  Your invite code is available in your profile menu.
+                  Invite code will be available once class is fully created.
                 </p>
               )}
             </div>

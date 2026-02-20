@@ -18,6 +18,13 @@ self.addEventListener('install', (event) => {
 // Fetch event - network-first for navigation, cache-first for static assets
 self.addEventListener('fetch', (event) => {
   const { request } = event;
+  const requestUrl = new URL(request.url);
+
+  // Never cache API responses; always go to network for latest data
+  if (requestUrl.pathname.startsWith('/api/')) {
+    event.respondWith(fetch(request));
+    return;
+  }
 
   if (request.mode === 'navigate' || request.destination === 'document')                                        //-Network-first for HTML / navigation requests (always get latest version)
   {

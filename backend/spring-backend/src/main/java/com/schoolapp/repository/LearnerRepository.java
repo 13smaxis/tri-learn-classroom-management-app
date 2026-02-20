@@ -14,5 +14,7 @@ public interface LearnerRepository extends JpaRepository<Learner, String> {
 
     Optional<Learner> findByLearnerNumberAndSchoolClassId(String learnerNumber, String classId);
 
+    boolean existsByLearnerNumber(String learnerNumber);
+
     void deleteBySchoolClassId(String classId);
 }

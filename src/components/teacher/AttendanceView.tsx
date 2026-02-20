@@ -8,11 +8,38 @@ export type AttendanceByDate = Record<string, Record<string, string>>;
 
 type Learner = { id: string; name: string; number: string };
 
+const mapLearnersForAttendance = (data: any[]): Learner[] => {
+  return (data || []).map((learner: any, index: number) => ({
+    id: learner.id || learner.userId || learner.enrollmentId,
+    name: learner.fullName || learner.name,
+    number: learner.learnerNumber || String(index + 1),
+  }));
+};
+
+const resolveGradePrefix = (grade?: string): string => {
+  if (!grade) return '00';
+  const match = grade.match(/\d{1,2}/);
+  if (!match) return '00';
+  const number = Math.max(0, Math.min(99, Number.parseInt(match[0], 10)));
+  return String(number).padStart(2, '0');
+};
+
+const buildUniqueSixDigitNumbers = (count: number, grade?: string): string[] => {
+  const prefix = resolveGradePrefix(grade);
+  const generated = new Set<string>();
+  while (generated.size < count) {
+    const suffix = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    generated.add(`${prefix}${suffix}`);
+  }
+  return Array.from(generated);
+};
+
 const AttendanceView: React.FC = () => {
   const { user } = useAuth();
   const { forceRefreshKey } = useAppContext();
   const [classes, setClasses] = useState<any[]>([]);
   const [selectedClass, setSelectedClass] = useState('');
+  const [selectedClassMeta, setSelectedClassMeta] = useState<any>(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [attendance, setAttendance] = useState<Record<string, string>>({});
   const [learners, setLearners] = useState<Learner[]>([]);
@@ -43,6 +70,7 @@ const AttendanceView: React.FC = () => {
   // When a class is selected, load any saved learners for that class
   useEffect(() => {
     if (!selectedClass) {
+      setSelectedClassMeta(null);
       setLearners([]);
       setAttendance({});
       setAttendanceByDate({});
@@ -54,20 +82,38 @@ const AttendanceView: React.FC = () => {
       return;
     }
 
-    // Load learners from backend
+    const fromList = classes.find((cls: any) => cls.id === selectedClass) || null;
+    setSelectedClassMeta(fromList);
+
+    api.getClass(selectedClass)
+      .then((data) => setSelectedClassMeta(data))
+      .catch((err) => {
+        console.error('Failed to load selected class metadata:', err);
+      });
+
+    // Load learners for the selected class from backend
+    // If you want to use the new /learners endpoint for all learners, replace below with api.getAllLearners()
     api.getLearners(selectedClass)
       .then(data => {
-        const mappedLearners = data.map((l: any) => ({
-          id: l.id,
-          name: l.fullName,
-          number: l.learnerNumber
-        }));
+        const mappedLearners = mapLearnersForAttendance(data);
         setLearners(mappedLearners);
         setUploadStatus(mappedLearners.length ? 'saved' : null);
       })
       .catch(err => {
-        console.error('Failed to load learners:', err);
-        setLearners([]);
+        console.warn('Attendance learners endpoint unavailable, falling back to class students:', err);
+        api.getClassStudents(selectedClass)
+          .then(data => {
+            const mappedLearners = mapLearnersForAttendance(
+              (data || []).filter((student: any) => student.role === 'learner')
+            );
+            setLearners(mappedLearners);
+            setUploadStatus(mappedLearners.length ? 'saved' : null);
+          })
+          .catch(fallbackErr => {
+            console.error('Failed to load learners from both attendance and class students endpoints:', fallbackErr);
+            setLearners([]);
+            setUploadStatus(null);
+          });
       });
 
     // Load attendance for the selected date
@@ -81,7 +127,7 @@ const AttendanceView: React.FC = () => {
         setAttendanceByDate({});
         setAttendance({});
       });
-  }, [selectedClass]);
+  }, [selectedClass, classes]);
 
   // Keep per-date attendance map in sync with the selected date
   useEffect(() => {
@@ -162,9 +208,16 @@ const AttendanceView: React.FC = () => {
     }, 300);
 
     try {
+      const selectedClassInfo = classes.find((cls) => cls.id === selectedClass);
+      const generatedNumbers = buildUniqueSixDigitNumbers(parsedLearners.length, selectedClassInfo?.grade);
+      const payloadLearners = parsedLearners.map((learner, index) => ({
+        ...learner,
+        learnerNumber: generatedNumbers[index],
+      }));
+
       const data = await api.uploadLearners({
         classId: selectedClass,
-        learners: parsedLearners,
+        learners: payloadLearners,
       });
       clearInterval(interval);
       setStuProgress(100);
@@ -328,6 +381,14 @@ const AttendanceView: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900">Class Register</h1>
           <p className="text-gray-500">Mark daily attendance for your classes</p>
         </div>
+        {selectedClassMeta && (
+          <div className="text-xs text-gray-600 bg-white border border-gray-200 rounded-xl p-3 min-w-[240px]">
+            <div><span className="font-semibold">Class:</span> {selectedClassMeta.name || 'N/A'}</div>
+            <div><span className="font-semibold">Grade:</span> {selectedClassMeta.grade || 'N/A'}</div>
+            <div><span className="font-semibold">Subject:</span> {selectedClassMeta.subject || 'N/A'}</div>
+            <div><span className="font-semibold">Invite Code:</span> {selectedClassMeta.inviteToken || 'N/A'}</div>
+          </div>
+        )}
       </div>
 
       {/* Filters */}
@@ -426,7 +487,7 @@ const AttendanceView: React.FC = () => {
                 <thead className="bg-gray-50 sticky top-0">
                   <tr>
                     <th className="px-3 py-2 text-left text-xs font-bold text-gray-700">#</th>
-                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700">ID</th>
+                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700">Learner Number</th>
                     <th className="px-3 py-2 text-left text-xs font-bold text-gray-700">Full Name</th>
                   </tr>
                 </thead>
@@ -434,13 +495,16 @@ const AttendanceView: React.FC = () => {
                   {csvParsedLearners.map((l, i) => (
                     <tr key={i} className="hover:bg-gray-50">
                       <td className="px-3 py-1.5 text-gray-500">{i + 1}</td>
-                      <td className="px-3 py-1.5 text-gray-700">{l.learnerNumber}</td>
+                      <td className="px-3 py-1.5 text-gray-700">Auto-generated (6 digits)</td>
                       <td className="px-3 py-1.5 text-gray-900 font-medium">{l.fullName}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+            <p className="mt-2 text-xs text-gray-500">
+              Learner numbers are assigned by the backend on upload using the new 6-digit format.
+            </p>
 
             {uploadingStu && (
               <div className="w-full mt-3">

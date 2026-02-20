@@ -340,24 +340,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </button>
               </div>
 
-              {/* Invite code for teachers */}
-              {user.role === 'teacher' && user.teacherInviteCode && (
-                <div className="px-3 pt-1">
-                  <button
-                    onClick={() => navigator.clipboard.writeText(user.teacherInviteCode!)}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-blue-700 hover:bg-blue-50 transition-all"
-                  >
-                    <svg className="h-5 w-5 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16h8M8 12h8m-6-8h6a2 2 0 012 2v12a2 2 0 01-2 2H8a2 2 0 01-2-2V6a2 2 0 012-2zm0 0V4a2 2 0 012-2h2" />
-                    </svg>
-                    <span className="flex flex-col items-start text-left">
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-blue-500">Invite Code</span>
-                      <span className="font-mono text-xs">{user.teacherInviteCode}</span>
-                    </span>
-                  </button>
-                </div>
-              )}
-
               {/* User profile / sign-out */}
               <div className="relative px-3 py-3">
                 <button

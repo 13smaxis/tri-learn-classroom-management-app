@@ -70,17 +70,9 @@ const StudentUploadWidget: React.FC<StudentUploadWidgetProps> = ({
       const dataLines = lines.slice(1); // skip header
       const usedIds = new Set<string>();
       const parsed: ParsedLearner[] = dataLines.map((line, idx) => {
-        const [idRaw, nameRaw, surnameRaw] = line.split(',');
-        let learnerNumber = (idRaw || '').trim();
-        if (!learnerNumber || learnerNumber.length !== 6 || isNaN(Number(learnerNumber))) {
-          learnerNumber = generateUniqueId(usedIds);
-        } else {
-          if (usedIds.has(learnerNumber)) {
-            learnerNumber = generateUniqueId(usedIds);
-          } else {
-            usedIds.add(learnerNumber);
-          }
-        }
+        const [, nameRaw, surnameRaw] = line.split(',');
+        // Always generate a new unique 6-digit learnerNumber
+        const learnerNumber = generateUniqueId(usedIds);
         const firstName = (nameRaw || '').trim();
         const surname = (surnameRaw || '').trim();
         const fullName = [firstName, surname].filter(Boolean).join(' ') || `Learner ${idx + 1}`;
