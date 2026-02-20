@@ -54,15 +54,13 @@ public class AttendanceService
     }
 
     /**
-     * Upload/replace learners for a class
+     * Upload/add learners for a class
      */
     @Transactional
     public List<LearnerDTO> uploadLearners(UploadLearnersRequest request) 
     {
         SchoolClass schoolClass = classRepository.findById(Objects.requireNonNull(request.getClassId()))
             .orElseThrow(() -> new RuntimeException("Class not found"));
-
-        learnerRepository.deleteBySchoolClassId(request.getClassId());                                          //-Delete existing learners for this class
 
         List<Learner> learners = new ArrayList<>();                                                             //-Create new learners
         Set<String> allocatedNumbers = new HashSet<>();
@@ -73,9 +71,10 @@ public class AttendanceService
             learners.add(learner);
         }
 
-        learners = learnerRepository.saveAll(learners);                                                         //-Save new learners to the database
+        learnerRepository.saveAll(learners);                                                                     //-Save new learners to the database
 
-        return learners.stream()
+        List<Learner> allLearnersForClass = learnerRepository.findBySchoolClassId(request.getClassId());
+        return allLearnersForClass.stream()
             .map(l -> new LearnerDTO(l.getId(), l.getLearnerNumber(), l.getFullName()))
             .collect(Collectors.toList());
     }
@@ -98,7 +97,8 @@ public class AttendanceService
     }
 
     private String selectLearnerNumber(String requestedLearnerNumber, String classGrade, Set<String> allocatedNumbers) {
-        if (isSixDigitNumber(requestedLearnerNumber)
+        String gradePrefix = resolveGradePrefix(classGrade);
+        if (isValidSixDigitNumberForGrade(requestedLearnerNumber, gradePrefix)
                 && !allocatedNumbers.contains(requestedLearnerNumber)
                 && !learnerRepository.existsByLearnerNumber(requestedLearnerNumber)) {
             allocatedNumbers.add(requestedLearnerNumber);
@@ -107,8 +107,10 @@ public class AttendanceService
         return generateGradeBasedSixDigitLearnerNumber(classGrade, allocatedNumbers);
     }
 
-    private boolean isSixDigitNumber(String value) {
-        return value != null && value.matches("\\d{6}");
+    private boolean isValidSixDigitNumberForGrade(String value, String gradePrefix) {
+        return value != null
+                && value.matches("\\d{6}")
+                && value.startsWith(gradePrefix);
     }
 
     private String resolveGradePrefix(String classGrade) {

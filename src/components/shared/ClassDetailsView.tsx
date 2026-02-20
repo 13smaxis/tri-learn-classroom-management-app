@@ -10,6 +10,15 @@ interface ClassDetailsViewProps {
 const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass, onCreateClass, canCreateClass }) => {
   const [classDetails, setClassDetails] = useState<any>(null);
   const [learners, setLearners] = useState<{ id: string; name: string; number: string }[]>([]);
+  const [attendanceTrend, setAttendanceTrend] = useState<{ date: string; presentPct: number; total: number }[]>([]);
+  const [attendanceBreakdown, setAttendanceBreakdown] = useState<{ present: number; absent: number; late: number; excused: number; bunking: number; sick: number }>({
+    present: 0,
+    absent: 0,
+    late: 0,
+    excused: 0,
+    bunking: 0,
+    sick: 0,
+  });
   const [loadingData, setLoadingData] = useState(false);
 
   const selectedClassId = useMemo(() => selectedClass?.id || selectedClass?.classId || '', [selectedClass]);
@@ -18,15 +27,45 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass, onCr
     if (!selectedClassId) {
       setClassDetails(null);
       setLearners([]);
+      setAttendanceTrend([]);
+      setAttendanceBreakdown({ present: 0, absent: 0, late: 0, excused: 0, bunking: 0, sick: 0 });
       return;
     }
 
+    const toDateKey = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const buildSchoolDates = (startDate: Date, endDate: Date) => {
+      const dates: string[] = [];
+      const cursor = new Date(startDate);
+      while (cursor <= endDate) {
+        const dayOfWeek = cursor.getDay();
+        if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+          dates.push(toDateKey(cursor));
+        }
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      return dates;
+    };
+
     setLoadingData(true);
+    const endDate = new Date();
+    const startDate = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+
     Promise.all([
       api.getClass(selectedClassId),
       api.getLearners(selectedClassId),
+      api.getAttendanceForDateRange(
+        selectedClassId,
+        toDateKey(startDate),
+        toDateKey(endDate),
+      ),
     ])
-      .then(([cls, learnerList]) => {
+      .then(([cls, learnerList, attendanceRecords]) => {
         setClassDetails(cls);
         const mappedLearners = (learnerList || []).map((learner: any) => ({
           id: learner.id,
@@ -34,11 +73,42 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass, onCr
           number: learner.learnerNumber,
         }));
         setLearners(mappedLearners);
+
+        const byDate = new Map<string, { present: number; total: number }>();
+        const breakdown = { present: 0, absent: 0, late: 0, excused: 0, bunking: 0, sick: 0 };
+        (attendanceRecords || []).forEach((record: any) => {
+          const dateKey = record.attendanceDate;
+          const current = byDate.get(dateKey) || { present: 0, total: 0 };
+          current.total += 1;
+          if (record.status === 'present') {
+            current.present += 1;
+          }
+          byDate.set(dateKey, current);
+
+          if (record.status in breakdown) {
+            breakdown[record.status as keyof typeof breakdown] += 1;
+          }
+        });
+
+        const schoolDates = buildSchoolDates(startDate, endDate);
+        const trend = schoolDates.map((dateKey) => {
+          const stat = byDate.get(dateKey) || { present: 0, total: 0 };
+          const presentPct = stat.total > 0 ? Math.round((stat.present / stat.total) * 100) : 0;
+          return {
+            date: dateKey,
+            presentPct,
+            total: stat.total,
+          };
+        });
+        setAttendanceTrend(trend);
+        setAttendanceBreakdown(breakdown);
       })
       .catch((err) => {
         console.error('Failed to fetch class details:', err);
         setClassDetails(selectedClass);
         setLearners([]);
+        setAttendanceTrend([]);
+        setAttendanceBreakdown({ present: 0, absent: 0, late: 0, excused: 0, bunking: 0, sick: 0 });
       })
       .finally(() => setLoadingData(false));
   }, [selectedClassId]);
@@ -64,16 +134,49 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass, onCr
 
   const detailClass = classDetails || selectedClass;
 
-  const copyInviteCode = (code?: string) => {
-    if (!code) return;
-    navigator.clipboard.writeText(code);
-  };
-
   const stats = [
     { label: 'Learners', value: learners.length },
     { label: 'Academic Year', value: detailClass.academicYear || 'N/A' },
     { label: 'Invite Code', value: detailClass.inviteToken || 'N/A' },
   ];
+
+  const hasTrendData = attendanceTrend.some((point) => point.total > 0);
+  const trendSvgWidth = 220;
+  const trendSvgHeight = 90;
+  const trendPaddingX = 10;
+  const trendPaddingY = 10;
+  const trendUsableWidth = trendSvgWidth - trendPaddingX * 2;
+  const trendUsableHeight = trendSvgHeight - trendPaddingY * 2;
+  const trendPoints = attendanceTrend.map((point, index) => {
+    const x = attendanceTrend.length > 1
+      ? trendPaddingX + (index / (attendanceTrend.length - 1)) * trendUsableWidth
+      : trendPaddingX + trendUsableWidth / 2;
+    const y = trendPaddingY + ((100 - point.presentPct) / 100) * trendUsableHeight;
+    return { ...point, x, y };
+  });
+  const trendPath = trendPoints
+    .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
+    .join(' ');
+  const trendLabelIndexes = Array.from(new Set([
+    0,
+    Math.floor((trendPoints.length - 1) / 2),
+    Math.max(0, trendPoints.length - 1),
+  ])).filter((index) => index >= 0 && index < trendPoints.length);
+  const formatDayLabel = (dateKey: string) => {
+    const parts = dateKey.split('-');
+    return parts.length === 3 ? parts[2] : dateKey;
+  };
+
+  const statusBars = [
+    { key: 'present', label: 'P', value: attendanceBreakdown.present, color: '#16a34a' },
+    { key: 'absent', label: 'A', value: attendanceBreakdown.absent, color: '#dc2626' },
+    { key: 'late', label: 'L', value: attendanceBreakdown.late, color: '#ea580c' },
+    { key: 'excused', label: 'E', value: attendanceBreakdown.excused, color: '#2563eb' },
+    { key: 'bunking', label: 'B', value: attendanceBreakdown.bunking, color: '#991b1b' },
+    { key: 'sick', label: 'S', value: attendanceBreakdown.sick, color: '#7e22ce' },
+  ];
+  const hasBreakdownData = statusBars.some((bar) => bar.value > 0);
+  const maxStatusValue = Math.max(...statusBars.map((bar) => bar.value), 1);
 
   return (
     <div className="p-6 space-y-8">
@@ -107,12 +210,6 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass, onCr
               <p className="text-[10px] uppercase tracking-widest text-slate-300">Invite Code</p>
               <p className="text-lg font-mono tracking-widest">{detailClass.inviteToken || 'N/A'}</p>
             </div>
-            <button
-              onClick={() => copyInviteCode(detailClass.inviteToken)}
-              className="px-4 py-3 rounded-xl bg-white text-slate-900 text-sm font-semibold hover:bg-slate-100 transition-all"
-            >
-              Copy
-            </button>
           </div>
         </div>
       </div>
@@ -176,28 +273,72 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass, onCr
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Attendance Trend</h3>
             <div className="h-36 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center">
-              <svg width="220" height="90" viewBox="0 0 220 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M10 70 C40 20, 80 30, 110 50 C140 70, 170 60, 210 20" stroke="#0f172a" strokeWidth="3" fill="none" />
-                <circle cx="10" cy="70" r="4" fill="#0f172a" />
-                <circle cx="110" cy="50" r="4" fill="#0f172a" />
-                <circle cx="210" cy="20" r="4" fill="#0f172a" />
-              </svg>
+              {hasTrendData ? (
+                <svg width="220" height="90" viewBox="0 0 220 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <line x1="10" y1="10" x2="210" y2="10" stroke="#e2e8f0" strokeWidth="1" strokeDasharray="2 2" />
+                  <line x1="10" y1="45" x2="210" y2="45" stroke="#e2e8f0" strokeWidth="1" strokeDasharray="2 2" />
+                  <line x1="10" y1="80" x2="210" y2="80" stroke="#cbd5e1" strokeWidth="1" />
+                  <line x1="10" y1="10" x2="10" y2="80" stroke="#cbd5e1" strokeWidth="1" />
+                  <text x="6" y="13" textAnchor="end" fontSize="8" fill="#64748b">100%</text>
+                  <text x="6" y="48" textAnchor="end" fontSize="8" fill="#64748b">50%</text>
+                  <text x="6" y="83" textAnchor="end" fontSize="8" fill="#64748b">0%</text>
+                  <path d={trendPath} stroke="#0f172a" strokeWidth="3" fill="none" strokeLinecap="round" />
+                  {trendPoints.map((point) => (
+                    <circle key={point.date} cx={point.x} cy={point.y} r="3.5" fill="#0f172a" />
+                  ))}
+                  {trendLabelIndexes.map((index) => {
+                    const point = trendPoints[index];
+                    if (!point) return null;
+                    return (
+                      <text
+                        key={`label-${point.date}`}
+                        x={point.x}
+                        y="88"
+                        textAnchor="middle"
+                        fontSize="9"
+                        fill="#475569"
+                      >
+                        {formatDayLabel(point.date)}
+                      </text>
+                    );
+                  })}
+                </svg>
+              ) : (
+                <p className="text-sm text-gray-500">No attendance records yet.</p>
+              )}
             </div>
-            <p className="mt-3 text-xs text-gray-500">Placeholder for attendance trends.</p>
+            <p className="mt-3 text-xs text-gray-500">
+              {hasTrendData
+                ? 'Present % for the current month (Mon–Fri).' 
+                : 'Add daily attendance to populate this trend.'}
+            </p>
           </div>
 
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Performance Snapshot</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Monthly Attendance Mix</h3>
             <div className="h-36 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center">
-              <svg width="220" height="90" viewBox="0 0 220 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="20" y="30" width="18" height="40" fill="#94a3b8" />
-                <rect x="60" y="20" width="18" height="50" fill="#64748b" />
-                <rect x="100" y="45" width="18" height="25" fill="#94a3b8" />
-                <rect x="140" y="15" width="18" height="55" fill="#0f172a" />
-                <rect x="180" y="35" width="18" height="35" fill="#94a3b8" />
-              </svg>
+              {hasBreakdownData ? (
+                <svg width="220" height="90" viewBox="0 0 220 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <line x1="12" y1="80" x2="208" y2="80" stroke="#cbd5e1" strokeWidth="1" />
+                  {statusBars.map((bar, index) => {
+                    const barWidth = 24;
+                    const gap = 8;
+                    const x = 18 + index * (barWidth + gap);
+                    const height = (bar.value / maxStatusValue) * 58;
+                    const y = 80 - height;
+                    return (
+                      <g key={bar.key}>
+                        <rect x={x} y={y} width={barWidth} height={height} fill={bar.color} rx="3" />
+                        <text x={x + barWidth / 2} y="88" textAnchor="middle" fontSize="9" fill="#475569">{bar.label}</text>
+                      </g>
+                    );
+                  })}
+                </svg>
+              ) : (
+                <p className="text-sm text-gray-500">No attendance records yet.</p>
+              )}
             </div>
-            <p className="mt-3 text-xs text-gray-500">Placeholder for marks/engagement stats.</p>
+            <p className="mt-3 text-xs text-gray-500">Status distribution for the current month.</p>
           </div>
         </div>
       </div>

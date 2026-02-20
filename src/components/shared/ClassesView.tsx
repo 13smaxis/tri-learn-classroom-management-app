@@ -124,28 +124,32 @@ const ClassesView: React.FC<ClassesViewProps> = ({ classesVersion, onSelectClass
                     </span>
                   </div>
 
-                  {user?.role === 'teacher' && (
-                    <div className="flex items-center gap-2 text-xs text-gray-600 mb-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                    <p className={`text-xs ${user?.role === 'teacher' ? 'text-gray-500' : 'text-gray-600'}`}>
+                      {user?.role === 'teacher' ? 'Teacher' : 'Teacher'}: {cls.teacherName}
+                    </p>
+                    <div className="flex flex-wrap gap-2 sm:gap-3 text-xs text-gray-600">
                       <div className="flex items-center gap-1">
                         <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                         </svg>
-                        {learnerCount} Learners
+                        <span className="font-medium">{learnerCount}</span>
                       </div>
+                      <div className="h-4 border-l border-gray-300 hidden sm:block"></div>
                       <div className="flex items-center gap-1">
                         <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
-                        {parentCount} Parents
+                        <span className="font-medium">{parentCount}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <svg className="h-4 w-4 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                        </svg>
+                        <span className="font-medium">--</span>
                       </div>
                     </div>
-                  )}
-
-                  {user?.role !== 'teacher' && (
-                    <p className="text-xs text-gray-500 mb-2">
-                      Teacher: {cls.teacherName}
-                    </p>
-                  )}
+                  </div>
 
                   <div className="flex gap-2">
                     <button
