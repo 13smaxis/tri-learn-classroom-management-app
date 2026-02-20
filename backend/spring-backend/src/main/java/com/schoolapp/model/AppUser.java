@@ -1,7 +1,9 @@
 package com.schoolapp.model;
 
 import jakarta.persistence.*;
+import org.springframework.lang.NonNull;
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -38,7 +40,8 @@ public class AppUser
 
     // ── Getters & Setters ──
 
-    public String getId() { return id; }
+    @NonNull
+    public String getId() { return Objects.requireNonNull(id); }
     public void setId(String id) { this.id = id; }
 
     public String getFullName() { return fullName; }

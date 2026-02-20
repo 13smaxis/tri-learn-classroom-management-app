@@ -8,12 +8,41 @@ export type AttendanceByDate = Record<string, Record<string, string>>;
 
 type Learner = { id: string; name: string; number: string };
 
+const mapLearnersForAttendance = (data: any[]): Learner[] => {
+  return (data || []).map((learner: any, index: number) => ({
+    id: learner.id || learner.userId || learner.enrollmentId,
+    name: learner.fullName || learner.name,
+    number: learner.learnerNumber || String(index + 1),
+  }));
+};
+
+const resolveGradePrefix = (grade?: string): string => {
+  if (!grade) return '00';
+  const match = grade.match(/\d{1,2}/);
+  if (!match) return '00';
+  const number = Math.max(0, Math.min(99, Number.parseInt(match[0], 10)));
+  return String(number).padStart(2, '0');
+};
+
+const buildUniqueSixDigitNumbers = (count: number, grade?: string): string[] => {
+  const prefix = resolveGradePrefix(grade);
+  const generated = new Set<string>();
+  while (generated.size < count) {
+    const suffix = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    generated.add(`${prefix}${suffix}`);
+  }
+  return Array.from(generated);
+};
+
 const AttendanceView: React.FC = () => {
   const { user } = useAuth();
   const { forceRefreshKey } = useAppContext();
   const [classes, setClasses] = useState<any[]>([]);
   const [selectedClass, setSelectedClass] = useState('');
+  const [selectedClassMeta, setSelectedClassMeta] = useState<any>(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [viewingMonthDate, setViewingMonthDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedWeekIndex, setSelectedWeekIndex] = useState<number | null>(null);
   const [attendance, setAttendance] = useState<Record<string, string>>({});
   const [learners, setLearners] = useState<Learner[]>([]);
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
@@ -27,6 +56,56 @@ const AttendanceView: React.FC = () => {
   const [csvParsedLearners, setCsvParsedLearners] = useState<ParsedLearner[]>([]);
   const [csvFileName, setCsvFileName] = useState<string | null>(null);
   const csvFileRef = useRef<HTMLInputElement>(null);
+
+  // Helper functions to calculate week and month dates (safe local time parsing)
+  const getWeekDays = (dateString: string) => {
+    // Parse YYYY-MM-DD safely to avoid timezone issues
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    const dayOfWeek = date.getDay(); // 0 = Sun, 1 = Mon
+    const diffToMonday = (dayOfWeek + 6) % 7; // days since Monday
+    
+    const monday = new Date(year, month - 1, day - diffToMonday);
+
+    const labels = ['M', 'T', 'W', 'T', 'F'];
+    const days = [] as { label: string; dateKey: string }[];
+    for (let i = 0; i < 5; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      days.push({ label: labels[i], dateKey });
+    }
+    return days;
+  };
+
+  const getMonthWeeks = (dateString: string) => {
+    // Parse YYYY-MM-DD safely to avoid timezone issues
+    const [year, month] = dateString.split('-').map(Number);
+
+    // First day of month (local time)
+    const firstOfMonth = new Date(year, month - 1, 1);
+    const firstDay = firstOfMonth.getDay(); // 0=Sun
+    const diffToMonday = (firstDay + 6) % 7;
+    const firstMonday = new Date(year, month - 1, 1 - diffToMonday);
+
+    const weeks: { label: string; days: { label: string; dateKey: string }[] }[] = [];
+    const labels = ['M', 'T', 'W', 'T', 'F'];
+
+    for (let w = 0; w < 5; w++) {
+      const weekStart = new Date(firstMonday);
+      weekStart.setDate(firstMonday.getDate() + w * 7);
+      const days: { label: string; dateKey: string }[] = [];
+      for (let i = 0; i < 5; i++) {
+        const d = new Date(weekStart);
+        d.setDate(weekStart.getDate() + i);
+        const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        days.push({ label: labels[i], dateKey });
+      }
+      weeks.push({ label: `Week ${w + 1}`, days });
+    }
+
+    return weeks;
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -43,6 +122,7 @@ const AttendanceView: React.FC = () => {
   // When a class is selected, load any saved learners for that class
   useEffect(() => {
     if (!selectedClass) {
+      setSelectedClassMeta(null);
       setLearners([]);
       setAttendance({});
       setAttendanceByDate({});
@@ -51,23 +131,42 @@ const AttendanceView: React.FC = () => {
       setShowUploadPanel(false);
       setCsvParsedLearners([]);
       setCsvFileName(null);
+      setSelectedWeekIndex(null);
       return;
     }
 
-    // Load learners from backend
+    const fromList = classes.find((cls: any) => cls.id === selectedClass) || null;
+    setSelectedClassMeta(fromList);
+
+    api.getClass(selectedClass)
+      .then((data) => setSelectedClassMeta(data))
+      .catch((err) => {
+        console.error('Failed to load selected class metadata:', err);
+      });
+
+    // Load learners for the selected class from backend
+    // If you want to use the new /learners endpoint for all learners, replace below with api.getAllLearners()
     api.getLearners(selectedClass)
       .then(data => {
-        const mappedLearners = data.map((l: any) => ({
-          id: l.id,
-          name: l.fullName,
-          number: l.learnerNumber
-        }));
+        const mappedLearners = mapLearnersForAttendance(data);
         setLearners(mappedLearners);
         setUploadStatus(mappedLearners.length ? 'saved' : null);
       })
       .catch(err => {
-        console.error('Failed to load learners:', err);
-        setLearners([]);
+        console.warn('Attendance learners endpoint unavailable, falling back to class students:', err);
+        api.getClassStudents(selectedClass)
+          .then(data => {
+            const mappedLearners = mapLearnersForAttendance(
+              (data || []).filter((student: any) => student.role === 'learner')
+            );
+            setLearners(mappedLearners);
+            setUploadStatus(mappedLearners.length ? 'saved' : null);
+          })
+          .catch(fallbackErr => {
+            console.error('Failed to load learners from both attendance and class students endpoints:', fallbackErr);
+            setLearners([]);
+            setUploadStatus(null);
+          });
       });
 
     // Load attendance for the selected date
@@ -81,7 +180,7 @@ const AttendanceView: React.FC = () => {
         setAttendanceByDate({});
         setAttendance({});
       });
-  }, [selectedClass]);
+  }, [selectedClass, classes]);
 
   // Keep per-date attendance map in sync with the selected date
   useEffect(() => {
@@ -104,6 +203,48 @@ const AttendanceView: React.FC = () => {
         setAttendance({});
       });
   }, [selectedDate, selectedClass]);
+
+  // Preload attendance data for daily/weekly/monthly views
+  useEffect(() => {
+    if (!selectedClass) return;
+
+    const datesToLoad: string[] = [];
+
+    if (viewMode === 'daily') {
+      // For daily view, just load the selected date
+      datesToLoad.push(selectedDate);
+    } else if (viewMode === 'weekly') {
+      const weekDays = getWeekDays(selectedDate);
+      datesToLoad.push(...weekDays.map(d => d.dateKey));
+    } else if (viewMode === 'monthly') {
+      const monthWeeks = getMonthWeeks(viewingMonthDate);
+      monthWeeks.forEach(week => {
+        datesToLoad.push(...week.days.map(d => d.dateKey));
+      });
+    }
+
+    if (datesToLoad.length === 0) return;
+
+    // Load attendance for all dates concurrently (will skip if already cached in backend)
+    const fetchPromises = datesToLoad.map(dateKey =>
+      api.getAttendanceForDate(selectedClass, dateKey)
+        .then(data => ({ [dateKey]: data }))
+        .catch(() => ({ [dateKey]: {} }))
+    );
+
+    Promise.all(fetchPromises)
+      .then(results => {
+        const merged = Object.assign({}, ...results);
+        setAttendanceByDate(prev => ({ ...prev, ...merged }));
+        // For daily view, also update the attendance state with the loaded data
+        if (viewMode === 'daily') {
+          setAttendance(merged[selectedDate] || {});
+        }
+      })
+      .catch(err => {
+        console.error('Failed to preload attendance data:', err);
+      });
+  }, [viewMode, selectedClass, selectedDate, viewingMonthDate]);
 
   const handleCsvUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     // Legacy handler kept for backward compat – unused now
@@ -162,15 +303,24 @@ const AttendanceView: React.FC = () => {
     }, 300);
 
     try {
-      const data = await api.uploadLearners({
+      const selectedClassInfo = classes.find((cls) => cls.id === selectedClass);
+      const generatedNumbers = buildUniqueSixDigitNumbers(parsedLearners.length, selectedClassInfo?.grade);
+      const payloadLearners = parsedLearners.map((learner, index) => ({
+        ...learner,
+        learnerNumber: generatedNumbers[index],
+      }));
+
+      await api.uploadLearners({
         classId: selectedClass,
-        learners: parsedLearners,
+        learners: payloadLearners,
       });
+
+      const fullLearnerList = await api.getLearners(selectedClass);
       clearInterval(interval);
       setStuProgress(100);
       await new Promise(r => setTimeout(r, 400));
 
-      const mappedLearners = data.map((l: any) => ({
+      const mappedLearners = (fullLearnerList || []).map((l: any) => ({
         id: l.id,
         name: l.fullName,
         number: l.learnerNumber,
@@ -242,12 +392,47 @@ const AttendanceView: React.FC = () => {
       });
   };
 
-  const presentCount = Object.values(attendance).filter(s => s === 'present').length;
-  const absentCount = Object.values(attendance).filter(s => s === 'absent').length;
-  const lateCount = Object.values(attendance).filter(s => s === 'late').length;
-  const excusedCount = Object.values(attendance).filter(s => s === 'excused').length;
-  const bunkingCount = Object.values(attendance).filter(s => s === 'bunking').length;
-  const sickCount = Object.values(attendance).filter(s => s === 'sick').length;
+  // Calculate attendance counts based on current view
+  const getVisibleDates = () => {
+    if (viewMode === 'daily') {
+      return [selectedDate];
+    } else if (viewMode === 'weekly') {
+      return getWeekDays(selectedDate).map(d => d.dateKey);
+    } else if (viewMode === 'monthly') {
+      const weeks = getMonthWeeks(viewingMonthDate);
+      return weeks.flatMap(week => week.days.map(d => d.dateKey));
+    }
+    return [];
+  };
+
+  const getCountsForViewMode = () => {
+    const visibleDates = getVisibleDates();
+    const allStatuses: string[] = [];
+
+    visibleDates.forEach(dateKey => {
+      const dayAttendance = attendanceByDate[dateKey] || {};
+      Object.values(dayAttendance).forEach(status => {
+        if (status) allStatuses.push(status);
+      });
+    });
+
+    return {
+      present: allStatuses.filter(s => s === 'present').length,
+      absent: allStatuses.filter(s => s === 'absent').length,
+      late: allStatuses.filter(s => s === 'late').length,
+      excused: allStatuses.filter(s => s === 'excused').length,
+      bunking: allStatuses.filter(s => s === 'bunking').length,
+      sick: allStatuses.filter(s => s === 'sick').length,
+    };
+  };
+
+  const counts = getCountsForViewMode();
+  const presentCount = counts.present;
+  const absentCount = counts.absent;
+  const lateCount = counts.late;
+  const excusedCount = counts.excused;
+  const bunkingCount = counts.bunking;
+  const sickCount = counts.sick;
 
   const getStatusLetter = (status?: string) => {
     switch (status) {
@@ -268,57 +453,29 @@ const AttendanceView: React.FC = () => {
     }
   };
 
-  const getWeekDays = (dateString: string) => {
-    const date = new Date(dateString);
-    const day = date.getDay(); // 0 = Sun, 1 = Mon
-    const diffToMonday = (day + 6) % 7; // days since Monday
-    const monday = new Date(date);
-    monday.setDate(date.getDate() - diffToMonday);
-
-    const labels = ['M', 'T', 'W', 'T', 'F'];
-    const days = [] as { label: string; dateKey: string }[];
-    for (let i = 0; i < 5; i++) {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + i);
-      const dateKey = d.toISOString().split('T')[0];
-      days.push({ label: labels[i], dateKey });
-    }
-    return days;
-  };
-
-  const getMonthWeeks = (dateString: string) => {
-    const date = new Date(dateString);
-    const year = date.getFullYear();
-    const month = date.getMonth();
-
-    // First day of month
-    const firstOfMonth = new Date(year, month, 1);
-    const firstDay = firstOfMonth.getDay(); // 0=Sun
-    const diffToMonday = (firstDay + 6) % 7;
-    const firstMonday = new Date(firstOfMonth);
-    firstMonday.setDate(firstOfMonth.getDate() - diffToMonday);
-
-    const weeks: { label: string; days: { label: string; dateKey: string }[] }[] = [];
-    const labels = ['M', 'T', 'W', 'T', 'F'];
-
-    for (let w = 0; w < 5; w++) {
-      const weekStart = new Date(firstMonday);
-      weekStart.setDate(firstMonday.getDate() + w * 7);
-      const days: { label: string; dateKey: string }[] = [];
-      for (let i = 0; i < 5; i++) {
-        const d = new Date(weekStart);
-        d.setDate(weekStart.getDate() + i);
-        const dateKey = d.toISOString().split('T')[0];
-        days.push({ label: labels[i], dateKey });
+  // Update viewing month and select appropriate week when view mode changes
+  useEffect(() => {
+    if (viewMode === 'daily') return;
+    
+    setViewingMonthDate(selectedDate);
+    
+    // If switching to weekly view, find and select the week containing selectedDate
+    if (viewMode === 'weekly') {
+      const weeks = getMonthWeeks(selectedDate);
+      const weekIndex = weeks.findIndex(week => 
+        week.days.some(day => day.dateKey === selectedDate)
+      );
+      if (weekIndex !== -1) {
+        setSelectedWeekIndex(weekIndex);
+      } else {
+        // Fallback: select first week
+        setSelectedWeekIndex(0);
       }
-      weeks.push({ label: `Week ${w + 1}`, days });
     }
-
-    return weeks;
-  };
+  }, [viewMode]);
 
   const activeWeekDays = getWeekDays(selectedDate);
-  const monthWeeksForWeekly = getMonthWeeks(selectedDate);
+  const monthWeeksForWeekly = getMonthWeeks(viewingMonthDate);
   const activeWeekDateKeys = new Set(activeWeekDays.map(d => d.dateKey));
 
   return (
@@ -328,6 +485,14 @@ const AttendanceView: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900">Class Register</h1>
           <p className="text-gray-500">Mark daily attendance for your classes</p>
         </div>
+        {selectedClassMeta && (
+          <div className="text-xs text-gray-600 bg-white border border-gray-200 rounded-xl p-3 min-w-[240px]">
+            <div><span className="font-semibold">Class:</span> {selectedClassMeta.name || 'N/A'}</div>
+            <div><span className="font-semibold">Grade:</span> {selectedClassMeta.grade || 'N/A'}</div>
+            <div><span className="font-semibold">Subject:</span> {selectedClassMeta.subject || 'N/A'}</div>
+            <div><span className="font-semibold">Invite Code:</span> {selectedClassMeta.inviteToken || 'N/A'}</div>
+          </div>
+        )}
       </div>
 
       {/* Filters */}
@@ -371,30 +536,30 @@ const AttendanceView: React.FC = () => {
             </label>
             {/* Hidden file input for CSV */}
             <input ref={csvFileRef} type="file" accept=".csv" onChange={handleDirectCsvPick} className="hidden" />
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <button
                 type="button"
                 onClick={() => selectedClass && csvFileRef.current?.click()}
                 disabled={!selectedClass}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border text-sm font-semibold transition-all ${
+                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border text-sm font-semibold transition-all sm:flex-1 ${
                   selectedClass
                     ? 'border-gray-300 text-blue-700 bg-blue-50 hover:border-blue-400 hover:bg-blue-100/50 cursor-pointer'
                     : 'border-gray-200 text-gray-400 bg-gray-100 cursor-not-allowed'
                 }`}
               >
-                <span>📄</span> Upload CSV
+                <span>📄</span> <span>Upload CSV</span>
               </button>
               <button
                 type="button"
                 onClick={() => { if (!selectedClass) return; setUploadMode('manual'); setShowUploadPanel(true); }}
                 disabled={!selectedClass}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border text-sm font-semibold transition-all ${
+                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border text-sm font-semibold transition-all sm:flex-1 ${
                   selectedClass
                     ? 'border-gray-300 text-blue-700 bg-blue-50 hover:border-blue-400 hover:bg-blue-100/50 cursor-pointer'
                     : 'border-gray-200 text-gray-400 bg-gray-100 cursor-not-allowed'
                 }`}
               >
-                <span>✏️</span> Capture
+                <span>✏️</span> <span>Capture</span>
               </button>
             </div>
             {!selectedClass && (
@@ -410,23 +575,23 @@ const AttendanceView: React.FC = () => {
 
         {/* CSV preview after file picked */}
         {showUploadPanel && uploadMode === 'csv' && csvParsedLearners.length > 0 && (
-          <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50/30 p-5">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-medium text-gray-800">📄 {csvFileName} — {csvParsedLearners.length} student(s) found</p>
+          <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50/30 p-4 sm:p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+              <p className="text-xs sm:text-sm font-medium text-gray-800">📄 {csvFileName} — {csvParsedLearners.length} student(s) found</p>
               <button
                 type="button"
                 onClick={() => { setShowUploadPanel(false); setCsvParsedLearners([]); setCsvFileName(null); }}
-                className="text-gray-400 hover:text-gray-600 text-lg leading-none"
+                className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 text-lg leading-none"
               >
                 ✕
               </button>
             </div>
-            <div className="rounded-lg border border-gray-200 max-h-48 overflow-y-auto">
-              <table className="min-w-full text-sm">
+            <div className="rounded-lg border border-gray-200 max-h-48 overflow-x-auto sm:overflow-visible">
+              <table className="w-full text-xs sm:text-sm">
                 <thead className="bg-gray-50 sticky top-0">
                   <tr>
                     <th className="px-3 py-2 text-left text-xs font-bold text-gray-700">#</th>
-                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700">ID</th>
+                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 whitespace-nowrap">Learner #</th>
                     <th className="px-3 py-2 text-left text-xs font-bold text-gray-700">Full Name</th>
                   </tr>
                 </thead>
@@ -434,13 +599,16 @@ const AttendanceView: React.FC = () => {
                   {csvParsedLearners.map((l, i) => (
                     <tr key={i} className="hover:bg-gray-50">
                       <td className="px-3 py-1.5 text-gray-500">{i + 1}</td>
-                      <td className="px-3 py-1.5 text-gray-700">{l.learnerNumber}</td>
+                      <td className="px-3 py-1.5 text-gray-700 whitespace-nowrap text-[11px] sm:text-xs">Auto (6 digits)</td>
                       <td className="px-3 py-1.5 text-gray-900 font-medium">{l.fullName}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+            <p className="mt-2 text-xs text-gray-500">
+              Learner numbers are assigned by the backend on upload using the new 6-digit format.
+            </p>
 
             {uploadingStu && (
               <div className="w-full mt-3">
@@ -462,7 +630,7 @@ const AttendanceView: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleCsvConfirmUpload}
-                  className="px-4 py-2 text-sm bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-all"
+                  className="px-4 py-2 text-xs sm:text-sm bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-all whitespace-nowrap"
                 >
                   Upload Students
                 </button>
@@ -512,30 +680,26 @@ const AttendanceView: React.FC = () => {
               {mode === 'daily' ? 'Daily' : mode === 'weekly' ? 'Weekly' : 'Monthly'}
             </button>
           ))}
-          <span className="ml-auto text-[10px] text-gray-400">
-            Legend: P=Present, A=Absent, L=Late, E=Excused, B=Bunking, S=Sick
-          </span>
         </div>
 
         {viewMode === 'weekly' && (
-          <div className="mt-4 flex items-end gap-0 border-b border-gray-300">
+          <div className="mt-4 flex items-end gap-0 border-b border-gray-300 overflow-x-auto">
             {monthWeeksForWeekly.map((week, index) => {
-              const isActive = week.days.some(day => activeWeekDateKeys.has(day.dateKey));
+              const isSelected = selectedWeekIndex === index;
               const rangeLabel = `${week.days[0]?.dateKey.slice(5)} – ${week.days[4]?.dateKey.slice(5)}`;
               return (
                 <button
                   key={week.label}
                   type="button"
                   onClick={() => {
-                    const currentMonth = new Date(selectedDate).getMonth();
-                    const inMonth = week.days.find(d => new Date(d.dateKey).getMonth() === currentMonth);
-                    const targetDate = inMonth?.dateKey || week.days[0]?.dateKey || selectedDate;
-                    setSelectedDate(targetDate);
+                    // Set selected week index and date to Monday of the selected week
+                    setSelectedWeekIndex(index);
+                    setSelectedDate(week.days[0]?.dateKey || selectedDate);
                   }}
                   className={`
                     relative px-4 py-2 text-xs font-semibold transition-all
-                    rounded-t-md border border-b-0
-                    ${isActive
+                    rounded-t-md border border-b-0 whitespace-nowrap
+                    ${isSelected
                       ? 'bg-white text-blue-700 border-gray-300 z-10 -mb-px shadow-[0_-1px_3px_rgba(0,0,0,0.06)]'
                       : 'bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-50 hover:text-gray-700'
                     }
@@ -543,7 +707,7 @@ const AttendanceView: React.FC = () => {
                   title={rangeLabel}
                 >
                   <span className="block leading-tight">{`Week ${index + 1}`}</span>
-                  <span className={`block text-[10px] font-normal leading-tight mt-0.5 ${isActive ? 'text-blue-500' : 'text-gray-400'}`}>
+                  <span className={`block text-[10px] font-normal leading-tight mt-0.5 ${isSelected ? 'text-blue-500' : 'text-gray-400'}`}>
                     {rangeLabel}
                   </span>
                 </button>
@@ -582,16 +746,6 @@ const AttendanceView: React.FC = () => {
               <p className="text-sm text-purple-700">Sick</p>
             </div>
           </div>
-          {learners.length > 0 && (
-            <div className="flex justify-start">
-              <button
-                onClick={markAllPresent}
-                className="px-4 py-2 text-sm font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-all"
-              >
-                Mark All Present
-              </button>
-            </div>
-          )}
 
           {viewMode === 'daily' && (
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -702,7 +856,7 @@ const AttendanceView: React.FC = () => {
                       <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wide text-gray-800" rowSpan={2}>
                         Learner
                       </th>
-                      {getMonthWeeks(selectedDate).map(week => (
+                      {getMonthWeeks(viewingMonthDate).map(week => (
                         <th
                           key={week.label}
                           colSpan={week.days.length}
@@ -713,7 +867,7 @@ const AttendanceView: React.FC = () => {
                       ))}
                     </tr>
                     <tr>
-                      {getMonthWeeks(selectedDate).flatMap(week =>
+                      {getMonthWeeks(viewingMonthDate).flatMap(week =>
                         week.days.map(day => (
                           <th
                             key={`${week.label}-${day.dateKey}`}
@@ -732,7 +886,7 @@ const AttendanceView: React.FC = () => {
                           <span className="font-medium">{learner.name}</span>
                           <span className="ml-1 text-[10px] text-gray-400">#{learner.number}</span>
                         </td>
-                        {getMonthWeeks(selectedDate).flatMap(week =>
+                        {getMonthWeeks(viewingMonthDate).flatMap(week =>
                           week.days.map(day => {
                             const status = attendanceByDate[day.dateKey]?.[learner.id];
                             const letter = getStatusLetter(status);
@@ -753,15 +907,17 @@ const AttendanceView: React.FC = () => {
             </div>
           )}
 
-          {/* Save Button */}
-          <div className="flex justify-end">
-            <button
-              onClick={handleSave}
-              className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all"
-            >
-              Save Attendance
-            </button>
-          </div>
+          {/* Save Button - Daily View Only */}
+          {viewMode === 'daily' && (
+            <div className="flex justify-end">
+              <button
+                onClick={handleSave}
+                className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all"
+              >
+                Save Attendance
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>

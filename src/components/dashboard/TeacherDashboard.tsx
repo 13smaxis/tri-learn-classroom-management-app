@@ -12,7 +12,7 @@ interface TeacherDashboardProps {
 
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, classesVersion }) => {
   const { user } = useAuth();
-  const { forceRefreshKey } = useAppContext();
+  const { forceRefreshKey, forceGlobalRefresh } = useAppContext();
   const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -20,6 +20,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDueDate, setNewTaskDueDate] = useState('');
   const [attendanceRecords, setAttendanceRecords] = useState(0);
+  const [totalLearners, setTotalLearners] = useState(0);
 
   useEffect(() => {
     if (user) {
@@ -33,10 +34,21 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
     if (!user) return;
     try {
       const data = await api.getMyClasses();
-      setClasses(data || []);
+      const classList = data || [];
+      setClasses(classList);
+
+      const learnerCounts = await Promise.all(
+        classList.map((cls: any) =>
+          api.getLearners(cls.id)
+            .then((learners) => learners.length)
+            .catch(() => 0)
+        )
+      );
+      setTotalLearners(learnerCounts.reduce((sum, count) => sum + count, 0));
     } catch (err) {
       console.error('Failed to fetch classes:', err);
       setClasses([]);
+      setTotalLearners(0);
     }
     setAttendanceRecords(0); // TODO: fetch from backend
     setLoading(false);
@@ -47,11 +59,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
     // TODO: fetch tasks from backend
     setTasks([]);
   };
-
-  const totalLearners = classes.reduce((acc, cls) => {
-    const learners = cls.enrollments?.filter((e: any) => e.role === 'learner') || [];
-    return acc + learners.length;
-  }, 0);
 
   const totalParents = classes.reduce((acc, cls) => {
     const parents = cls.enrollments?.filter((e: any) => e.role === 'parent') || [];
@@ -339,7 +346,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
       <CreateClassModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        onClassCreated={() => fetchClasses()}
+        onClassCreated={() => {
+          fetchClasses();
+          forceGlobalRefresh();
+        }}
       />
     </div>
   );

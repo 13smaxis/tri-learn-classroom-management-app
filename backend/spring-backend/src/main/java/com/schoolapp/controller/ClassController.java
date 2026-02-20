@@ -5,6 +5,7 @@ import com.schoolapp.model.Enrollment;
 import com.schoolapp.model.SchoolClass;
 import com.schoolapp.repository.EnrollmentRepository;
 import com.schoolapp.service.ClassService;
+import org.springframework.lang.NonNull;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -58,7 +59,7 @@ public class ClassController {
 
     // ── GET /class/{classId} ──
     @GetMapping("/{classId}")
-    public ResponseEntity<?> getClass(@PathVariable String classId) {
+    public ResponseEntity<?> getClass(@PathVariable @NonNull String classId) {
         try {
             SchoolClass sc = classService.getClassById(classId);
             return ResponseEntity.ok(Map.of("success", true, "data", classToMap(sc)));
@@ -108,7 +109,7 @@ public class ClassController {
 
     // ── GET /class/validate-invite?code=XXXX (public, no auth required) ──
     @GetMapping("/validate-invite")
-    public ResponseEntity<?> validateInvite(@RequestParam String code) {
+    public ResponseEntity<?> validateInvite(@RequestParam @NonNull String code) {
         try {
             SchoolClass sc = classService.findByInviteToken(code);
             Map<String, Object> data = new LinkedHashMap<>();

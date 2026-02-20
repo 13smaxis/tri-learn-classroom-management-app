@@ -133,7 +133,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onSwitchToInv
             />
           </div>
 
-          {/* Password Input with visibility toggle */}
+          {/* Password Input with single visibility toggle */}
           <div>
             <label className="block text-sm font-medium text-blue-100 mb-2">Password</label>
             <div className="relative">

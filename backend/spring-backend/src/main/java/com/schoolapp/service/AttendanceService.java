@@ -14,9 +14,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -49,7 +54,7 @@ public class AttendanceService
     }
 
     /**
-     * Upload/replace learners for a class
+     * Upload/add learners for a class
      */
     @Transactional
     public List<LearnerDTO> uploadLearners(UploadLearnersRequest request) 
@@ -57,20 +62,75 @@ public class AttendanceService
         SchoolClass schoolClass = classRepository.findById(Objects.requireNonNull(request.getClassId()))
             .orElseThrow(() -> new RuntimeException("Class not found"));
 
-        learnerRepository.deleteBySchoolClassId(request.getClassId());                                          //-Delete existing learners for this class
-
         List<Learner> learners = new ArrayList<>();                                                             //-Create new learners
+        Set<String> allocatedNumbers = new HashSet<>();
         for (UploadLearnersRequest.LearnerData data : request.getLearners())                                    //-Iterate over the provided learner data and create Learner entities
         {
-            Learner learner = new Learner(data.getLearnerNumber(), data.getFullName(), schoolClass);
+            String learnerNumber = selectLearnerNumber(data.getLearnerNumber(), schoolClass.getGrade(), allocatedNumbers);
+            Learner learner = new Learner(learnerNumber, data.getFullName(), schoolClass);
             learners.add(learner);
         }
 
-        learners = learnerRepository.saveAll(learners);                                                         //-Save new learners to the database
+        learnerRepository.saveAll(learners);                                                                     //-Save new learners to the database
 
-        return learners.stream()
+        List<Learner> allLearnersForClass = learnerRepository.findBySchoolClassId(request.getClassId());
+        return allLearnersForClass.stream()
             .map(l -> new LearnerDTO(l.getId(), l.getLearnerNumber(), l.getFullName()))
             .collect(Collectors.toList());
+    }
+
+    private String generateGradeBasedSixDigitLearnerNumber(String classGrade, Set<String> allocatedNumbers) {
+        String gradePrefix = resolveGradePrefix(classGrade);
+        int maxAttempts = 2000;
+        for (int i = 0; i < maxAttempts; i++) {
+            String uniqueSuffix = String.format("%04d", ThreadLocalRandom.current().nextInt(0, 10000));
+            String candidate = gradePrefix + uniqueSuffix;
+            if (allocatedNumbers.contains(candidate)) {
+                continue;
+            }
+            if (!learnerRepository.existsByLearnerNumber(candidate)) {
+                allocatedNumbers.add(candidate);
+                return candidate;
+            }
+        }
+        throw new RuntimeException("Could not generate a unique 6-digit learner number. Please try again.");
+    }
+
+    private String selectLearnerNumber(String requestedLearnerNumber, String classGrade, Set<String> allocatedNumbers) {
+        String gradePrefix = resolveGradePrefix(classGrade);
+        if (isValidSixDigitNumberForGrade(requestedLearnerNumber, gradePrefix)
+                && !allocatedNumbers.contains(requestedLearnerNumber)
+                && !learnerRepository.existsByLearnerNumber(requestedLearnerNumber)) {
+            allocatedNumbers.add(requestedLearnerNumber);
+            return requestedLearnerNumber;
+        }
+        return generateGradeBasedSixDigitLearnerNumber(classGrade, allocatedNumbers);
+    }
+
+    private boolean isValidSixDigitNumberForGrade(String value, String gradePrefix) {
+        return value != null
+                && value.matches("\\d{6}")
+                && value.startsWith(gradePrefix);
+    }
+
+    private String resolveGradePrefix(String classGrade) {
+        if (classGrade == null || classGrade.trim().isEmpty()) {
+            return "00";
+        }
+
+        Matcher matcher = Pattern.compile("(\\d{1,2})").matcher(classGrade);
+        if (matcher.find()) {
+            int gradeNumber = Integer.parseInt(matcher.group(1));
+            if (gradeNumber < 0) {
+                gradeNumber = 0;
+            }
+            if (gradeNumber > 99) {
+                gradeNumber = 99;
+            }
+            return String.format("%02d", gradeNumber);
+        }
+
+        return "00";
     }
 
     /**
@@ -97,12 +157,12 @@ public class AttendanceService
         for (Map.Entry<String, String> entry : request.getAttendance().entrySet())                              //-Iterate over the attendance data, where the key is the learner ID and the value is the attendance status (e.g., "present", "absent")
         {
             String learnerId = entry.getKey();
-            String statusStr = entry.getValue().toUpperCase();
+            String statusStr = entry.getValue();
 
             Learner learner = learnerRepository.findById(Objects.requireNonNull(learnerId))
                 .orElseThrow(() -> new RuntimeException("Learner not found: " + learnerId));
 
-            AttendanceStatus status = AttendanceStatus.valueOf(statusStr);
+            AttendanceStatus status = parseAttendanceStatus(statusStr);
 
             // Check if record already exists
             AttendanceRecord record = attendanceRepository
@@ -111,6 +171,30 @@ public class AttendanceService
 
             record.setStatus(status);
             attendanceRepository.save(record);
+        }
+    }
+
+    private AttendanceStatus parseAttendanceStatus(String rawStatus) {
+        if (rawStatus == null) {
+            throw new RuntimeException("Attendance status is required");
+        }
+
+        String normalized = rawStatus.trim().toUpperCase().replace(' ', '_').replace('-', '_');
+        switch (normalized) {
+            case "PRESENT":
+                return AttendanceStatus.PRESENT;
+            case "ABSENT":
+                return AttendanceStatus.ABSENT;
+            case "LATE":
+                return AttendanceStatus.LATE;
+            case "EXCUSED":
+                return AttendanceStatus.EXCUSED;
+            case "BUNKING":
+                return AttendanceStatus.BUNKING;
+            case "SICK":
+                return AttendanceStatus.SICK;
+            default:
+                throw new RuntimeException("Unknown attendance status: " + rawStatus);
         }
     }
 

@@ -15,6 +15,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   const res = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
     headers,
+    cache: 'no-store',
   });
 
   const text = await res.text();
@@ -129,4 +130,11 @@ export const    api = {
 
   getAttendanceForLearner: (learnerId: string) =>
     request<any[]>(`/attendance/learner/${learnerId}`),
+
+  // Learners (new controller)
+  getAllLearners: () =>
+    request<any[]>('/learners'),
+
+  getLearnerById: (id: string) =>
+    request<any>(`/learners/${id}`),
 };
