@@ -7,6 +7,7 @@ import com.schoolapp.repository.*;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,13 +29,17 @@ public class StarsService {
     }
 
     public void awardStar(AwardStarRequest request, String teacherId) {
-        Learner learner = learnerRepository.findById(request.getLearnerId())
+        String learnerId = Objects.requireNonNull(request.getLearnerId(), "Learner ID is required");
+        String resolvedTeacherId = Objects.requireNonNull(teacherId, "Teacher ID is required");
+        String classId = Objects.requireNonNull(request.getClassId(), "Class ID is required");
+
+        Learner learner = learnerRepository.findById(learnerId)
             .orElseThrow(() -> new RuntimeException("Learner not found"));
         
-        AppUser teacher = userRepository.findById(teacherId)
+        AppUser teacher = userRepository.findById(resolvedTeacherId)
             .orElseThrow(() -> new RuntimeException("Teacher not found"));
         
-        SchoolClass schoolClass = classRepository.findById(request.getClassId())
+        SchoolClass schoolClass = classRepository.findById(classId)
             .orElseThrow(() -> new RuntimeException("Class not found"));
 
         StudentStar star = new StudentStar(learner, teacher, schoolClass, request.getCategory());
@@ -45,13 +50,15 @@ public class StarsService {
     }
 
     public StudentRecognitionDTO getStudentRecognition(String learnerId) {
-        Learner learner = learnerRepository.findById(learnerId)
+        String resolvedLearnerId = Objects.requireNonNull(learnerId, "Learner ID is required");
+
+        Learner learner = learnerRepository.findById(resolvedLearnerId)
             .orElseThrow(() -> new RuntimeException("Learner not found"));
 
         StudentRecognitionDTO dto = new StudentRecognitionDTO(learner.getId(), learner.getLearnerNumber(), learner.getFullName());
         
         // Calculate attendance rate
-        List<AttendanceRecord> attendanceRecords = attendanceRepository.findByLearnerId(learnerId);
+        List<AttendanceRecord> attendanceRecords = attendanceRepository.findByLearnerId(resolvedLearnerId);
         if (!attendanceRecords.isEmpty()) {
             long presentCount = attendanceRecords.stream()
                 .filter(r -> r.getStatus() == AttendanceStatus.PRESENT)
@@ -63,9 +70,9 @@ public class StarsService {
         }
 
         // Count stars by category
-        int attendanceStars = starRepository.countByLearnerIdAndCategory(learnerId, StarCategory.ATTENDANCE);
-        int homeworkStars = starRepository.countByLearnerIdAndCategory(learnerId, StarCategory.HOMEWORK);
-        int assignmentStars = starRepository.countByLearnerIdAndCategory(learnerId, StarCategory.ASSIGNMENT);
+        int attendanceStars = starRepository.countByLearnerIdAndCategory(resolvedLearnerId, StarCategory.ATTENDANCE);
+        int homeworkStars = starRepository.countByLearnerIdAndCategory(resolvedLearnerId, StarCategory.HOMEWORK);
+        int assignmentStars = starRepository.countByLearnerIdAndCategory(resolvedLearnerId, StarCategory.ASSIGNMENT);
 
         dto.setAttendanceStars(attendanceStars);
         dto.setHomeworkStars(homeworkStars);
@@ -76,15 +83,18 @@ public class StarsService {
     }
 
     public List<StudentRecognitionDTO> getClassRecognition(String classId, String teacherId) {
+        String resolvedClassId = Objects.requireNonNull(classId, "Class ID is required");
+        String resolvedTeacherId = Objects.requireNonNull(teacherId, "Teacher ID is required");
+
         // Verify teacher owns the class
-        SchoolClass schoolClass = classRepository.findById(classId)
+        SchoolClass schoolClass = classRepository.findById(resolvedClassId)
             .orElseThrow(() -> new RuntimeException("Class not found"));
         
-        if (!schoolClass.getTeacher().getId().equals(teacherId)) {
+        if (!schoolClass.getTeacher().getId().equals(resolvedTeacherId)) {
             throw new RuntimeException("Unauthorized: Teacher does not own this class");
         }
 
-        List<Learner> learners = learnerRepository.findBySchoolClassId(classId);
+        List<Learner> learners = learnerRepository.findBySchoolClassId(resolvedClassId);
         
         return learners.stream()
             .map(learner -> getStudentRecognition(learner.getId()))

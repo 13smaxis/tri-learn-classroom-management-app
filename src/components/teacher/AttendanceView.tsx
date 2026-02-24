@@ -131,14 +131,13 @@ const AttendanceView: React.FC = () => {
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
   const csvFileRef = useRef<HTMLInputElement>(null);
 
-  // Helper functions to calculate week and month dates (safe local time parsing)
-  const getWeekDays = (dateString: string) => {
-    // Parse YYYY-MM-DD safely to avoid timezone issues
-    const [year, month, day] = dateString.split('-').map(Number);
+  const getWeekDays = (dateString: string) => {                                                                 //-Helper functions to calculate week and month dates (safe local time parsing)
+    
+    const [year, month, day] = dateString.split('-').map(Number);                                               //-Parse YYYY-MM-DD safely to avoid timezone issues
     const date = new Date(year, month - 1, day);
     const dayOfWeek = date.getDay(); // 0 = Sun, 1 = Mon
     const diffToMonday = (dayOfWeek + 6) % 7; // days since Monday
-    
+
     const monday = new Date(year, month - 1, day - diffToMonday);
 
     const labels = ['M', 'T', 'W', 'T', 'F'];
@@ -146,19 +145,21 @@ const AttendanceView: React.FC = () => {
     for (let i = 0; i < 5; i++) {
       const d = new Date(monday);
       d.setDate(monday.getDate() + i);
-      const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const dateKey = `
+                        ${d.getFullYear()}-
+                        ${String(d.getMonth() + 1).padStart(2, '0')}-
+                        ${String(d.getDate()).padStart(2, '0')}
+                      `;
       days.push({ label: labels[i], dateKey });
     }
     return days;
   };
 
-  const getMonthWeeks = (dateString: string) => {
-    // Parse YYYY-MM-DD safely to avoid timezone issues
+  const getMonthWeeks = (dateString: string) => {                                                               //-Parse YYYY-MM-DD safely to avoid timezone issues
+    
     const [year, month] = dateString.split('-').map(Number);
-
-    // First day of month (local time)
-    const firstOfMonth = new Date(year, month - 1, 1);
-    const firstDay = firstOfMonth.getDay(); // 0=Sun
+    const firstOfMonth = new Date(year, month - 1, 1);                                                          //-First day of month (local time)
+    const firstDay = firstOfMonth.getDay();                                                                     //- 0=Sun
     const diffToMonday = (firstDay + 6) % 7;
     const firstMonday = new Date(year, month - 1, 1 - diffToMonday);
 
@@ -190,11 +191,10 @@ const AttendanceView: React.FC = () => {
         console.error('Failed to fetch classes:', err);
         setClasses([]);
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, forceRefreshKey]);
 
-  // When a class is selected, load any saved learners for that class
-  useEffect(() => {
+  }, [user, forceRefreshKey]);                                                                                  //-eslint-disable-next-line react-hooks/exhaustive-deps
+
+  useEffect(() => {                                                                                             //-When a class is selected, load any saved learners for that class
     if (!selectedClass) {
       setSelectedClassMeta(null);
       setLearners([]);
@@ -498,15 +498,15 @@ const AttendanceView: React.FC = () => {
   const markAllPresent = () => {
     const allPresent: Record<string, string> = {};
     learners.forEach(l => allPresent[l.id] = 'present');
-        const newAttendance: Record<string, string> = {};
-        learners.forEach(learner => {
-          newAttendance[learner.id] = 'present';
-        });
-        setAttendance(newAttendance);
-        setAttendanceByDate(prevByDate => ({
-          ...prevByDate,
-          [selectedDate]: newAttendance,
-        }));
+    const newAttendance: Record<string, string> = {};
+    learners.forEach(learner => {
+      newAttendance[learner.id] = 'present';
+    });
+    setAttendance(newAttendance);
+    setAttendanceByDate(prevByDate => ({
+      ...prevByDate,
+      [selectedDate]: newAttendance,
+    }));
   };
 
   const handleSave = () => {
@@ -603,13 +603,13 @@ const AttendanceView: React.FC = () => {
   // Update viewing month and select appropriate week when view mode changes
   useEffect(() => {
     if (viewMode === 'daily') return;
-    
+
     setViewingMonthDate(selectedDate);
-    
+
     // If switching to weekly view, find and select the week containing selectedDate
     if (viewMode === 'weekly') {
       const weeks = getMonthWeeks(selectedDate);
-      const weekIndex = weeks.findIndex(week => 
+      const weekIndex = weeks.findIndex(week =>
         week.days.some(day => day.dateKey === selectedDate)
       );
       if (weekIndex !== -1) {
@@ -651,7 +651,8 @@ const AttendanceView: React.FC = () => {
                           border-slate-700 
                           rounded-xl 
                           p-3 min-w-[240px]
-                          ">
+                          "
+          >
             <div><span className="font-semibold">Class:</span> {selectedClassMeta.name || 'N/A'}</div>
             <div><span className="font-semibold">Grade:</span> {selectedClassMeta.grade || 'N/A'}</div>
             <div><span className="font-semibold">Subject:</span> {selectedClassMeta.subject || 'N/A'}</div>
@@ -660,7 +661,13 @@ const AttendanceView: React.FC = () => {
         )}
       </div>
 
-      <div className="rounded-xl border border-blue-100 bg-gradient-to-br from-white via-blue-50/40 to-indigo-50/30 p-5">                                      {/* Filters */}
+      <div className="
+                      rounded-xl 
+                      border border-blue-100 
+                      bg-gradient-to-br from-white via-blue-50/40 to-indigo-50/30 
+                      p-5
+                    "
+      >                                                                                                       {/* Filters */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
@@ -696,16 +703,16 @@ const AttendanceView: React.FC = () => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Learners 
-              {learners.length > 0 && 
-              <span className="text-green-600 font-normal">
-                ({learners.length} loaded)
-              </span>}
+              Learners
+              {learners.length > 0 &&
+                <span className="text-green-600 font-normal">
+                  ({learners.length} loaded)
+                </span>}
             </label>
-           
-            <input ref={csvFileRef} type="file" 
-                   accept=".csv" 
-                   onChange={handleDirectCsvPick} className="hidden" 
+
+            <input ref={csvFileRef} type="file"
+              accept=".csv"
+              onChange={handleDirectCsvPick} className="hidden"
             />                                                                                                  {/* Hidden file input for CSV */}
             <div className="flex flex-col sm:flex-row gap-2">
               <button
@@ -718,8 +725,7 @@ const AttendanceView: React.FC = () => {
                               gap-2 px-4 py-3 
                               rounded-lg 
                               border text-sm font-semibold 
-                              transition-all sm:flex-1 ${
-                  selectedClass
+                              transition-all sm:flex-1 ${selectedClass
                     ? 'border-gray-300 text-blue-700 bg-blue-50 hover:border-blue-400 hover:bg-blue-100/50 cursor-pointer'
                     : 'border-gray-200 text-gray-400 bg-gray-100 cursor-not-allowed'
                   }
@@ -736,8 +742,7 @@ const AttendanceView: React.FC = () => {
                               justify-center gap-2 px-4 py-3 
                               rounded-lg 
                               border text-sm font-semibold 
-                              transition-all sm:flex-1 ${
-                  selectedClass
+                              transition-all sm:flex-1 ${selectedClass
                     ? 'border-gray-300 text-blue-700 bg-blue-50 hover:border-blue-400 hover:bg-blue-100/50 cursor-pointer'
                     : 'border-gray-200 text-gray-400 bg-gray-100 cursor-not-allowed'
                   }
@@ -763,9 +768,9 @@ const AttendanceView: React.FC = () => {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
               <p className="
                               text-xs sm:text-sm font-medium 
-                              text-gray-800">📄 
-                              {csvFileName} — {csvParsedLearners.length} 
-                              student(s) found
+                              text-gray-800">📄
+                {csvFileName} — {csvParsedLearners.length}
+                student(s) found
               </p>
               <div className="flex items-center gap-2">
                 {csvParsedLearners.some((learner) => learner.isDuplicate) && (
@@ -936,11 +941,10 @@ const AttendanceView: React.FC = () => {
               key={mode}
               type="button"
               onClick={() => setViewMode(mode as any)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                viewMode === mode
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${viewMode === mode
                   ? 'bg-blue-600 text-white border-blue-600'
                   : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-              }`}
+                }`}
             >
               {mode === 'daily' ? 'Daily' : mode === 'weekly' ? 'Weekly' : 'Monthly'}
             </button>
@@ -1041,16 +1045,15 @@ const AttendanceView: React.FC = () => {
                         <button
                           key={status}
                           onClick={() => handleAttendanceChange(learner.id, status)}
-                          className={`px-3 py-2 text-sm font-medium rounded-lg transition-all ${
-                            attendance[learner.id] === status
+                          className={`px-3 py-2 text-sm font-medium rounded-lg transition-all ${attendance[learner.id] === status
                               ? status === 'present' ? 'bg-green-500 text-white' :
                                 status === 'absent' ? 'bg-red-500 text-white' :
-                                status === 'late' ? 'bg-orange-500 text-white' :
-                                status === 'bunking' ? 'bg-red-700 text-white' :
-                                status === 'sick' ? 'bg-purple-500 text-white' :
-                                'bg-blue-500 text-white'
+                                  status === 'late' ? 'bg-orange-500 text-white' :
+                                    status === 'bunking' ? 'bg-red-700 text-white' :
+                                      status === 'sick' ? 'bg-purple-500 text-white' :
+                                        'bg-blue-500 text-white'
                               : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                          }`}
+                            }`}
                         >
                           {status.charAt(0).toUpperCase() + status.slice(1)}
                         </button>
