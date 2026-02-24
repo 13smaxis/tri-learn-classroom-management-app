@@ -137,4 +137,14 @@ export const    api = {
 
   getLearnerById: (id: string) =>
     request<any>(`/learners/${id}`),
+
+  // Stars (new controller)
+  awardStar: (data: { learnerId: string; classId: string; category: string; starCount?: number; note?: string }) =>
+    request<void>('/stars/award', { method: 'POST', body: JSON.stringify(data) }),
+
+  getClassRecognition: (classId: string) =>
+    request<any[]>(`/stars/class/${classId}`),
+
+  getStudentRecognition: (learnerId: string) =>
+    request<any>(`/stars/student/${learnerId}`),
 };

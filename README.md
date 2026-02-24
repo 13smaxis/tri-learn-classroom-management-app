@@ -51,7 +51,7 @@ school-app/
 ├─ README.md                 # Project documentation
 ├─ public/                   # Static assets served by Vite
 │  ├─ manifest.json
-│  ├─ placeholder.svg
+│  ├─ logo-removebg.png
 │  ├─ robots.txt
 │  └─ sw.js
 ├─ src/                      # Main React + Vite frontend
