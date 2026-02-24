@@ -433,6 +433,11 @@ const AttendanceView: React.FC = () => {
   const excusedCount = counts.excused;
   const bunkingCount = counts.bunking;
   const sickCount = counts.sick;
+  const dashboardBgClass = viewMode === 'daily'
+    ? 'bg-gradient-to-br from-blue-50/70 via-white to-indigo-50/60'
+    : viewMode === 'weekly'
+      ? 'bg-gradient-to-br from-emerald-50/70 via-white to-cyan-50/60'
+      : 'bg-gradient-to-br from-violet-50/70 via-white to-purple-50/60';
 
   const getStatusLetter = (status?: string) => {
     switch (status) {
@@ -479,7 +484,7 @@ const AttendanceView: React.FC = () => {
   const activeWeekDateKeys = new Set(activeWeekDays.map(d => d.dateKey));
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 rounded-2xl p-4 sm:p-6 transition-colors duration-300 ${dashboardBgClass}`}>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Class Register</h1>
@@ -586,7 +591,7 @@ const AttendanceView: React.FC = () => {
                 ✕
               </button>
             </div>
-            <div className="rounded-lg border border-gray-200 max-h-48 overflow-x-auto sm:overflow-visible">
+            <div className="rounded-lg border border-gray-200 overflow-x-auto">                               {/* Keep natural height so preview expands and pushes sections below down */}
               <table className="w-full text-xs sm:text-sm">
                 <thead className="bg-gray-50 sticky top-0">
                   <tr>
@@ -606,10 +611,6 @@ const AttendanceView: React.FC = () => {
                 </tbody>
               </table>
             </div>
-            <p className="mt-2 text-xs text-gray-500">
-              Learner numbers are assigned by the backend on upload using the new 6-digit format.
-            </p>
-
             {uploadingStu && (
               <div className="w-full mt-3">
                 <div className="flex items-center justify-between mb-1">
@@ -721,27 +722,27 @@ const AttendanceView: React.FC = () => {
         <>
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+            <div className={`rounded-xl p-4 text-center border transition-all ${presentCount > 0 ? 'bg-gradient-to-br from-green-100 to-green-50 border-green-300' : 'bg-green-50 border-green-200'}`}>
               <p className="text-3xl font-bold text-green-600">{presentCount}</p>
               <p className="text-sm text-green-700">Present</p>
             </div>
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+            <div className={`rounded-xl p-4 text-center border transition-all ${absentCount > 0 ? 'bg-gradient-to-br from-red-100 to-red-50 border-red-300' : 'bg-red-50 border-red-200'}`}>
               <p className="text-3xl font-bold text-red-600">{absentCount}</p>
               <p className="text-sm text-red-700">Absent</p>
             </div>
-            <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-center">
+            <div className={`rounded-xl p-4 text-center border transition-all ${lateCount > 0 ? 'bg-gradient-to-br from-orange-100 to-orange-50 border-orange-300' : 'bg-orange-50 border-orange-200'}`}>
               <p className="text-3xl font-bold text-orange-600">{lateCount}</p>
               <p className="text-sm text-orange-700">Late</p>
             </div>
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+            <div className={`rounded-xl p-4 text-center border transition-all ${excusedCount > 0 ? 'bg-gradient-to-br from-blue-100 to-blue-50 border-blue-300' : 'bg-blue-50 border-blue-200'}`}>
               <p className="text-3xl font-bold text-blue-600">{excusedCount}</p>
               <p className="text-sm text-blue-700">Excused</p>
             </div>
-            <div className="bg-red-50 border border-red-300 rounded-xl p-4 text-center">
+            <div className={`rounded-xl p-4 text-center border transition-all ${bunkingCount > 0 ? 'bg-gradient-to-br from-red-100 to-red-50 border-red-400' : 'bg-red-50 border-red-300'}`}>
               <p className="text-3xl font-bold text-red-700">{bunkingCount}</p>
               <p className="text-sm text-red-800">Bunking</p>
             </div>
-            <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 text-center">
+            <div className={`rounded-xl p-4 text-center border transition-all ${sickCount > 0 ? 'bg-gradient-to-br from-purple-100 to-purple-50 border-purple-300' : 'bg-purple-50 border-purple-200'}`}>
               <p className="text-3xl font-bold text-purple-600">{sickCount}</p>
               <p className="text-sm text-purple-700">Sick</p>
             </div>
