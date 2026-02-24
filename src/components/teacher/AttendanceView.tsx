@@ -7,6 +7,77 @@ import StudentUploadWidget, { ParsedLearner } from '@/components/shared/StudentU
 export type AttendanceByDate = Record<string, Record<string, string>>;
 
 type Learner = { id: string; name: string; number: string };
+type CsvPreviewLearner = ParsedLearner & { isDuplicate: boolean };
+
+const parseCsvRow = (line: string): string[] => {
+  const values: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+    if (char === ',' && !inQuotes) {
+      values.push(current.trim());
+      current = '';
+      continue;
+    }
+    current += char;
+  }
+
+  values.push(current.trim());
+  return values;
+};
+
+const normalizeFullName = (fullName: string): string =>
+  fullName
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+
+const sortParsedLearners = (items: ParsedLearner[]): ParsedLearner[] =>
+  [...items].sort((a, b) => a.fullName.localeCompare(b.fullName, undefined, { sensitivity: 'base' }));
+
+const buildCsvPreviewLearners = (items: ParsedLearner[], existingNames: string[]): CsvPreviewLearner[] => {
+  const existingSet = new Set(existingNames.map(normalizeFullName));
+  const incomingCounts = new Map<string, number>();
+
+  items.forEach((item) => {
+    const normalized = normalizeFullName(item.fullName);
+    if (!normalized) return;
+    incomingCounts.set(normalized, (incomingCounts.get(normalized) || 0) + 1);
+  });
+
+  return items.map((item) => {
+    const normalized = normalizeFullName(item.fullName);
+    const isDuplicate =
+      !normalized || existingSet.has(normalized) || (incomingCounts.get(normalized) || 0) > 1;
+
+    return {
+      ...item,
+      isDuplicate,
+    };
+  });
+};
+
+const splitUniqueAndDuplicates = (items: ParsedLearner[], existingNames: string[]) => {
+  const preview = buildCsvPreviewLearners(items, existingNames);
+  const unique = preview.filter((item) => !item.isDuplicate).map(({ isDuplicate, ...rest }) => rest);
+  const duplicates = preview.filter((item) => item.isDuplicate).map(({ isDuplicate, ...rest }) => rest);
+
+  return { unique, duplicates };
+};
+
+const rebuildCsvPreview = (items: ParsedLearner[], existingNames: string[]) =>
+  buildCsvPreviewLearners(sortParsedLearners(items), existingNames);
 
 const mapLearnersForAttendance = (data: any[]): Learner[] => {
   return (data || []).map((learner: any, index: number) => ({
@@ -53,8 +124,11 @@ const AttendanceView: React.FC = () => {
   const [uploadingStu, setUploadingStu] = useState(false);
   const [stuProgress, setStuProgress] = useState(0);
   const [uploadMode, setUploadMode] = useState<'csv' | 'manual'>('csv');
-  const [csvParsedLearners, setCsvParsedLearners] = useState<ParsedLearner[]>([]);
+  const [csvParsedLearners, setCsvParsedLearners] = useState<CsvPreviewLearner[]>([]);
   const [csvFileName, setCsvFileName] = useState<string | null>(null);
+  const [editingCsvIndex, setEditingCsvIndex] = useState<number | null>(null);
+  const [editingCsvValue, setEditingCsvValue] = useState('');
+  const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
   const csvFileRef = useRef<HTMLInputElement>(null);
 
   // Helper functions to calculate week and month dates (safe local time parsing)
@@ -246,6 +320,15 @@ const AttendanceView: React.FC = () => {
       });
   }, [viewMode, selectedClass, selectedDate, viewingMonthDate]);
 
+  useEffect(() => {
+    if (csvParsedLearners.length === 0) return;
+    const refreshed = rebuildCsvPreview(
+      csvParsedLearners.map(({ isDuplicate, ...rest }) => rest),
+      learners.map((learner) => learner.name)
+    );
+    setCsvParsedLearners(refreshed);
+  }, [learners]);
+
   const handleCsvUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     // Legacy handler kept for backward compat – unused now
   };
@@ -260,20 +343,28 @@ const AttendanceView: React.FC = () => {
     reader.onload = () => {
       const text = reader.result?.toString() || '';
       const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-      if (lines.length < 2) {
+      if (lines.length < 1) {
         alert('File is empty or has no data rows.');
         return;
       }
-      const dataLines = lines.slice(1);
-      const parsed: ParsedLearner[] = dataLines.map((line, idx) => {
-        const [idRaw, nameRaw, surnameRaw] = line.split(',');
-        const learnerNumber = (idRaw || '').trim() || String(idx + 1);
-        const firstName = (nameRaw || '').trim();
-        const surname = (surnameRaw || '').trim();
-        const fullName = [firstName, surname].filter(Boolean).join(' ') || `Learner ${idx + 1}`;
-        return { learnerNumber, fullName };
-      });
-      setCsvParsedLearners(parsed);
+      const parsed: ParsedLearner[] = lines
+        .map((line, idx) => {
+          const [nameRaw, surnameRaw] = parseCsvRow(line);
+          const firstName = (nameRaw || '').trim();
+          const surname = (surnameRaw || '').trim();
+          const fullName = [firstName, surname].filter(Boolean).join(' ').trim();
+          if (!fullName) return null;
+          return { learnerNumber: String(idx + 1), fullName };
+        })
+        .filter((learner): learner is ParsedLearner => Boolean(learner));
+
+      if (parsed.length === 0) {
+        alert('No valid learner names found. Expected CSV format: Name,Surname (no header).');
+        return;
+      }
+
+      const sorted = sortParsedLearners(parsed);
+      setCsvParsedLearners(rebuildCsvPreview(sorted, learners.map((learner) => learner.name)));
       setUploadMode('csv');
       setShowUploadPanel(true);
     };
@@ -283,7 +374,48 @@ const AttendanceView: React.FC = () => {
 
   const handleCsvConfirmUpload = () => {
     if (csvParsedLearners.length === 0) return;
-    handleStudentsReady(csvParsedLearners);
+    const uniqueLearners = csvParsedLearners
+      .filter((learner) => !learner.isDuplicate)
+      .map(({ isDuplicate, ...rest }) => rest);
+
+    handleStudentsReady(uniqueLearners);
+  };
+
+  const handleManualPreview = (parsedLearners: ParsedLearner[]) => {
+    if (parsedLearners.length === 0) return;
+    const sorted = sortParsedLearners(parsedLearners);
+    setCsvParsedLearners(rebuildCsvPreview(sorted, learners.map((learner) => learner.name)));
+    setCsvFileName('Manual capture');
+    setUploadMode('manual');
+    setShowUploadPanel(true);
+  };
+
+  const handleCsvEditStart = (index: number) => {
+    setEditingCsvIndex(index);
+    setEditingCsvValue(csvParsedLearners[index]?.fullName || '');
+  };
+
+  const handleCsvEditSave = (index: number) => {
+    const cleaned = editingCsvValue.trim().replace(/\s+/g, ' ');
+    setEditingCsvIndex(null);
+    setEditingCsvValue('');
+
+    const baseItems = csvParsedLearners.map(({ isDuplicate, ...rest }) => rest);
+    if (!cleaned) {
+      const removed = baseItems.filter((_, i) => i !== index);
+      setCsvParsedLearners(rebuildCsvPreview(removed, learners.map((learner) => learner.name)));
+      return;
+    }
+
+    const updated = baseItems.map((item, i) => (i === index ? { ...item, fullName: cleaned } : item));
+    setCsvParsedLearners(rebuildCsvPreview(updated, learners.map((learner) => learner.name)));
+  };
+
+  const handleCsvRemove = (index: number) => {
+    const remaining = csvParsedLearners
+      .filter((_, i) => i !== index)
+      .map(({ isDuplicate, ...rest }) => rest);
+    setCsvParsedLearners(rebuildCsvPreview(remaining, learners.map((learner) => learner.name)));
   };
 
   const handleStudentsReady = async (parsedLearners: ParsedLearner[]) => {
@@ -293,6 +425,16 @@ const AttendanceView: React.FC = () => {
     }
     setUploadingStu(true);
     setStuProgress(0);
+
+    const { unique } = splitUniqueAndDuplicates(parsedLearners, learners.map((learner) => learner.name));
+    const finalLearnersToUpload = sortParsedLearners(unique);
+
+    if (finalLearnersToUpload.length === 0) {
+      setUploadingStu(false);
+      setStuProgress(0);
+      alert('No new unique learners to append.');
+      return;
+    }
 
     // Simulate progress for large uploads
     const interval = setInterval(() => {
@@ -304,8 +446,8 @@ const AttendanceView: React.FC = () => {
 
     try {
       const selectedClassInfo = classes.find((cls) => cls.id === selectedClass);
-      const generatedNumbers = buildUniqueSixDigitNumbers(parsedLearners.length, selectedClassInfo?.grade);
-      const payloadLearners = parsedLearners.map((learner, index) => ({
+      const generatedNumbers = buildUniqueSixDigitNumbers(finalLearnersToUpload.length, selectedClassInfo?.grade);
+      const payloadLearners = finalLearnersToUpload.map((learner, index) => ({
         ...learner,
         learnerNumber: generatedNumbers[index],
       }));
@@ -482,16 +624,34 @@ const AttendanceView: React.FC = () => {
   const activeWeekDays = getWeekDays(selectedDate);
   const monthWeeksForWeekly = getMonthWeeks(viewingMonthDate);
   const activeWeekDateKeys = new Set(activeWeekDays.map(d => d.dateKey));
+  const previewRows = csvParsedLearners.map((learner, index) => ({ ...learner, originalIndex: index }));
+  const visiblePreviewRows = showDuplicatesOnly
+    ? previewRows.filter((learner) => learner.isDuplicate)
+    : previewRows;
 
   return (
     <div className={`space-y-6 rounded-2xl p-4 sm:p-6 transition-colors duration-300 ${dashboardBgClass}`}>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="
+                        flex flex-col sm:flex-row 
+                        sm:items-center sm:justify-between 
+                        gap-4 rounded-xl border 
+                        border-blue-100 
+                        bg-gradient-to-r from-blue-50 via-white to-indigo-50 
+                        p-4
+                      "
+      >
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Class Register</h1>
           <p className="text-gray-500">Mark daily attendance for your classes</p>
         </div>
         {selectedClassMeta && (
-          <div className="text-xs text-gray-600 bg-white border border-gray-200 rounded-xl p-3 min-w-[240px]">
+          <div className="
+                          text-xs text-slate-100 
+                          bg-gradient-to-br from-slate-800 to-slate-900 border 
+                          border-slate-700 
+                          rounded-xl 
+                          p-3 min-w-[240px]
+                          ">
             <div><span className="font-semibold">Class:</span> {selectedClassMeta.name || 'N/A'}</div>
             <div><span className="font-semibold">Grade:</span> {selectedClassMeta.grade || 'N/A'}</div>
             <div><span className="font-semibold">Subject:</span> {selectedClassMeta.subject || 'N/A'}</div>
@@ -500,8 +660,7 @@ const AttendanceView: React.FC = () => {
         )}
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
+      <div className="rounded-xl border border-blue-100 bg-gradient-to-br from-white via-blue-50/40 to-indigo-50/30 p-5">                                      {/* Filters */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
@@ -537,20 +696,34 @@ const AttendanceView: React.FC = () => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Learners {learners.length > 0 && <span className="text-green-600 font-normal">({learners.length} loaded)</span>}
+              Learners 
+              {learners.length > 0 && 
+              <span className="text-green-600 font-normal">
+                ({learners.length} loaded)
+              </span>}
             </label>
-            {/* Hidden file input for CSV */}
-            <input ref={csvFileRef} type="file" accept=".csv" onChange={handleDirectCsvPick} className="hidden" />
+           
+            <input ref={csvFileRef} type="file" 
+                   accept=".csv" 
+                   onChange={handleDirectCsvPick} className="hidden" 
+            />                                                                                                  {/* Hidden file input for CSV */}
             <div className="flex flex-col sm:flex-row gap-2">
               <button
                 type="button"
                 onClick={() => selectedClass && csvFileRef.current?.click()}
                 disabled={!selectedClass}
-                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border text-sm font-semibold transition-all sm:flex-1 ${
+                className={`
+                              flex items-center 
+                              justify-center 
+                              gap-2 px-4 py-3 
+                              rounded-lg 
+                              border text-sm font-semibold 
+                              transition-all sm:flex-1 ${
                   selectedClass
                     ? 'border-gray-300 text-blue-700 bg-blue-50 hover:border-blue-400 hover:bg-blue-100/50 cursor-pointer'
                     : 'border-gray-200 text-gray-400 bg-gray-100 cursor-not-allowed'
-                }`}
+                  }
+                `}
               >
                 <span>📄</span> <span>Upload CSV</span>
               </button>
@@ -558,11 +731,17 @@ const AttendanceView: React.FC = () => {
                 type="button"
                 onClick={() => { if (!selectedClass) return; setUploadMode('manual'); setShowUploadPanel(true); }}
                 disabled={!selectedClass}
-                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border text-sm font-semibold transition-all sm:flex-1 ${
+                className={`
+                              flex items-center 
+                              justify-center gap-2 px-4 py-3 
+                              rounded-lg 
+                              border text-sm font-semibold 
+                              transition-all sm:flex-1 ${
                   selectedClass
                     ? 'border-gray-300 text-blue-700 bg-blue-50 hover:border-blue-400 hover:bg-blue-100/50 cursor-pointer'
                     : 'border-gray-200 text-gray-400 bg-gray-100 cursor-not-allowed'
-                }`}
+                  }
+                `}
               >
                 <span>✏️</span> <span>Capture</span>
               </button>
@@ -579,18 +758,46 @@ const AttendanceView: React.FC = () => {
         </div>
 
         {/* CSV preview after file picked */}
-        {showUploadPanel && uploadMode === 'csv' && csvParsedLearners.length > 0 && (
+        {showUploadPanel && csvParsedLearners.length > 0 && (
           <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50/30 p-4 sm:p-5">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
-              <p className="text-xs sm:text-sm font-medium text-gray-800">📄 {csvFileName} — {csvParsedLearners.length} student(s) found</p>
-              <button
-                type="button"
-                onClick={() => { setShowUploadPanel(false); setCsvParsedLearners([]); setCsvFileName(null); }}
-                className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 text-lg leading-none"
-              >
-                ✕
-              </button>
+              <p className="
+                              text-xs sm:text-sm font-medium 
+                              text-gray-800">📄 
+                              {csvFileName} — {csvParsedLearners.length} 
+                              student(s) found
+              </p>
+              <div className="flex items-center gap-2">
+                {csvParsedLearners.some((learner) => learner.isDuplicate) && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDuplicatesOnly((prev) => !prev)}
+                    className="rounded-full border border-amber-200 px-2.5 py-1 text-[11px] font-medium text-amber-700 hover:bg-amber-50"
+                  >
+                    {showDuplicatesOnly ? 'Show all' : 'Show duplicates'}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => { setShowUploadPanel(false); setCsvParsedLearners([]); setCsvFileName(null); }}
+                  className="
+                              w-6 h-6 
+                              flex items-center justify-center 
+                              text-gray-400 
+                              hover:text-gray-600 
+                              text-lg 
+                              leading-none
+                            "
+                >
+                  ✕
+                </button>
+              </div>
             </div>
+            {csvParsedLearners.some((learner) => learner.isDuplicate) && (
+              <p className="mb-2 text-xs text-amber-700">
+                Duplicate names found. Edit or remove them to include; duplicates are skipped on upload.
+              </p>
+            )}
             <div className="rounded-lg border border-gray-200 overflow-x-auto">                               {/* Keep natural height so preview expands and pushes sections below down */}
               <table className="w-full text-xs sm:text-sm">
                 <thead className="bg-gray-50 sticky top-0">
@@ -598,14 +805,70 @@ const AttendanceView: React.FC = () => {
                     <th className="px-3 py-2 text-left text-xs font-bold text-gray-700">#</th>
                     <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 whitespace-nowrap">Learner #</th>
                     <th className="px-3 py-2 text-left text-xs font-bold text-gray-700">Full Name</th>
+                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700">Status</th>
+                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-700">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {csvParsedLearners.map((l, i) => (
-                    <tr key={i} className="hover:bg-gray-50">
+                  {visiblePreviewRows.map((l, i) => (
+                    <tr key={l.originalIndex} className="hover:bg-gray-50">
                       <td className="px-3 py-1.5 text-gray-500">{i + 1}</td>
                       <td className="px-3 py-1.5 text-gray-700 whitespace-nowrap text-[11px] sm:text-xs">Auto (6 digits)</td>
-                      <td className="px-3 py-1.5 text-gray-900 font-medium">{l.fullName}</td>
+                      <td className="px-3 py-1.5 text-gray-900 font-medium">
+                        {editingCsvIndex === l.originalIndex ? (
+                          <input
+                            type="text"
+                            value={editingCsvValue}
+                            onChange={(e) => setEditingCsvValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleCsvEditSave(l.originalIndex);
+                              if (e.key === 'Escape') { setEditingCsvIndex(null); setEditingCsvValue(''); }
+                            }}
+                            onBlur={() => handleCsvEditSave(l.originalIndex)}
+                            className="w-full rounded-md border border-gray-300 px-2 py-1 text-xs sm:text-sm"
+                            autoFocus
+                          />
+                        ) : (
+                          l.fullName
+                        )}
+                      </td>
+                      <td className="px-3 py-1.5">
+                        {l.isDuplicate ? (
+                          <span className="text-[11px] font-medium text-amber-700">Duplicate please amend</span>
+                        ) : (
+                          <span className="text-[11px] font-medium text-emerald-700">OK</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => (editingCsvIndex === l.originalIndex ? handleCsvEditSave(l.originalIndex) : handleCsvEditStart(l.originalIndex))}
+                            className="inline-flex items-center justify-center rounded-md border border-gray-200 p-1 text-gray-600 hover:text-blue-600 hover:border-blue-200"
+                            aria-label={editingCsvIndex === l.originalIndex ? 'Save edit' : 'Edit name'}
+                          >
+                            {editingCsvIndex === l.originalIndex ? (
+                              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M16.704 5.29a1 1 0 010 1.414l-7.778 7.778a1 1 0 01-.707.293H5.5a.5.5 0 01-.5-.5v-2.72a1 1 0 01.293-.707l7.778-7.778a1 1 0 011.414 0l2.919 2.92zM5.5 13.793V13l7.071-7.071.793.793L6.293 13.5H5.5z" clipRule="evenodd" />
+                              </svg>
+                            ) : (
+                              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-9.193 9.193a1 1 0 01-.414.26l-3.5 1a1 1 0 01-1.25-1.25l1-3.5a1 1 0 01.26-.414l9.269-9.117z" />
+                              </svg>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCsvRemove(l.originalIndex)}
+                            className="inline-flex items-center justify-center rounded-md border border-gray-200 p-1 text-gray-600 hover:text-red-600 hover:border-red-200"
+                            aria-label="Remove row"
+                          >
+                            <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M8 2a1 1 0 00-.894.553L6.382 4H3a1 1 0 000 2h.293l.853 10.237A2 2 0 006.139 18h7.722a2 2 0 001.993-1.763L16.707 6H17a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0012.999 2H8zm2 6a1 1 0 10-2 0v6a1 1 0 102 0V8zm4 0a1 1 0 10-2 0v6a1 1 0 102 0V8z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -631,6 +894,7 @@ const AttendanceView: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleCsvConfirmUpload}
+                  disabled={csvParsedLearners.every((learner) => learner.isDuplicate)}
                   className="px-4 py-2 text-xs sm:text-sm bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-all whitespace-nowrap"
                 >
                   Upload Students
@@ -654,7 +918,7 @@ const AttendanceView: React.FC = () => {
               </button>
             </div>
             <StudentUploadWidget
-              onLearnersReady={handleStudentsReady}
+              onLearnersReady={handleManualPreview}
               allowManualCapture={true}
               isSaving={uploadingStu}
               saveProgress={stuProgress}

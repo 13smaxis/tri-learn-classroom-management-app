@@ -20,6 +20,10 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass, onCr
     sick: 0,
   });
   const [loadingData, setLoadingData] = useState(false);
+  const [filterMode, setFilterMode] = useState<'daily' | 'quarter' | 'yearly'>('daily');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedQuarter, setSelectedQuarter] = useState(Math.floor(new Date().getMonth() / 3));
 
   const selectedClassId = useMemo(() => selectedClass?.id || selectedClass?.classId || '', [selectedClass]);
 
@@ -52,9 +56,25 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass, onCr
       return dates;
     };
 
+    const getDateRange = () => {
+      const selected = new Date(selectedDate);
+      let startDate: Date, endDate: Date;
+
+      if (filterMode === 'daily') {
+        startDate = new Date(selected);
+        endDate = new Date(selected);
+      } else if (filterMode === 'quarter') {
+        startDate = new Date(selectedYear, selectedQuarter * 3, 1);
+        endDate = new Date(selectedYear, selectedQuarter * 3 + 3, 0);
+      } else {
+        startDate = new Date(selectedYear, 0, 1);
+        endDate = new Date(selectedYear, 11, 31);
+      }
+      return { startDate, endDate };
+    };
+
     setLoadingData(true);
-    const endDate = new Date();
-    const startDate = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+    const { startDate, endDate } = getDateRange();
 
     Promise.all([
       api.getClass(selectedClassId),
@@ -111,7 +131,7 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass, onCr
         setAttendanceBreakdown({ present: 0, absent: 0, late: 0, excused: 0, bunking: 0, sick: 0 });
       })
       .finally(() => setLoadingData(false));
-  }, [selectedClassId]);
+  }, [selectedClassId, filterMode, selectedDate, selectedYear, selectedQuarter]);
 
   if (!selectedClass) {
     return (
@@ -134,19 +154,25 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass, onCr
 
   const detailClass = classDetails || selectedClass;
 
+  // Calculate attendance rate and pass rate
+  const totalAttendanceRecords = Object.values(attendanceBreakdown).reduce((a, b) => a + b, 0);
+  const attendanceRate = totalAttendanceRecords > 0 ? Math.round((attendanceBreakdown.present / totalAttendanceRecords) * 100) : 0;
+  const trendAverage = attendanceTrend.length > 0 ? Math.round(attendanceTrend.reduce((sum, d) => sum + d.presentPct, 0) / attendanceTrend.length) : 0;
+
   const stats = [
     { label: 'Learners', value: learners.length },
-    { label: 'Academic Year', value: detailClass.academicYear || 'N/A' },
-    { label: 'Invite Code', value: detailClass.inviteToken || 'N/A' },
+    { label: 'Attendance Rate', value: `${attendanceRate}%` },
+    { label: 'Pass Rate', value: `${trendAverage}%` },
   ];
 
   const hasTrendData = attendanceTrend.some((point) => point.total > 0);
-  const trendSvgWidth = 220;
-  const trendSvgHeight = 90;
-  const trendPaddingX = 10;
-  const trendPaddingY = 10;
-  const trendUsableWidth = trendSvgWidth - trendPaddingX * 2;
-  const trendUsableHeight = trendSvgHeight - trendPaddingY * 2;
+  const trendSvgWidth = 520;
+  const trendSvgHeight = 300;
+  const trendPaddingX = 50;
+  const trendPaddingY = 30;
+  const trendPaddingBottom = 40;
+  const trendUsableWidth = trendSvgWidth - trendPaddingX - 20;
+  const trendUsableHeight = trendSvgHeight - trendPaddingY - trendPaddingBottom;
   const trendPoints = attendanceTrend.map((point, index) => {
     const x = attendanceTrend.length > 1
       ? trendPaddingX + (index / (attendanceTrend.length - 1)) * trendUsableWidth
@@ -214,18 +240,22 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass, onCr
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-300px)]">
+        <div className="lg:col-span-2 space-y-4 flex flex-col overflow-y-auto pr-1">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {stats.map((stat) => (
               <div key={stat.label} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                <p className="text-xs uppercase tracking-widest text-gray-400">{stat.label}</p>
-                <p className="text-2xl font-semibold text-gray-900 mt-2">{stat.value}</p>
+                <p className={`${stat.label === 'Attendance Rate' ? 'text-[10px] whitespace-nowrap tracking-wide' : 'text-xs tracking-widest'} uppercase text-gray-400`}>
+                  {stat.label}
+                </p>
+                <p className="font-semibold text-gray-900 mt-2 text-2xl">
+                  {stat.value}
+                </p>
               </div>
             ))}
           </div>
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm flex-1 flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Learners</h3>
               <span className="text-xs text-gray-400">#{learners.length} total</span>
@@ -233,7 +263,7 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass, onCr
             {loadingData ? (
               <p className="text-sm text-gray-500">Loading class details...</p>
             ) : (
-              <div className="max-h-72 overflow-y-auto pr-1">
+              <div className="flex-1 overflow-y-auto pr-1">
                 {learners.length > 0 ? (
                   <div className="space-y-2">
                     {learners.map((learner) => (
@@ -269,23 +299,137 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass, onCr
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="lg:col-span-2 space-y-4 flex flex-col">
+          {/* Date Filter */}
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+            <div className="flex flex-col gap-4">
+              {/* Filter Mode Buttons */}
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={() => setFilterMode('daily')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                    filterMode === 'daily'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Daily
+                </button>
+                <button
+                  onClick={() => setFilterMode('quarter')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                    filterMode === 'quarter'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Quarter
+                </button>
+                <button
+                  onClick={() => setFilterMode('yearly')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                    filterMode === 'yearly'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Yearly
+                </button>
+              </div>
+
+              {/* Dynamic picker based on filter mode */}
+              {filterMode === 'daily' && (
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-semibold text-gray-600">Select Date</label>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  />
+                </div>
+              )}
+
+              {filterMode === 'quarter' && (
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-semibold text-gray-600">Year</label>
+                    <input
+                      type="number"
+                      min="2020"
+                      max="2099"
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(parseInt(e.target.value) || new Date().getFullYear())}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-semibold text-gray-600">Quarter</label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[0, 1, 2, 3].map((q) => (
+                        <button
+                          key={q}
+                          onClick={() => setSelectedQuarter(q)}
+                          className={`py-2 rounded-lg text-xs font-medium transition ${
+                            selectedQuarter === q
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          Q{q + 1}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {filterMode === 'yearly' && (
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-semibold text-gray-600">Select Year</label>
+                  <input
+                    type="number"
+                    min="2020"
+                    max="2099"
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(parseInt(e.target.value) || new Date().getFullYear())}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Attendance Trend</h3>
-            <div className="h-36 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              Pass Rate Trend
+            </h3>
+            <div className="h-96 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center p-4 overflow-x-auto">
               {hasTrendData ? (
-                <svg width="220" height="90" viewBox="0 0 220 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <line x1="10" y1="10" x2="210" y2="10" stroke="#e2e8f0" strokeWidth="1" strokeDasharray="2 2" />
-                  <line x1="10" y1="45" x2="210" y2="45" stroke="#e2e8f0" strokeWidth="1" strokeDasharray="2 2" />
-                  <line x1="10" y1="80" x2="210" y2="80" stroke="#cbd5e1" strokeWidth="1" />
-                  <line x1="10" y1="10" x2="10" y2="80" stroke="#cbd5e1" strokeWidth="1" />
-                  <text x="6" y="13" textAnchor="end" fontSize="8" fill="#64748b">100%</text>
-                  <text x="6" y="48" textAnchor="end" fontSize="8" fill="#64748b">50%</text>
-                  <text x="6" y="83" textAnchor="end" fontSize="8" fill="#64748b">0%</text>
-                  <path d={trendPath} stroke="#0f172a" strokeWidth="3" fill="none" strokeLinecap="round" />
+                <svg width={trendSvgWidth} height={trendSvgHeight} viewBox={`0 0 ${trendSvgWidth} ${trendSvgHeight}`} fill="none" xmlns="http://www.w3.org/2000/svg">
+                  {/* Y-axis gridlines with labels */}
+                  {[100, 80, 60, 40, 20, 0].map((pct) => {
+                    const y = trendPaddingY + ((100 - pct) / 100) * trendUsableHeight;
+                    return (
+                      <g key={`gridline-${pct}`}>
+                        <line x1={trendPaddingX} y1={y} x2={trendSvgWidth - 10} y2={y} stroke={pct === 0 ? '#cbd5e1' : '#e2e8f0'} strokeWidth="1" strokeDasharray={pct === 0 ? '0' : '2 2'} />
+                        <text x={trendPaddingX - 8} y={y + 4} textAnchor="end" fontSize="11" fill="#64748b" fontWeight="500">{pct}%</text>
+                      </g>
+                    );
+                  })}
+                  {/* X-axis */}
+                  <line x1={trendPaddingX} y1={trendSvgHeight - trendPaddingBottom} x2={trendSvgWidth - 10} y2={trendSvgHeight - trendPaddingBottom} stroke="#cbd5e1" strokeWidth="2" />
+                  {/* Y-axis */}
+                  <line x1={trendPaddingX} y1={trendPaddingY} x2={trendPaddingX} y2={trendSvgHeight - trendPaddingBottom} stroke="#cbd5e1" strokeWidth="2" />
+                  {/* Line chart */}
+                  <path d={trendPath} stroke="#2563eb" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                  {/* Data points */}
                   {trendPoints.map((point) => (
-                    <circle key={point.date} cx={point.x} cy={point.y} r="3.5" fill="#0f172a" />
+                    <circle key={point.date} cx={point.x} cy={point.y} r="4.5" fill="#2563eb" stroke="#ffffff" strokeWidth="2" />
                   ))}
+                  {/* X-axis date labels */}
                   {trendLabelIndexes.map((index) => {
                     const point = trendPoints[index];
                     if (!point) return null;
@@ -293,49 +437,70 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass, onCr
                       <text
                         key={`label-${point.date}`}
                         x={point.x}
-                        y="88"
+                        y={trendSvgHeight - trendPaddingBottom + 20}
                         textAnchor="middle"
-                        fontSize="9"
+                        fontSize="11"
                         fill="#475569"
+                        fontWeight="500"
                       >
                         {formatDayLabel(point.date)}
                       </text>
                     );
                   })}
+
                 </svg>
               ) : (
-                <p className="text-sm text-gray-500">No attendance records yet.</p>
+                <p className="text-sm text-gray-500">No attendance records yet. Add daily attendance to populate this trend.</p>
               )}
             </div>
-            <p className="mt-3 text-xs text-gray-500">
-              {hasTrendData
-                ? 'Present % for the current month (Mon–Fri).' 
-                : 'Add daily attendance to populate this trend.'}
+            <p className="mt-4 text-sm text-gray-600">
+              <span className="font-semibold">Pass Rate:</span> {hasTrendData ? 'Percentage of learners present each day (Mon–Fri)' : 'Add daily attendance to populate this trend.'}
             </p>
           </div>
 
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Monthly Attendance Mix</h3>
-            <div className="h-36 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <svg className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              Monthly Attendance Mix
+            </h3>
+            <div className="h-96 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center p-4">
               {hasBreakdownData ? (
-                <svg width="220" height="90" viewBox="0 0 220 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <line x1="12" y1="80" x2="208" y2="80" stroke="#cbd5e1" strokeWidth="1" />
-                  {statusBars.map((bar, index) => {
-                    const barWidth = 24;
-                    const gap = 8;
-                    const x = 18 + index * (barWidth + gap);
-                    const height = (bar.value / maxStatusValue) * 58;
-                    const y = 80 - height;
+                <svg width="520" height="300" viewBox="0 0 520 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  {/* Y-axis gridlines */}
+                  {[100, 75, 50, 25, 0].map((pct) => {
+                    const y = 30 + ((100 - pct) / 100) * 230;
                     return (
-                      <g key={bar.key}>
-                        <rect x={x} y={y} width={barWidth} height={height} fill={bar.color} rx="3" />
-                        <text x={x + barWidth / 2} y="88" textAnchor="middle" fontSize="9" fill="#475569">{bar.label}</text>
+                      <g key={`gridline-${pct}`}>
+                        <line x1="50" y1={y} x2="500" y2={y} stroke="#e2e8f0" strokeWidth="1" strokeDasharray="2 2" />
+                        <text x="42" y={y + 4} textAnchor="end" fontSize="11" fill="#64748b">{pct}%</text>
                       </g>
                     );
                   })}
+                  {/* X and Y axes */}
+                  <line x1="50" y1="30" x2="50" y2="260" stroke="#cbd5e1" strokeWidth="2" />
+                  <line x1="50" y1="260" x2="500" y2="260" stroke="#cbd5e1" strokeWidth="2" />
+
+                  {/* Bars */}
+                  {statusBars.map((bar, index) => {
+                    const barWidth = 50;
+                    const gap = 12;
+                    const x = 60 + index * (barWidth + gap);
+                    const height = (bar.value / maxStatusValue) * 230;
+                    const y = 260 - height;
+                    return (
+                      <g key={bar.key}>
+                        <rect x={x} y={y} width={barWidth} height={height} fill={bar.color} rx="3" />
+                        <text x={x + barWidth / 2} y="280" textAnchor="middle" fontSize="12" fill="#475569" fontWeight="600">{bar.label}</text>
+                        <text x={x + barWidth / 2} y={y - 8} textAnchor="middle" fontSize="11" fill="#1e293b" fontWeight="700">{bar.value}</text>
+                      </g>
+                    );
+                  })}
+
                 </svg>
               ) : (
-                <p className="text-sm text-gray-500">No attendance records yet.</p>
+                <p className="text-sm text-gray-500">No attendance records yet. Add daily attendance to populate this chart.</p>
               )}
             </div>
             <p className="mt-3 text-xs text-gray-500">Status distribution for the current month.</p>

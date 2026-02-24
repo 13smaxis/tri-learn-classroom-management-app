@@ -21,6 +21,7 @@ import AttendanceView from '@/components/teacher/AttendanceView';
 import MarksView from '@/components/teacher/MarksView';
 import AssignmentsView from '@/components/teacher/AssignmentsView';
 import HomeworkView from '@/components/teacher/HomeworkView';
+import StarsView from '@/components/teacher/StarsView';
 import MessagesView from '@/components/shared/MessagesView';
 import ClassesView from '@/components/shared/ClassesView';
 import ClassDetailsView from '@/components/shared/ClassDetailsView';
@@ -49,6 +50,7 @@ const AppLayout: React.FC = () => {
   const [showCreateClassModal, setShowCreateClassModal] = useState(false);
 
   const showWelcomeOverlay = !!user && user.role === 'teacher' && justSignedUp;
+  const appBgClass = 'bg-gradient-to-br from-blue-100 to-blue-50';
 
 
   // Reset to hero view after sign-out
@@ -108,7 +110,7 @@ const AppLayout: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className={`min-h-screen flex items-center justify-center ${appBgClass}`}>
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600">Loading...</p>
@@ -120,7 +122,7 @@ const AppLayout: React.FC = () => {
   // Show landing page for unauthenticated users
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex">
+      <div className={`min-h-screen ${appBgClass} flex`}>
         <Sidebar
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
@@ -179,7 +181,7 @@ const AppLayout: React.FC = () => {
       case 'classes':
         return (
           <div className="flex h-full">
-            <div className="w-[30%] min-w-[180px] max-w-[400px] border-r bg-gray-50 overflow-auto">
+            <div className="w-[30%] min-w-[180px] max-w-[400px] overflow-auto">
               <ClassesView
                 classesVersion={classesVersion}
                 onSelectClass={setSelectedClass}
@@ -221,6 +223,8 @@ const AppLayout: React.FC = () => {
         }
         return <HomeworkView />;
 
+      case 'stars':
+        return <StarsView />;
       
       case 'messages':
         return <MessagesView />;
@@ -241,7 +245,7 @@ const AppLayout: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen bg-gray-50 relative ${showWelcomeOverlay ? 'overflow-hidden' : ''}`}>
+    <div className={`min-h-screen ${appBgClass} relative ${showWelcomeOverlay ? 'overflow-hidden' : ''}`}>
       <div className={`flex h-screen ${showWelcomeOverlay ? 'pointer-events-none blur-sm transition-all' : 'transition-all'}`}>
         <Sidebar
           isOpen={sidebarOpen}
@@ -254,8 +258,14 @@ const AppLayout: React.FC = () => {
           onOpenInvite={() => setShowInviteModal(true)}
         />
           
-        <main className="flex-1 p-4 lg:p-6 overflow-auto">
-          {renderContent()}
+        <main className={`flex-1 p-4 lg:p-6 overflow-auto ${appBgClass}`}>
+          {activeView === 'dashboard' ? (
+            <div className={`rounded-2xl p-4 sm:p-6 ${appBgClass}`}>
+              {renderContent()}
+            </div>
+          ) : (
+            renderContent()
+          )}
         </main>
 
         {/* Teacher Create Class Modal - shared entry point */}
