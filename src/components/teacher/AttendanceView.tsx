@@ -6,6 +6,8 @@ import StudentUploadWidget, { ParsedLearner } from '@/components/shared/StudentU
 
 export type AttendanceByDate = Record<string, Record<string, string>>;
 
+type LockedAttendanceByDate = Record<string, Record<string, boolean>>;                                          //-Tracks whether a learner's status is locked (saved) for each date.
+
 type Learner = { id: string; name: string; number: string };
 type CsvPreviewLearner = ParsedLearner & { isDuplicate: boolean };
 
@@ -39,9 +41,9 @@ const parseCsvRow = (line: string): string[] => {
 
 const normalizeFullName = (fullName: string): string =>
   fullName
-    .trim()
-    .replace(/\s+/g, ' ')
-    .toLowerCase();
+    .trim()                                                                                                     //-Trim leading/trailing whitespace
+    .replace(/\s+/g, ' ')                                                                                       //-Regex to collapse multiple spaces to single
+    .toLowerCase();                                                                                             //-Normalize case for consistent duplicate detection
 
 const sortParsedLearners = (items: ParsedLearner[]): ParsedLearner[] =>
   [...items].sort((a, b) => a.fullName.localeCompare(b.fullName, undefined, { sensitivity: 'base' }));
@@ -105,6 +107,23 @@ const buildUniqueSixDigitNumbers = (count: number, grade?: string): string[] => 
   return Array.from(generated);
 };
 
+/**
+ * Builds a lock map from saved attendance.
+ * Any learner with a non-empty saved status becomes read-only.
+ */
+const buildLockedMapFromAttendance = (attendanceForDate: Record<string, 
+                           string> = {}): Record<string, 
+                           boolean> => {                                                                        //-Takes the attendance record for a specific date and creates a map indicating which learners have a saved status, thus should be locked from editing in the UI.
+  return Object.entries(attendanceForDate).reduce<Record<string, 
+    boolean>>((acc, [learnerId, status]) => {                                                                   //-Iterate over each learner's attendance status for the date
+    if (status) 
+    {
+      acc[learnerId] = true;                                                                                    //-If status is non-empty, mark this learner as locked (true) in the map, no editing allowed
+    }
+    return acc;                                                                                               //-Return the accumulated lock map, where keys are learner IDs and values indicate if they are locked (true) or not (undefined/false)
+  }, {});
+};
+
 const AttendanceView: React.FC = () => {
   const { user } = useAuth();
   const { forceRefreshKey } = useAppContext();
@@ -119,6 +138,8 @@ const AttendanceView: React.FC = () => {
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [attendanceByDate, setAttendanceByDate] = useState<AttendanceByDate>({});
+  // Stores per-date learner lock state after attendance is saved.
+  const [lockedAttendanceByDate, setLockedAttendanceByDate] = useState<LockedAttendanceByDate>({});
   const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [showUploadPanel, setShowUploadPanel] = useState(false);
   const [uploadingStu, setUploadingStu] = useState(false);
@@ -129,7 +150,25 @@ const AttendanceView: React.FC = () => {
   const [editingCsvIndex, setEditingCsvIndex] = useState<number | null>(null);
   const [editingCsvValue, setEditingCsvValue] = useState('');
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
+  // Holds the temporary success message shown in the centered overlay.
+  const [successOverlayMessage, setSuccessOverlayMessage] = useState<string | null>(null);
   const csvFileRef = useRef<HTMLInputElement>(null);
+  // Stores the current auto-dismiss timer id for the success overlay.
+  const successOverlayTimeoutRef = useRef<number | null>(null);
+
+  /**
+   * Shows a temporary success overlay and resets the dismiss timer if needed.
+   */
+  const showSuccessOverlay = (message: string) => {
+    setSuccessOverlayMessage(message); // Render the success overlay with the provided message.
+    if (successOverlayTimeoutRef.current) {
+      window.clearTimeout(successOverlayTimeoutRef.current); // Prevent overlapping timers.
+    }
+    successOverlayTimeoutRef.current = window.setTimeout(() => {
+      setSuccessOverlayMessage(null); // Hide overlay after the timeout.
+      successOverlayTimeoutRef.current = null; // Clear stored timer id once completed.
+    }, 1800);
+  };
 
   const getWeekDays = (dateString: string) => {                                                                 //-Helper functions to calculate week and month dates (safe local time parsing)
     
@@ -200,6 +239,7 @@ const AttendanceView: React.FC = () => {
       setLearners([]);
       setAttendance({});
       setAttendanceByDate({});
+      setLockedAttendanceByDate({});
       setUploadStatus(null);
       setUploadedFileName(null);
       setShowUploadPanel(false);
@@ -247,11 +287,14 @@ const AttendanceView: React.FC = () => {
     api.getAttendanceForDate(selectedClass, selectedDate)
       .then(data => {
         setAttendanceByDate({ [selectedDate]: data });
+        // Mark already saved learner statuses as locked for this date.
+        setLockedAttendanceByDate({ [selectedDate]: buildLockedMapFromAttendance(data) });
         setAttendance(data);
       })
       .catch(err => {
         console.error('Failed to load attendance:', err);
         setAttendanceByDate({});
+        setLockedAttendanceByDate({});
         setAttendance({});
       });
   }, [selectedClass, classes]);
@@ -270,6 +313,8 @@ const AttendanceView: React.FC = () => {
     api.getAttendanceForDate(selectedClass, selectedDate)
       .then(data => {
         setAttendanceByDate(prev => ({ ...prev, [selectedDate]: data }));
+        // Keep lock state in sync when switching to a new date.
+        setLockedAttendanceByDate(prev => ({ ...prev, [selectedDate]: buildLockedMapFromAttendance(data) }));
         setAttendance(data);
       })
       .catch(err => {
@@ -310,6 +355,12 @@ const AttendanceView: React.FC = () => {
       .then(results => {
         const merged = Object.assign({}, ...results);
         setAttendanceByDate(prev => ({ ...prev, ...merged }));
+        // Build lock maps for all preloaded dates so saved rows are read-only everywhere.
+        const mergedLocked = Object.entries(merged).reduce<LockedAttendanceByDate>((acc, [dateKey, attendanceForDate]) => {
+          acc[dateKey] = buildLockedMapFromAttendance((attendanceForDate || {}) as Record<string, string>);
+          return acc;
+        }, {});
+        setLockedAttendanceByDate(prev => ({ ...prev, ...mergedLocked }));
         // For daily view, also update the attendance state with the loaded data
         if (viewMode === 'daily') {
           setAttendance(merged[selectedDate] || {});
@@ -328,6 +379,17 @@ const AttendanceView: React.FC = () => {
     );
     setCsvParsedLearners(refreshed);
   }, [learners]);
+
+  /**
+   * Clears the overlay timer on unmount to avoid state updates after component disposal.
+   */
+  useEffect(() => {
+    return () => {
+      if (successOverlayTimeoutRef.current) {
+        window.clearTimeout(successOverlayTimeoutRef.current); // Cancel pending auto-dismiss timer.
+      }
+    };
+  }, []);
 
   const handleCsvUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     // Legacy handler kept for backward compat – unused now
@@ -484,6 +546,9 @@ const AttendanceView: React.FC = () => {
   };
 
   const handleAttendanceChange = (learnerId: string, status: string) => {
+    // Prevent editing learners that already have a saved status for this date.
+    if (lockedAttendanceByDate[selectedDate]?.[learnerId]) return;
+
     setAttendance(prev => {
       const next = { ...prev, [learnerId]: status };
       setAttendanceByDate(prevByDate => {
@@ -496,12 +561,16 @@ const AttendanceView: React.FC = () => {
   };
 
   const markAllPresent = () => {
-    const allPresent: Record<string, string> = {};
-    learners.forEach(l => allPresent[l.id] = 'present');
-    const newAttendance: Record<string, string> = {};
-    learners.forEach(learner => {
+    // Only update learners that are still open (not yet locked/saved).
+    const lockedForDate = lockedAttendanceByDate[selectedDate] || {};
+    const existingForDate = attendanceByDate[selectedDate] || {};
+    const newAttendance: Record<string, string> = { ...existingForDate };
+
+    learners.forEach((learner) => {
+      if (lockedForDate[learner.id]) return;
       newAttendance[learner.id] = 'present';
     });
+
     setAttendance(newAttendance);
     setAttendanceByDate(prevByDate => ({
       ...prevByDate,
@@ -515,18 +584,23 @@ const AttendanceView: React.FC = () => {
     const currentForDate = attendanceByDate[selectedDate] || {};
     const updatedForDate = { ...currentForDate, ...attendance };
 
-    // Save attendance to backend
-    api.saveAttendance({
+    
+    api.saveAttendance({                                                                                        //-Save attendance to backend
       classId: selectedClass,
       date: selectedDate,
       attendance: updatedForDate
     })
       .then(() => {
-        setAttendanceByDate(prevByDate => ({
-          ...prevByDate,
-          [selectedDate]: updatedForDate
+        setAttendanceByDate(prevByDate => ({                                                                    //-Updates the previous attendanceByDate with the new attendance for the selected date, ensuring the UI reflects the latest saved state without needing to refetch from backend
+          ...prevByDate,                                                                                        //-Keep all previously loaded dates intact
+          [selectedDate]: updatedForDate                                                                        //-Update the selected date with the new attendance data
         }));
-        alert(`Attendance register for ${selectedDate} has been saved to database.`);
+        setLockedAttendanceByDate(prev => ({
+          ...prev,
+          // After save, lock all learners that now have a status.
+          [selectedDate]: buildLockedMapFromAttendance(updatedForDate),
+        }));
+        showSuccessOverlay('Attendance saved successfully');
       })
       .catch(err => {
         console.error('Failed to save attendance:', err);
@@ -534,8 +608,7 @@ const AttendanceView: React.FC = () => {
       });
   };
 
-  // Calculate attendance counts based on current view
-  const getVisibleDates = () => {
+  const getVisibleDates = () => {                                                                               //-Calculate attendance counts based on current view
     if (viewMode === 'daily') {
       return [selectedDate];
     } else if (viewMode === 'weekly') {
@@ -624,6 +697,10 @@ const AttendanceView: React.FC = () => {
   const activeWeekDays = getWeekDays(selectedDate);
   const monthWeeksForWeekly = getMonthWeeks(viewingMonthDate);
   const activeWeekDateKeys = new Set(activeWeekDays.map(d => d.dateKey));
+  // Lock map for the currently selected date in daily view.
+  const selectedDateLockedMap = lockedAttendanceByDate[selectedDate] || {};
+  const lockedCountForSelectedDate = learners.filter((learner) => selectedDateLockedMap[learner.id]).length;
+  const openCountForSelectedDate = Math.max(learners.length - lockedCountForSelectedDate, 0);
   const previewRows = csvParsedLearners.map((learner, index) => ({ ...learner, originalIndex: index }));
   const visiblePreviewRows = showDuplicatesOnly
     ? previewRows.filter((learner) => learner.isDuplicate)
@@ -1019,7 +1096,12 @@ const AttendanceView: React.FC = () => {
           {viewMode === 'daily' && (
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-                <h3 className="font-semibold text-gray-900">Learners ({learners.length})</h3>
+                <div>
+                  <h3 className="font-semibold text-gray-900">Learners ({learners.length})</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Locked: {lockedCountForSelectedDate} • Open: {openCountForSelectedDate}
+                  </p>
+                </div>
                 <button
                   onClick={markAllPresent}
                   className="px-4 py-2 text-sm font-medium text-green-600 bg-green-50 rounded-lg hover:bg-green-100 transition-all"
@@ -1028,7 +1110,10 @@ const AttendanceView: React.FC = () => {
                 </button>
               </div>
               <div className="divide-y divide-gray-100">
-                {learners.map((learner) => (
+                {learners.map((learner) => {
+                  // This learner is read-only when true.
+                  const isLocked = Boolean(selectedDateLockedMap[learner.id]);
+                  return (
                   <div key={learner.id} className="flex items-center justify-between p-4 hover:bg-gray-50">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-medium">
@@ -1036,7 +1121,10 @@ const AttendanceView: React.FC = () => {
                       </div>
                       <div>
                         <p className="font-medium text-gray-900">{learner.name}</p>
-                        <p className="text-sm text-gray-500">#{learner.number}</p>
+                        <p className="text-sm text-gray-500">
+                          #{learner.number}
+                          {isLocked ? <span className="ml-2 text-[11px] font-medium text-blue-600">Saved</span> : null}
+                        </p>
                       </div>
                     </div>
 
@@ -1045,6 +1133,7 @@ const AttendanceView: React.FC = () => {
                         <button
                           key={status}
                           onClick={() => handleAttendanceChange(learner.id, status)}
+                          disabled={isLocked}
                           className={`px-3 py-2 text-sm font-medium rounded-lg transition-all ${attendance[learner.id] === status
                               ? status === 'present' ? 'bg-green-500 text-white' :
                                 status === 'absent' ? 'bg-red-500 text-white' :
@@ -1053,14 +1142,14 @@ const AttendanceView: React.FC = () => {
                                       status === 'sick' ? 'bg-purple-500 text-white' :
                                         'bg-blue-500 text-white'
                               : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            }`}
+                            } ${isLocked ? 'cursor-not-allowed opacity-75 hover:bg-inherit' : ''}`}
                         >
                           {status.charAt(0).toUpperCase() + status.slice(1)}
                         </button>
                       ))}
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
             </div>
           )}
@@ -1187,6 +1276,20 @@ const AttendanceView: React.FC = () => {
             </div>
           )}
         </>
+      )}
+
+      {/* Show centered success feedback only when a success message exists. */}
+      {successOverlayMessage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
+          <div className="w-[min(92vw,360px)] rounded-2xl border border-border bg-card p-6 shadow-lg">
+            <div className="mx-auto relative flex h-16 w-16 items-center justify-center">
+              <span className="absolute inline-flex h-full w-full rounded-full border-4 border-primary/20" />
+              {/* Animated ring to indicate successful completion. */}
+              <span className="inline-flex h-12 w-12 animate-spin rounded-full border-4 border-primary/30 border-t-primary" />
+            </div>
+            <p className="mt-4 text-center text-sm font-medium text-foreground">{successOverlayMessage}</p>
+          </div>
+        </div>
       )}
     </div>
   );

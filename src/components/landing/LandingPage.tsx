@@ -114,7 +114,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
     return () => clearTimeout(timer);
   }, []);
 
-  /* Cycle slides indefinitely */
+  /** 
+   * Cycle slides indefinitely 
+   */
   useEffect(() => {
     const iv = setInterval(() => {
       setPhase('out');
@@ -240,10 +242,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
 
   return (
     <div className="flex flex-col overflow-hidden" style={{ height: '100dvh' }}>
-      <style>{animKeyframes}</style>
+      <style>{animKeyframes}</style>                                                                            {/* Inject keyframes into the page for the animations */}  
 
       {/* ═══════ Top: Hero (70% of viewport) ═══════ */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 text-white" style={{ height: '80dvh', minHeight: 0 }}>
+      <section className="
+                            relative overflow-hidden 
+                            bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 
+                            text-white" 
+                style={{ height: '80dvh', minHeight: 0 }}>
         <div className="relative h-full flex flex-col items-center justify-center px-4">
           {showLogin ? (
             <LoginView
@@ -262,16 +268,21 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
             />
           ) : (
             <>
-              {/* Heading */}
-              <h1 className="text-[clamp(1.25rem,4vw,3rem)] font-bold mb-[1vh] text-center leading-tight">
+              
+              <h1 className="text-[clamp(1.25rem,4vw,3rem)] font-bold mb-[1vh] text-center leading-tight">      {/* Heading */}
                 Classroom Management Made Simple
               </h1>
-              <p className="text-[clamp(0.75rem,2vw,1.125rem)] text-blue-100 max-w-2xl mx-auto mb-[2vh] text-center">
+              <p className="
+                              text-[clamp(0.75rem,2vw,1.125rem)] 
+                              text-blue-100 max-w-2xl mx-auto mb-[2vh] 
+                              text-center
+                            "
+              >                                                                                                 {/* Subheading */}
                 Connect teachers, parents and learners on one powerful platform.
               </p>
 
-              {/* Bouncing feature bubbles */}
-              <div className="relative w-full max-w-3xl" style={{ height: 'clamp(6rem, 20vh, 11rem)' }}>
+              
+              <div className="relative w-full max-w-3xl" style={{ height: 'clamp(6rem, 20vh, 11rem)' }}>        {/* Bouncing feature bubbles */}
                 {features.map((feature, idx) => (
                   <div
                     key={idx}
