@@ -122,7 +122,7 @@ const AppLayout: React.FC = () => {
   // Show landing page for unauthenticated users
   if (!user) {
     return (
-      <div className={`min-h-screen ${appBgClass} flex`}>
+      <div className="min-h-screen bg-white flex">
         <Sidebar
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
