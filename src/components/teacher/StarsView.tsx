@@ -7,6 +7,7 @@ interface StudentRecognition {
   learnerNumber: string;
   fullName: string;
   attendanceRate: number;
+  passRate: number;
   attendanceStars: number;
   homeworkStars: number;
   assignmentStars: number;
@@ -19,6 +20,22 @@ interface SchoolClass {
   grade: string;
   subject: string;
 }
+
+const CLASS_SELECTION_STORAGE_KEY = 'triLearn:selectedClassId';
+
+const mapLearnersForRecognition = (data: any[]): StudentRecognition[] => {
+  return (data || []).map((learner: any, index: number) => ({
+    learnerId: learner.id || learner.userId || learner.learnerId || learner.enrollmentId,
+    learnerNumber: learner.learnerNumber || String(index + 1),
+    fullName: learner.fullName || learner.name || 'Learner',
+    attendanceRate: 0,
+    passRate: 0,
+    attendanceStars: 0,
+    homeworkStars: 0,
+    assignmentStars: 0,
+    totalStars: 0,
+  }));
+};
 
 const StarsView: React.FC = () => {
   const { user } = useAuth();
@@ -38,7 +55,11 @@ const StarsView: React.FC = () => {
       try {
         const classes = await api.getMyClasses();
         setClasses(classes || []);
-        if (classes && classes.length > 0) {
+        const preferredClassId = localStorage.getItem(CLASS_SELECTION_STORAGE_KEY);
+        if (preferredClassId && classes?.some((cls: SchoolClass) => cls.id === preferredClassId)) {
+          setSelectedClassId(preferredClassId);
+          localStorage.removeItem(CLASS_SELECTION_STORAGE_KEY);
+        } else if (classes && classes.length > 0) {
           setSelectedClassId(classes[0].id);
         }
       } catch (error) {
@@ -56,11 +77,43 @@ const StarsView: React.FC = () => {
     
     const loadRecognition = async () => {
       setLoading(true);
+      setSelectedStudent(null);
       try {
-        const recognition = await api.getClassRecognition(selectedClassId);
-        setStudentRecognition(recognition || []);
+        const recognition = await api.getClassRecognition(selectedClassId).catch(() => []);
+
+        const learners = await api.getLearners(selectedClassId)
+          .catch(async () => {
+            const fallback = await api.getClassStudents(selectedClassId);
+            return (fallback || []).filter((student: any) => student.role === 'learner');
+          });
+
+        const baseLearners = mapLearnersForRecognition(learners || []);
+        const recognitionByLearner = new Map(
+          (recognition || []).map((item: StudentRecognition) => [item.learnerId, item])
+        );
+
+        const mergedLearners = baseLearners.map((learner) => {
+          const learnerRecognition = recognitionByLearner.get(learner.learnerId);
+          if (!learnerRecognition) return learner;
+
+          return {
+            ...learner,
+            ...learnerRecognition,
+            learnerId: learner.learnerId,
+            learnerNumber: learner.learnerNumber || learnerRecognition.learnerNumber,
+            fullName: learner.fullName || learnerRecognition.fullName,
+          };
+        });
+
+        const mergedIds = new Set(mergedLearners.map((learner) => learner.learnerId));
+        const recognitionOnly = (recognition || []).filter(
+          (item: StudentRecognition) => !mergedIds.has(item.learnerId)
+        );
+
+        setStudentRecognition([...mergedLearners, ...recognitionOnly]);
       } catch (error) {
         console.error('Failed to load recognition data:', error);
+        setStudentRecognition([]);
       } finally {
         setLoading(false);
       }
@@ -130,16 +183,29 @@ const StarsView: React.FC = () => {
     return 'text-red-600';
   };
 
+  const getPassRateColor = (rate: number) => {
+    if (rate >= 75) return 'text-green-600';
+    if (rate >= 50) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
   return (
-    <div className="w-full h-full flex flex-col bg-gradient-to-br from-blue-100 to-blue-50">
+    <div className="w-full h-full flex flex-col bg-gradient-to-br from-sky-50 via-indigo-50 to-purple-50 relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 opacity-20 select-none" aria-hidden="true">
+        <div className="absolute top-8 left-10 text-2xl">📚</div>
+        <div className="absolute top-20 right-16 text-xl">✏️</div>
+        <div className="absolute top-40 left-1/3 text-2xl">🎓</div>
+        <div className="absolute bottom-24 left-14 text-xl">🧠</div>
+        <div className="absolute bottom-16 right-20 text-2xl">⭐</div>
+      </div>
       {/* Header */}
-      <div className="px-6 py-6 border-b border-gray-200 bg-white rounded-b-lg shadow-sm">
+      <div className="px-6 py-6 border-b border-gray-200 bg-white/90 backdrop-blur-sm rounded-b-lg shadow-sm relative z-10">
         <h1 className="text-3xl font-bold text-gray-800 mb-2">⭐ Recognition Center</h1>
         <p className="text-gray-600">Award stars to your students for outstanding performance</p>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto p-6 relative z-10">
         {/* Class selector */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
@@ -192,6 +258,12 @@ const StarsView: React.FC = () => {
                     <span className="text-gray-600">Attendance Rate:</span>
                     <span className={`font-bold ${getAttendanceColor(student.attendanceRate)}`}>
                       {(student.attendanceRate || 0).toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Pass Rate:</span>
+                    <span className={`font-bold ${getPassRateColor(student.passRate || 0)}`}>
+                      {(student.passRate || 0).toFixed(1)}%
                     </span>
                   </div>
                 </div>

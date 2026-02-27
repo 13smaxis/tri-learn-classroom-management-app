@@ -10,6 +10,8 @@ interface TeacherDashboardProps {
   classesVersion?: number;
 }
 
+const CLASS_SELECTION_STORAGE_KEY = 'triLearn:selectedClassId';
+
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, classesVersion }) => {
   const { user } = useAuth();
   const { forceRefreshKey, forceGlobalRefresh } = useAppContext();
@@ -21,6 +23,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
   const [newTaskDueDate, setNewTaskDueDate] = useState('');
   const [attendanceRecords, setAttendanceRecords] = useState(0);
   const [totalLearners, setTotalLearners] = useState(0);
+  const [classCounts, setClassCounts] = useState<Record<string, { learners: number; parents: number }>>({});
+  const [openClassMenuId, setOpenClassMenuId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -37,18 +41,28 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
       const classList = data || [];
       setClasses(classList);
 
-      const learnerCounts = await Promise.all(
-        classList.map((cls: any) =>
-          api.getLearners(cls.id)
-            .then((learners) => learners.length)
-            .catch(() => 0)
-        )
+      const countsEntries = await Promise.all(
+        classList.map(async (cls: any) => {
+          const learners = await api.getLearners(cls.id)
+            .then((rows) => rows?.length || 0)
+            .catch(() => 0);
+
+          const parents = await api.getClassStudents(cls.id)
+            .then((rows) => (rows || []).filter((row: any) => row.role === 'parent').length)
+            .catch(() => cls.enrollments?.filter((e: any) => e.role === 'parent').length || 0);
+
+          return [cls.id, { learners, parents }] as const;
+        })
       );
-      setTotalLearners(learnerCounts.reduce((sum, count) => sum + count, 0));
+
+      const nextClassCounts: Record<string, { learners: number; parents: number }> = Object.fromEntries(countsEntries);
+      setClassCounts(nextClassCounts);
+      setTotalLearners(Object.values(nextClassCounts).reduce((sum, item) => sum + item.learners, 0));
     } catch (err) {
       console.error('Failed to fetch classes:', err);
       setClasses([]);
       setTotalLearners(0);
+      setClassCounts({});
     }
     setAttendanceRecords(0); // TODO: fetch from backend
     setLoading(false);
@@ -60,10 +74,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
     setTasks([]);
   };
 
-  const totalParents = classes.reduce((acc, cls) => {
-    const parents = cls.enrollments?.filter((e: any) => e.role === 'parent') || [];
-    return acc + parents.length;
-  }, 0);
+  const totalParents = Object.values(classCounts).reduce((acc, item) => acc + item.parents, 0);
 
   const handleAddTask = (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,11 +89,22 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
     fetchTasks();
   };
 
+  const handleClassAction = (classId: string, view: string) => {
+    try {
+      localStorage.setItem(CLASS_SELECTION_STORAGE_KEY, classId);
+    } catch {
+      // ignore storage failures and continue navigation
+    }
+    setOpenClassMenuId(null);
+    onViewChange(view);
+  };
+
   const quickActions = [
     { label: 'Take Attendance', icon: '📋', view: 'attendance', color: 'bg-blue-500' },
     { label: 'Add Homework', icon: '📚', view: 'homework', color: 'bg-green-500' },
     { label: 'Create Assignment', icon: '📝', view: 'assignments', color: 'bg-purple-500' },
     { label: 'Capture Marks', icon: '📊', view: 'marks', color: 'bg-orange-500' },
+    { label: 'Recognition', icon: '⭐', view: 'stars', color: 'bg-amber-500' },
     { label: 'Send Message', icon: '💬', view: 'messages', color: 'bg-pink-500' },
     { label: 'View Reports', icon: '📈', view: 'reports', color: 'bg-indigo-500' }
   ];
@@ -100,7 +122,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-flow-col auto-cols-fr gap-4">
         <StatsCard
           title="Total Classes"
           value={classes.length}
@@ -150,7 +172,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
       {/* Quick Actions */}
       <div>
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-flow-col auto-cols-fr gap-3">
           {quickActions.map((action) => (
             <button
               key={action.view}
@@ -210,13 +232,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {classes.map((cls) => {
-              const learnerCount = cls.enrollments?.filter((e: any) => e.role === 'learner').length || 0;
-              const parentCount = cls.enrollments?.filter((e: any) => e.role === 'parent').length || 0;
+              const learnerCount = classCounts[cls.id]?.learners
+                ?? cls.enrollments?.filter((e: any) => e.role === 'learner').length
+                ?? 0;
+              const parentCount = classCounts[cls.id]?.parents
+                ?? cls.enrollments?.filter((e: any) => e.role === 'parent').length
+                ?? 0;
 
               return (
                 <div
                   key={cls.id}
-                  className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all cursor-pointer"
+                  className="relative bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all cursor-pointer"
                   onClick={() => onViewChange('classes')}
                 >
                   <div className="flex items-start justify-between mb-3">
@@ -248,12 +274,36 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
                     <button className="flex-1 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-all">
                       View Class
                     </button>
-                    <button className="px-3 py-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all">
+                    <button
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setOpenClassMenuId((prev) => (prev === cls.id ? null : cls.id));
+                      }}
+                      className="px-3 py-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
+                    >
                       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                       </svg>
                     </button>
                   </div>
+
+                  {openClassMenuId === cls.id && (
+                    <div
+                      className="absolute right-5 bottom-16 z-20 w-52 rounded-lg border border-gray-200 bg-white shadow-lg py-1"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      {quickActions.map((action) => (
+                        <button
+                          key={`${cls.id}-${action.view}`}
+                          onClick={() => handleClassAction(cls.id, action.view)}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left"
+                        >
+                          <span>{action.icon}</span>
+                          <span>{action.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
