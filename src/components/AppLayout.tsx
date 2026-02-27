@@ -102,6 +102,20 @@ const AppLayout: React.FC = () => {
     }
   }, [activeView]);
 
+  useEffect(() => {
+    // On view change to 'classes', load selected class from localStorage
+    if (activeView === 'classes') {
+      const storedClassId = localStorage.getItem('triLearn:selectedClassId');
+      if (storedClassId) {
+        // Only set ID, let ClassesView handle full object
+        setSelectedClass((prev) => {
+          if (prev && prev.id === storedClassId) return prev;
+          return { id: storedClassId };
+        });
+      }
+    }
+  }, [activeView]);
+
   const goHome = () => {
     setShowLoginModal(false);
     setShowRegisterModal(false);

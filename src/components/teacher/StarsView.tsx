@@ -48,6 +48,7 @@ const StarsView: React.FC = () => {
   const [starCategory, setStarCategory] = useState<'ATTENDANCE' | 'HOMEWORK' | 'ASSIGNMENT'>('ATTENDANCE');
   const [starNoteOpen, setStarNoteOpen] = useState(false);
   const [starNote, setStarNote] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Load teacher's classes
   useEffect(() => {
@@ -223,6 +224,17 @@ const StarsView: React.FC = () => {
           </select>
         </div>
 
+        {/* Search Learner */}
+        <div className="mb-6">
+          <input
+            type="text"
+            placeholder="Search learner by name or number..."
+            className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
+        </div>
+
         {/* Loading state */}
         {loading && (
           <div className="flex justify-center items-center h-64">
@@ -236,76 +248,81 @@ const StarsView: React.FC = () => {
         {/* Students grid */}
         {!loading && studentRecognition.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {studentRecognition.map((student) => (
-              <div
-                key={student.learnerId}
-                onClick={() => setSelectedStudent(student)}
-                className={`p-4 rounded-lg border-2 transition-all cursor-pointer ${
-                  selectedStudent?.learnerId === student.learnerId
-                    ? 'border-blue-500 bg-blue-50 shadow-lg'
-                    : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-md'
-                }`}
-              >
-                {/* Student name */}
-                <div className="mb-3">
-                  <h3 className="font-bold text-gray-800">{student.fullName}</h3>
-                  <p className="text-sm text-gray-500">{student.learnerNumber}</p>
-                </div>
-
-                {/* Stats */}
-                <div className="mb-3 space-y-2 text-sm">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Attendance Rate:</span>
-                    <span className={`font-bold ${getAttendanceColor(student.attendanceRate)}`}>
-                      {(student.attendanceRate || 0).toFixed(1)}%
-                    </span>
+            {studentRecognition
+              .filter(student =>
+                student.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                student.learnerNumber.toLowerCase().includes(searchTerm.toLowerCase())
+              )
+              .map((student) => (
+                <div
+                  key={student.learnerId}
+                  onClick={() => setSelectedStudent(student)}
+                  className={`p-4 rounded-lg border-2 transition-all cursor-pointer ${
+                    selectedStudent?.learnerId === student.learnerId
+                      ? 'border-blue-500 bg-blue-50 shadow-lg'
+                      : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-md'
+                  }`}
+                >
+                  {/* Student name */}
+                  <div className="mb-3">
+                    <h3 className="font-bold text-gray-800">{student.fullName}</h3>
+                    <p className="text-sm text-gray-500">{student.learnerNumber}</p>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Pass Rate:</span>
-                    <span className={`font-bold ${getPassRateColor(student.passRate || 0)}`}>
-                      {(student.passRate || 0).toFixed(1)}%
-                    </span>
-                  </div>
-                </div>
 
-                {/* Stars display */}
-                <div className="mb-4 space-y-1 text-xs">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">🎓 Attendance Stars:</span>
-                    <div className="flex gap-1">
-                      {[...Array(student.attendanceStars)].map((_, i) => (
-                        <span key={i} className="text-lg">⭐</span>
-                      ))}
-                      {student.attendanceStars === 0 && <span className="text-gray-300">-</span>}
+                  {/* Stats */}
+                  <div className="mb-3 space-y-2 text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Attendance Rate:</span>
+                      <span className={`font-bold ${getAttendanceColor(student.attendanceRate)}`}>
+                        {(student.attendanceRate || 0).toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Pass Rate:</span>
+                      <span className={`font-bold ${getPassRateColor(student.passRate || 0)}`}>
+                        {(student.passRate || 0).toFixed(1)}%
+                      </span>
                     </div>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">📝 Homework Stars:</span>
-                    <div className="flex gap-1">
-                      {[...Array(student.homeworkStars)].map((_, i) => (
-                        <span key={i} className="text-lg">⭐</span>
-                      ))}
-                      {student.homeworkStars === 0 && <span className="text-gray-300">-</span>}
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">📊 Assignment Stars:</span>
-                    <div className="flex gap-1">
-                      {[...Array(student.assignmentStars)].map((_, i) => (
-                        <span key={i} className="text-lg">⭐</span>
-                      ))}
-                      {student.assignmentStars === 0 && <span className="text-gray-300">-</span>}
-                    </div>
-                  </div>
-                </div>
 
-                {/* Total stars badge */}
-                <div className="text-center py-2 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg">
-                  <p className="text-xs text-gray-600">Total Recognition</p>
-                  <p className="text-2xl font-bold text-yellow-600">{student.totalStars} ⭐</p>
+                  {/* Stars display */}
+                  <div className="mb-4 space-y-1 text-xs">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">🎓 Attendance Stars:</span>
+                      <div className="flex gap-1">
+                        {[...Array(student.attendanceStars)].map((_, i) => (
+                          <span key={i} className="text-lg">⭐</span>
+                        ))}
+                        {student.attendanceStars === 0 && <span className="text-gray-300">-</span>}
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">📝 Homework Stars:</span>
+                      <div className="flex gap-1">
+                        {[...Array(student.homeworkStars)].map((_, i) => (
+                          <span key={i} className="text-lg">⭐</span>
+                        ))}
+                        {student.homeworkStars === 0 && <span className="text-gray-300">-</span>}
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">📊 Assignment Stars:</span>
+                      <div className="flex gap-1">
+                        {[...Array(student.assignmentStars)].map((_, i) => (
+                          <span key={i} className="text-lg">⭐</span>
+                        ))}
+                        {student.assignmentStars === 0 && <span className="text-gray-300">-</span>}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Total stars badge */}
+                  <div className="text-center py-2 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg">
+                    <p className="text-xs text-gray-600">Total Recognition</p>
+                    <p className="text-2xl font-bold text-yellow-600">{student.totalStars} ⭐</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
         )}
 
