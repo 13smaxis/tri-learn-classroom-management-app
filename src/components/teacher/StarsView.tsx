@@ -21,6 +21,8 @@ interface SchoolClass {
   subject: string;
 }
 
+const CLASS_SELECTION_STORAGE_KEY = 'triLearn:selectedClassId';
+
 const mapLearnersForRecognition = (data: any[]): StudentRecognition[] => {
   return (data || []).map((learner: any, index: number) => ({
     learnerId: learner.id || learner.userId || learner.learnerId || learner.enrollmentId,
@@ -53,7 +55,11 @@ const StarsView: React.FC = () => {
       try {
         const classes = await api.getMyClasses();
         setClasses(classes || []);
-        if (classes && classes.length > 0) {
+        const preferredClassId = localStorage.getItem(CLASS_SELECTION_STORAGE_KEY);
+        if (preferredClassId && classes?.some((cls: SchoolClass) => cls.id === preferredClassId)) {
+          setSelectedClassId(preferredClassId);
+          localStorage.removeItem(CLASS_SELECTION_STORAGE_KEY);
+        } else if (classes && classes.length > 0) {
           setSelectedClassId(classes[0].id);
         }
       } catch (error) {

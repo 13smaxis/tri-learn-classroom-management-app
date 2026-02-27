@@ -91,6 +91,8 @@ const splitUniqueAndDuplicates = (items: ParsedLearner[], existingNames: string[
 const rebuildCsvPreview = (items: ParsedLearner[], existingNames: string[]) =>
   buildCsvPreviewLearners(sortParsedLearners(items), existingNames);
 
+const CLASS_SELECTION_STORAGE_KEY = 'triLearn:selectedClassId';
+
 const mapLearnersForAttendance = (data: any[]): Learner[] => {
   return (data || []).map((learner: any, index: number) => ({
     id: learner.id || learner.userId || learner.enrollmentId,
@@ -248,7 +250,16 @@ const AttendanceView: React.FC = () => {
     if (!user) return;
 
     api.getMyClasses()
-      .then(data => setClasses(data || []))
+      .then(data => {
+        const classList = data || [];
+        setClasses(classList);
+
+        const preferredClassId = localStorage.getItem(CLASS_SELECTION_STORAGE_KEY);
+        if (preferredClassId && classList.some((cls: any) => cls.id === preferredClassId)) {
+          setSelectedClass(preferredClassId);
+          localStorage.removeItem(CLASS_SELECTION_STORAGE_KEY);
+        }
+      })
       .catch(err => {
         console.error('Failed to fetch classes:', err);
         setClasses([]);
@@ -1243,7 +1254,14 @@ const AttendanceView: React.FC = () => {
                           const letter = getStatusLetter(status);
                           return (
                             <td key={day.dateKey} className="px-2 py-2 text-center">
-                              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-semibold bg-gray-100 text-gray-700">
+                              <span className="
+                                                inline-flex 
+                                                h-6 w-6 items-center 
+                                                justify-center rounded-full 
+                                                text-[11px] font-semibold 
+                                                bg-gray-100 text-gray-700
+                                              "
+                              >
                                 {letter}
                               </span>
                             </td>

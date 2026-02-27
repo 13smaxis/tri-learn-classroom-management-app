@@ -2,8 +2,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
-interface SidebarProps 
-{
+interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onToggle: () => void;
@@ -15,8 +14,7 @@ interface SidebarProps
   onGoHome?: () => void;
 }
 
-interface MenuItem 
-{
+interface MenuItem {
   id: string;
   label: string;
   icon: React.ReactNode;
@@ -99,10 +97,10 @@ const Sidebar: React.FC<SidebarProps> = ({
       label: 'Attendance',
       icon: (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+          <path strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
         </svg>
       ),
       roles: ['teacher'],
@@ -112,10 +110,10 @@ const Sidebar: React.FC<SidebarProps> = ({
       label: 'Assignments',
       icon: (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          <path strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
       ),
       roles: ['teacher', 'learner'],
@@ -125,10 +123,10 @@ const Sidebar: React.FC<SidebarProps> = ({
       label: 'Homework',
       icon: (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          <path strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
         </svg>
       ),
       roles: ['teacher', 'learner'],
@@ -138,10 +136,10 @@ const Sidebar: React.FC<SidebarProps> = ({
       label: 'Marks & Grades',
       icon: (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          <path strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
       ),
       roles: ['teacher', 'parent', 'learner'],
@@ -151,10 +149,10 @@ const Sidebar: React.FC<SidebarProps> = ({
       label: 'Recognition',
       icon: (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+          <path strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
         </svg>
       ),
       roles: ['teacher'],
@@ -164,10 +162,10 @@ const Sidebar: React.FC<SidebarProps> = ({
       label: 'Messages',
       icon: (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          <path strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
         </svg>
       ),
       roles: ['teacher', 'parent', 'learner'],
@@ -190,7 +188,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>                                                                                                          {/* Wraps the sidebar and the mobile overlay, allowing them to coexist in the a single DOM */}
-     {/* Mobile overlay */}
+      {/* Mobile overlay */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -212,19 +210,19 @@ const Sidebar: React.FC<SidebarProps> = ({
       >
         <div className="flex flex-col h-full">
           <div
-            className="flex items-center gap-3 px-4 py-10 border-b border-gray-200 cursor-pointer"
+            className="flex items-start justify-between gap-3 px-4 py-6 border-b border-gray-200 cursor-pointer"
             onClick={() => { onClose(); onGoHome?.(); }}
             role="button"
             tabIndex={0}
           >
-            <img
-              src="/logo-removebg.png"
-              alt="TriLearn logo"
-              className="w-20 h-20 object-contain flex-shrink-0"
-            />
-            <div className="min-w-0 text-center">
-              <h1 className="text-lg font-bold text-orange-700 leading-tight">TriLearn</h1>
-              <p className="text-[11px] text-gray-400 truncate">Class Management</p>
+            <div className="flex flex-col items-center text-center min-w-0 flex-1">
+              <img
+                src="/logo2-removebg.png"
+                alt="TriLearn logo"
+                className="w-20 h-20 object-contain flex-shrink-0"
+              />
+              <h1 className="mt-1 text-lg font-bold text-orange-700 leading-tight">TriLearn</h1>
+              <p className="text-[11px] text-gray-400">Class Management</p>
             </div>
 
             {/* Close button — mobile only */}
@@ -314,10 +312,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                   "
                 >
                   <svg className="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" 
-                          strokeLinejoin="round" 
-                          strokeWidth={2} 
-                          d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    <path strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                   </svg>
                   Sign Up
                 </button>
@@ -334,11 +332,28 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </p>
                 <button
                   onClick={() => { onClose(); onOpenInvite(); }}
-                  className="w-full flex items-center justify-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-all"
+                  className="
+                              w-full 
+                              flex items-center 
+                              justify-center 
+                              gap-3 px-4 py-2.5 
+                              rounded-xl 
+                              text-sm 
+                              font-medium 
+                              text-white 
+                              bg-indigo-600 hover:bg-indigo-700 
+                              transition-all"
                 >
 
                   Join Class with Invite Code
-                  <svg className="h-5 w-5 text-white flex-shrink-0 -scale-x-100" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="
+                                    h-5 w-5 
+                                    text-white flex-shrink-0 -scale-x-100" 
+                                    fill="none" 
+                                    viewBox="0 0 24 24" 
+                                    stroke="currentColor
+                                  "
+                  >
                     <path strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 
@@ -355,10 +370,28 @@ const Sidebar: React.FC<SidebarProps> = ({
             <div className="border-t border-gray-200">
               {/* Notifications row */}
               <div className="px-3 pt-3">
-                <button className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all">
+                <button className="
+                                    w-full flex 
+                                    items-center gap-3 
+                                    px-4 py-2.5 rounded-xl 
+                                    text-sm font-medium 
+                                    text-gray-600 
+                                    hover:bg-gray-50 hover:text-gray-900 
+                                    transition-all
+                                  "
+                >
                   <span className="relative flex-shrink-0">
-                    <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    <svg className="h-5 w-5 text-gray-400" 
+                         fill="none" 
+                         viewBox="0 0 24 24" 
+                         stroke="currentColor">
+                      <path strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            strokeWidth={2} 
+                            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 
+                            2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 
+                            17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" 
+                      />
                     </svg>
                     <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
                   </span>
@@ -376,7 +409,15 @@ const Sidebar: React.FC<SidebarProps> = ({
                     hover:bg-gray-50
                   "
                 >
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
+                  <div className="
+                                    w-9 h-9 
+                                    rounded-full 
+                                    bg-gradient-to-br from-blue-500 to-purple-500 
+                                    flex items-center 
+                                    justify-center 
+                                    text-white text-sm font-semibold flex-shrink-0
+                                  "
+                  >
                     {user.fullName.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0 text-left flex-1">
