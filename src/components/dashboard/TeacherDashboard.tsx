@@ -35,6 +35,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDueDate, setNewTaskDueDate] = useState('');
   const [attendanceRecords, setAttendanceRecords] = useState(0);
+  // Track homework assigned per class
+  const [homeworkAssigned, setHomeworkAssigned] = useState<Record<string, number>>({});
   const [totalLearners, setTotalLearners] = useState(0);
   const [classCounts, setClassCounts] = useState<Record<string, { learners: number; parents: number }>>({});
   const [openClassMenuId, setOpenClassMenuId] = useState<string | null>(null);
@@ -156,11 +158,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
           color="blue"
           icon={
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 
-                       4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" 
+              <path strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 
+                       4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
               />
             </svg>
           }
@@ -172,11 +174,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
           color="green"
           icon={
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 
-                        7a4 4 0 11-8 0 4 4 0 018 0z" 
+              <path strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 
+                        7a4 4 0 11-8 0 4 4 0 018 0z"
               />
             </svg>
           }
@@ -188,12 +190,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
           color="purple"
           icon={
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 
+              <path strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 
                     20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 
-                    0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" 
+                    0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
               />
             </svg>
           }
@@ -205,11 +207,22 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
           color="orange"
           icon={
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M3 7h18M3 12h18M3 17h18M8 5v2m4-2v2m4-2v2M8 10v2m4-2v2m4-2v2M8 15v2m4-2v2m4-2v2" 
+              <path strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 7h18M3 12h18M3 17h18M8 5v2m4-2v2m4-2v2M8 10v2m4-2v2m4-2v2M8 15v2m4-2v2m4-2v2"
               />
+            </svg>
+          }
+        />
+        <StatsCard
+          title="Homework Assigned"
+          value={Object.values(homeworkAssigned).reduce((sum, v) => sum + v, 0)}
+          subtitle="Total assigned across classes"
+          color="red"
+          icon={
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6M7 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
           }
         />
@@ -262,12 +275,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
                 {...provided.droppableProps}
               >
                 {classes.map((cls, idx) => {
-                  const learnerCount = classCounts[cls.id]?.learners
-                    ?? cls.enrollments?.filter((e: any) => e.role === 'learner').length
-                    ?? 0;
-                  const parentCount = classCounts[cls.id]?.parents
-                    ?? cls.enrollments?.filter((e: any) => e.role === 'parent').length
-                    ?? 0;
+                  // Use backend/state counts for all counters
+                  const learnerCount = classCounts[cls.id]?.learners ?? cls.enrollments?.filter((e: any) => e.role === 'learner').length ?? 0;
+                  const parentCount = classCounts[cls.id]?.parents ?? cls.enrollments?.filter((e: any) => e.role === 'parent').length ?? 0;
+                  // Hook homeworkAssigned to state
+                  const homeworkCount = homeworkAssigned[cls.id] || 0;
+                  // Hook assignmentsAssigned and starsAwarded to backend or demo
+                  const assignmentsAssigned = cls.assignmentsAssigned ?? 0;
+                  const starsAwarded = cls.starsAwarded ?? 0;
 
                   // Gradient color palette
                   const gradients = [
@@ -302,21 +317,41 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-4 text-sm">
+                          <div className="flex flex-wrap gap-4 text-sm">
+                            {/* Learners */}
                             <div className="flex items-center gap-1">
                               <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 
-                        7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                               </svg>
                               {learnerCount} Learners
                             </div>
+                            {/* Parents */}
                             <div className="flex items-center gap-1">
                               <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 
-                    20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 
-                    0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                               </svg>
                               {parentCount} Parents
+                            </div>
+                            {/* Homework Assigned */}
+                            <div className="flex items-center gap-1">
+                              <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6M7 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                              {homeworkCount} Homework
+                            </div>
+                            {/* Assignments Assigned */}
+                            <div className="flex items-center gap-1">
+                              <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                              </svg>
+                              {assignmentsAssigned} Assignments
+                            </div>
+                            {/* Stars Awarded */}
+                            <div className="flex items-center gap-1">
+                              <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 17.75L18.19 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.45 4.73L5.81 21z" />
+                              </svg>
+                              {starsAwarded} Stars
                             </div>
                           </div>
 
@@ -354,21 +389,39 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
                                "
                             >
                               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                                <path strokeLinecap="round" 
+                                      strokeLinejoin="round" 
+                                      strokeWidth={2} 
+                                      d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 
+                                      110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" 
+                                />
                               </svg>
                             </button>
                           </div>
 
                           {openClassMenuId === cls.id && (
                             <div
-                              className="absolute right-5 bottom-16 z-20 w-52 rounded-lg border border-gray-200 bg-white shadow-lg py-1"
+                              className="
+                                          absolute right-5 bottom-16 z-20 w-52 
+                                          rounded-lg 
+                                          border border-gray-200 
+                                          bg-white 
+                                          shadow-lg py-1
+                                        "
                               onClick={(event) => event.stopPropagation()}
                             >
                               {quickActions.map((action) => (
                                 <button
                                   key={`${cls.id}-${action.view}`}
                                   onClick={() => handleClassAction(cls.id, action.view)}
-                                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left"
+                                  className="
+                                              w-full flex 
+                                              items-center 
+                                              gap-2 px-3 py-2
+                                              text-sm text-gray-700 
+                                              hover:bg-gray-50 
+                                              text-left
+                                            "
                                 >
                                   <span>{action.icon}</span>
                                   <span>{action.label}</span>
