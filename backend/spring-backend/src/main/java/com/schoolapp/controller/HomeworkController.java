@@ -1,9 +1,13 @@
 package com.schoolapp.controller;
 
 import com.schoolapp.dto.CreateHomeworkRequest;
+import com.schoolapp.dto.HomeworkDetailDTO;
 import com.schoolapp.model.AppUser;
 import com.schoolapp.model.Homework;
 import com.schoolapp.service.HomeworkService;
+import com.schoolapp.service.StarsService;
+import com.schoolapp.dto.AwardStarRequest;
+import com.schoolapp.model.StarCategory;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
@@ -28,10 +32,12 @@ import java.util.stream.Collectors;
 public class HomeworkController {
 
     private final HomeworkService homeworkService;
+    private final StarsService starsService;
     private final Path uploadDir = Paths.get("data", "uploads", "homework");
 
-    public HomeworkController(HomeworkService homeworkService) {
+    public HomeworkController(HomeworkService homeworkService, StarsService starsService) {
         this.homeworkService = homeworkService;
+        this.starsService = starsService;
     }
 
     @PostMapping("/create")
@@ -49,6 +55,7 @@ public class HomeworkController {
         }
     }
 
+
     @GetMapping("/count")
     public ResponseEntity<Map<String, Object>> getHomeworkCount(Authentication auth) {
         try {
@@ -57,7 +64,17 @@ public class HomeworkController {
                 return ResponseEntity.status(401).body(errorBody("Unauthorized"));
             }
             AppUser teacher = (AppUser) principal;
-            long count = homeworkService.getHomeworkCountForTeacher(teacher.getId());
+            long count = homeworkService.countByTeacher(teacher.getId());
+            return ResponseEntity.ok(Map.of("success", true, "data", count));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/count/{classId}")
+    public ResponseEntity<Map<String, Object>> getHomeworkCountForClass(@PathVariable String classId) {
+        try {
+            long count = homeworkService.countByClass(classId);
             return ResponseEntity.ok(Map.of("success", true, "data", count));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
@@ -151,6 +168,95 @@ public class HomeworkController {
         map.put("attachmentUrls", homeworkService.deserializeUrls(homework.getAttachmentUrls()));
         map.put("createdAt", homework.getCreatedAt() != null ? homework.getCreatedAt().toString() : null);
         return map;
+    }
+
+    // ── NEW: Homework Detail Dashboard ──
+
+    @GetMapping("/detail/{homeworkId}")
+    public ResponseEntity<Map<String, Object>> getHomeworkDetail(@PathVariable String homeworkId) {
+        try {
+            HomeworkDetailDTO detail = homeworkService.getHomeworkDetail(homeworkId);
+            return ResponseEntity.ok(Map.of("success", true, "data", detail));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+        }
+    }
+
+    // ── NEW: Capture mark for a learner on a homework ──
+
+    @PostMapping("/{homeworkId}/mark")
+    public ResponseEntity<Map<String, Object>> captureMark(
+            @PathVariable String homeworkId,
+            @RequestBody Map<String, Object> body,
+            Authentication auth) {
+        try {
+            Object principal = auth.getPrincipal();
+            if (!(principal instanceof AppUser)) {
+                return ResponseEntity.status(401).body(errorBody("Unauthorized"));
+            }
+            String learnerId = (String) body.get("learnerId");
+            Double mark = body.get("mark") != null ? Double.parseDouble(body.get("mark").toString()) : null;
+            if (learnerId == null) {
+                return ResponseEntity.badRequest().body(errorBody("learnerId is required"));
+            }
+            homeworkService.captureMark(homeworkId, learnerId, mark);
+            return ResponseEntity.ok(Map.of("success", true, "message", "Mark captured"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+        }
+    }
+
+    // ── NEW: Toggle submission status ──
+
+    @PostMapping("/{homeworkId}/toggle-submission")
+    public ResponseEntity<Map<String, Object>> toggleSubmission(
+            @PathVariable String homeworkId,
+            @RequestBody Map<String, Object> body,
+            Authentication auth) {
+        try {
+            Object principal = auth.getPrincipal();
+            if (!(principal instanceof AppUser)) {
+                return ResponseEntity.status(401).body(errorBody("Unauthorized"));
+            }
+            String learnerId = (String) body.get("learnerId");
+            Boolean submitted = (Boolean) body.get("submitted");
+            if (learnerId == null || submitted == null) {
+                return ResponseEntity.badRequest().body(errorBody("learnerId and submitted are required"));
+            }
+            homeworkService.toggleSubmission(homeworkId, learnerId, submitted);
+            return ResponseEntity.ok(Map.of("success", true, "message", "Submission toggled"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+        }
+    }
+
+    // ── NEW: Award star from homework view ──
+
+    @PostMapping("/{homeworkId}/award-star")
+    public ResponseEntity<Map<String, Object>> awardStarFromHomework(
+            @PathVariable String homeworkId,
+            @RequestBody Map<String, Object> body,
+            Authentication auth) {
+        try {
+            String teacherId = auth.getName();
+            String learnerId = (String) body.get("learnerId");
+            String classId = (String) body.get("classId");
+            String note = (String) body.get("note");
+            Integer starCount = body.get("starCount") != null ? Integer.parseInt(body.get("starCount").toString()) : 1;
+            if (learnerId == null || classId == null) {
+                return ResponseEntity.badRequest().body(errorBody("learnerId and classId are required"));
+            }
+            AwardStarRequest req = new AwardStarRequest();
+            req.setLearnerId(learnerId);
+            req.setClassId(classId);
+            req.setCategory(StarCategory.HOMEWORK);
+            req.setStarCount(starCount);
+            req.setNote(note != null ? note : "Homework star");
+            starsService.awardStar(req, teacherId);
+            return ResponseEntity.ok(Map.of("success", true, "message", "Star awarded"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+        }
     }
 
     private Map<String, Object> errorBody(String message) {

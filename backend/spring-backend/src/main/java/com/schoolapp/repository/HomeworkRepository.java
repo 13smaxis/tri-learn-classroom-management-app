@@ -8,4 +8,5 @@ import java.util.List;
 public interface HomeworkRepository extends JpaRepository<Homework, String> {
     List<Homework> findBySchoolClassIdOrderByCreatedAtDesc(String classId);
     long countByTeacherId(String teacherId);
+    long countBySchoolClassId(String classId);
 }

@@ -35,8 +35,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDueDate, setNewTaskDueDate] = useState('');
   const [attendanceRecords, setAttendanceRecords] = useState(0);
-  // Track homework assigned per class
-  const [homeworkAssigned, setHomeworkAssigned] = useState<Record<string, number>>({});
+  // Homework counts fetched from backend
+  const [totalHomeworkCount, setTotalHomeworkCount] = useState(0);
+  const [homeworkCounts, setHomeworkCounts] = useState<Record<string, number>>({});
   const [totalLearners, setTotalLearners] = useState(0);
   const [classCounts, setClassCounts] = useState<Record<string, { learners: number; parents: number }>>({});
   const [openClassMenuId, setOpenClassMenuId] = useState<string | null>(null);
@@ -48,9 +49,19 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
     if (user) {
       fetchClasses();
       fetchTasks();
+      fetchHomeworkCount();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, classesVersion, forceRefreshKey]);
+
+  const fetchHomeworkCount = async () => {
+    try {
+      const count = await api.getHomeworkCount();
+      setTotalHomeworkCount(typeof count === 'number' ? count : 0);
+    } catch (err) {
+      console.warn('Failed to fetch homework count:', err);
+    }
+  };
 
   const fetchClasses = async () => {
     if (!user) return;
@@ -69,12 +80,20 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
             .then((rows) => (rows || []).filter((row: any) => row.role === 'parent').length)
             .catch(() => cls.enrollments?.filter((e: any) => e.role === 'parent').length || 0);
 
-          return [cls.id, { learners, parents }] as const;
+          const hwCount = await api.getHomeworkCountForClass(cls.id).catch(() => 0);
+
+          return [cls.id, { learners, parents, homework: hwCount }] as const;
         })
       );
 
-      const nextClassCounts: Record<string, { learners: number; parents: number }> = Object.fromEntries(countsEntries);
+      const nextClassCounts: Record<string, { learners: number; parents: number }> = {};
+      const nextHomeworkCounts: Record<string, number> = {};
+      for (const [id, counts] of countsEntries) {
+        nextClassCounts[id] = { learners: counts.learners, parents: counts.parents };
+        nextHomeworkCounts[id] = typeof counts.homework === 'number' ? counts.homework : 0;
+      }
       setClassCounts(nextClassCounts);
+      setHomeworkCounts(nextHomeworkCounts);
       setTotalLearners(Object.values(nextClassCounts).reduce((sum, item) => sum + item.learners, 0));
     } catch (err) {
       console.error('Failed to fetch classes:', err);
@@ -217,7 +236,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
         />
         <StatsCard
           title="Homework Assigned"
-          value={Object.values(homeworkAssigned).reduce((sum, v) => sum + v, 0)}
+          value={totalHomeworkCount}
           subtitle="Total assigned across classes"
           color="red"
           icon={
@@ -279,7 +298,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
                   const learnerCount = classCounts[cls.id]?.learners ?? cls.enrollments?.filter((e: any) => e.role === 'learner').length ?? 0;
                   const parentCount = classCounts[cls.id]?.parents ?? cls.enrollments?.filter((e: any) => e.role === 'parent').length ?? 0;
                   // Hook homeworkAssigned to state
-                  const homeworkCount = homeworkAssigned[cls.id] || 0;
+                  const homeworkCount = homeworkCounts[cls.id] || 0;
                   // Hook assignmentsAssigned and starsAwarded to backend or demo
                   const assignmentsAssigned = cls.assignmentsAssigned ?? 0;
                   const starsAwarded = cls.starsAwarded ?? 0;

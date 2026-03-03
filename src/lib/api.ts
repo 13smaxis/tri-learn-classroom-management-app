@@ -70,8 +70,24 @@ export const api = {
     request<any[]>(`/homework/list/${classId}`),
   getHomeworkCount: () =>
     request<number>('/homework/count'),
+  getHomeworkCountForClass: (classId: string) =>
+    request<number>(`/homework/count/${classId}`),
   deleteHomework: (homeworkId: string) =>
     request<string>(`/homework/${homeworkId}`, { method: 'DELETE' }),
+
+  // Homework Detail Dashboard
+  getHomeworkDetail: (homeworkId: string) =>
+    request<any>(`/homework/detail/${homeworkId}`),
+
+  captureHomeworkMark: (homeworkId: string, learnerId: string, mark: number | null) =>
+    request<any>(`/homework/${homeworkId}/mark`, { method: 'POST', body: JSON.stringify({ learnerId, mark }) }),
+
+  toggleHomeworkSubmission: (homeworkId: string, learnerId: string, submitted: boolean) =>
+    request<any>(`/homework/${homeworkId}/toggle-submission`, { method: 'POST', body: JSON.stringify({ learnerId, submitted }) }),
+
+  awardHomeworkStar: (homeworkId: string, learnerId: string, classId: string, starCount?: number, note?: string) =>
+    request<any>(`/homework/${homeworkId}/award-star`, { method: 'POST', body: JSON.stringify({ learnerId, classId, starCount: starCount || 1, note: note || 'Homework star' }) }),
+
   // Auth
   register: (data: RegisterPayload) =>
     request<UserResponse>('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
