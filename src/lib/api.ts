@@ -1,48 +1,40 @@
-const API_BASE = '/api';
 
+// ── API BASE + REQUEST ──
+const API_BASE = '/api';
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem('authToken');
-
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> || {}),
   };
-
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-
   const res = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
     headers,
     cache: 'no-store',
   });
-
   const text = await res.text();
-
   if (!text) {
     if (!res.ok) {
       throw new Error(`Request failed with status ${res.status}`);
     }
     return undefined as T;
   }
-
   let json: any;
   try {
     json = JSON.parse(text);
   } catch {
     throw new Error(`Invalid JSON response (status ${res.status}): ${text.substring(0, 200)}`);
   }
-
   if (!res.ok || !json.success) {
     throw new Error(json.error?.message || json.message || 'Request failed');
   }
-
   return json.data as T;
 }
 
-// ── Auth ──
-
+// ── INTERFACES ──
 export interface UserResponse {
   userId: string;
   email: string;
@@ -55,7 +47,6 @@ export interface UserResponse {
   token?: string;
   createdAt?: string;
 }
-
 export interface RegisterPayload {
   fullName: string;
   email: string;
@@ -66,13 +57,37 @@ export interface RegisterPayload {
   teacherGrade?: string;
   schoolInviteCode?: string;
 }
-
 export interface LoginPayload {
   phone: string;
   password: string;
 }
 
-export const    api = {
+export const api = {
+  // Homework
+  createHomework: (data: { classId: string; title: string; description: string; dueDate: string; attachmentUrls: string[] }) =>
+    request<any>('/homework/create', { method: 'POST', body: JSON.stringify(data) }),
+  getHomeworkList: (classId: string) =>
+    request<any[]>(`/homework/list/${classId}`),
+  getHomeworkCount: () =>
+    request<number>('/homework/count'),
+  getHomeworkCountForClass: (classId: string) =>
+    request<number>(`/homework/count/${classId}`),
+  deleteHomework: (homeworkId: string) =>
+    request<string>(`/homework/${homeworkId}`, { method: 'DELETE' }),
+
+  // Homework Detail Dashboard
+  getHomeworkDetail: (homeworkId: string) =>
+    request<any>(`/homework/detail/${homeworkId}`),
+
+  captureHomeworkMark: (homeworkId: string, learnerId: string, mark: number | null) =>
+    request<any>(`/homework/${homeworkId}/mark`, { method: 'POST', body: JSON.stringify({ learnerId, mark }) }),
+
+  toggleHomeworkSubmission: (homeworkId: string, learnerId: string, submitted: boolean) =>
+    request<any>(`/homework/${homeworkId}/toggle-submission`, { method: 'POST', body: JSON.stringify({ learnerId, submitted }) }),
+
+  awardHomeworkStar: (homeworkId: string, learnerId: string, classId: string, starCount?: number, note?: string) =>
+    request<any>(`/homework/${homeworkId}/award-star`, { method: 'POST', body: JSON.stringify({ learnerId, classId, starCount: starCount || 1, note: note || 'Homework star' }) }),
+
   // Auth
   register: (data: RegisterPayload) =>
     request<UserResponse>('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
