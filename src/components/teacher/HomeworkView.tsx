@@ -625,7 +625,11 @@ const HomeworkView: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <div className="text-center text-gray-400 py-20">Failed to load homework details.</div>
+                <div className="text-center text-gray-400 py-20">
+                  {homeworkError ? (
+                    <span className="text-red-500">{homeworkError}</span>
+                  ) : 'Failed to load homework details.'}
+                </div>
               )}
             </div>
           )}

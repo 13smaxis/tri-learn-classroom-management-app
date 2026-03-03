@@ -1,6 +1,8 @@
 package com.schoolapp.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schoolapp.security.JwtAuthFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -15,6 +17,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
+import java.util.Map;
 
 @Configuration
 @EnableWebSecurity
@@ -33,6 +36,8 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
@@ -46,6 +51,26 @@ public class SecurityConfig {
                     "/h2-console/**"
                 ).permitAll()
                 .anyRequest().authenticated()
+            )
+            .exceptionHandling(ex -> ex
+                // Return JSON body on 401 so the frontend can display a useful message
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json");
+                    response.getWriter().write(mapper.writeValueAsString(
+                        Map.of("success", false, "error", Map.of("message",
+                            "Authentication required – please log in again"))
+                    ));
+                })
+                // Return JSON body on 403
+                .accessDeniedHandler((request, response, accessDeniedException) -> {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType("application/json");
+                    response.getWriter().write(mapper.writeValueAsString(
+                        Map.of("success", false, "error", Map.of("message",
+                            "Access denied – insufficient permissions"))
+                    ));
+                })
             )
             .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin())) // for H2 console
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

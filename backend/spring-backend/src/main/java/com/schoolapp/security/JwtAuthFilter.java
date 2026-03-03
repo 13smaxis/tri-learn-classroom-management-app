@@ -40,6 +40,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
 
         String authHeader = request.getHeader("Authorization");
+        String requestUri = request.getRequestURI();
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             try {
@@ -57,11 +58,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         var auth = new UsernamePasswordAuthenticationToken(user, null, authorities);
                         auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                         SecurityContextHolder.getContext().setAuthentication(auth);
+                        logger.debug("JWT auth success for user {} on {}", userId, requestUri);
+                    } else {
+                        logger.warn("JWT valid but user not found: {} for {}", userId, requestUri);
                     }
+                } else {
+                    logger.warn("JWT token invalid/expired for {}", requestUri);
                 }
             } catch (Exception e) {
-                logger.error("JWT authentication failed: {}", e.getMessage());
+                logger.error("JWT authentication failed for {}: {}", requestUri, e.getMessage());
             }
+        } else {
+            logger.debug("No Bearer token for {}", requestUri);
         }
 
         filterChain.doFilter(request, response);

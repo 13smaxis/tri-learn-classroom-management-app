@@ -26,6 +26,10 @@ spring:
     init:
       mode: always
 
+logging:
+  level:
+    com.schoolapp.security: DEBUG
+
 app:
   jwt:
     secret: "change-this-secret-key"
