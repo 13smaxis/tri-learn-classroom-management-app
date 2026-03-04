@@ -126,9 +126,6 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass, onCr
       .catch((err) => {
         console.error('Failed to fetch class details:', err);
         setClassDetails(selectedClass);
-        setLearners([]);
-        setAttendanceTrend([]);
-        setAttendanceBreakdown({ present: 0, absent: 0, late: 0, excused: 0, bunking: 0, sick: 0 });
       })
       .finally(() => setLoadingData(false));
   }, [selectedClassId, filterMode, selectedDate, selectedYear, selectedQuarter]);
@@ -258,44 +255,43 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass, onCr
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm flex-1 flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Learners</h3>
-              <span className="text-xs text-gray-400">#{learners.length} total</span>
+              <div className="flex items-center gap-3">
+                {loadingData && <span className="text-xs text-gray-400">Updating…</span>}
+                <span className="text-xs text-gray-400">#{learners.length} total</span>
+              </div>
             </div>
-            {loadingData ? (
-              <p className="text-sm text-gray-500">Loading class details...</p>
-            ) : (
-              <div className="flex-1 overflow-y-auto pr-1">
-                {learners.length > 0 ? (
-                  <div className="space-y-2">
-                    {learners.map((learner) => (
-                      <div key={learner.id} className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
-                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{learner.name}</p>
-                            <p className="text-xs font-mono text-gray-500">#{learner.number}</p>
+            <div className="flex-1 overflow-y-auto pr-1">
+              {learners.length > 0 ? (
+                <div className="space-y-2">
+                  {learners.map((learner) => (
+                    <div key={learner.id} className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{learner.name}</p>
+                          <p className="text-xs font-mono text-gray-500">#{learner.number}</p>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-600">
+                          <div className="rounded-md bg-white px-2 py-1 border border-gray-200">
+                            <span className="font-semibold">Stars</span>: --
                           </div>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-600">
-                            <div className="rounded-md bg-white px-2 py-1 border border-gray-200">
-                              <span className="font-semibold">Stars</span>: --
-                            </div>
-                            <div className="rounded-md bg-white px-2 py-1 border border-gray-200">
-                              <span className="font-semibold">Test 1</span>: --
-                            </div>
-                            <div className="rounded-md bg-white px-2 py-1 border border-gray-200">
-                              <span className="font-semibold">Test 2</span>: --
-                            </div>
-                            <div className="rounded-md bg-white px-2 py-1 border border-gray-200">
-                              <span className="font-semibold">Assignment</span>: --
-                            </div>
+                          <div className="rounded-md bg-white px-2 py-1 border border-gray-200">
+                            <span className="font-semibold">Test 1</span>: --
+                          </div>
+                          <div className="rounded-md bg-white px-2 py-1 border border-gray-200">
+                            <span className="font-semibold">Test 2</span>: --
+                          </div>
+                          <div className="rounded-md bg-white px-2 py-1 border border-gray-200">
+                            <span className="font-semibold">Assignment</span>: --
                           </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500">No learners found for this class.</p>
-                )}
-              </div>
-            )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">No learners found for this class.</p>
+              )}
+            </div>
           </div>
         </div>
 

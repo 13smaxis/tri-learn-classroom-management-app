@@ -2,8 +2,17 @@ package com.schoolapp.service;
 
 import com.schoolapp.dto.CreateHomeworkRequest;
 import com.schoolapp.dto.HomeworkDetailDTO;
-import com.schoolapp.model.*;
-import com.schoolapp.repository.*;
+import com.schoolapp.model.AppUser;
+import com.schoolapp.model.Homework;
+import com.schoolapp.model.HomeworkSubmission;
+import com.schoolapp.model.Learner;
+import com.schoolapp.model.SchoolClass;
+import com.schoolapp.model.StarCategory;
+import com.schoolapp.repository.ClassRepository;
+import com.schoolapp.repository.HomeworkRepository;
+import com.schoolapp.repository.HomeworkSubmissionRepository;
+import com.schoolapp.repository.LearnerRepository;
+import com.schoolapp.repository.StudentStarRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;

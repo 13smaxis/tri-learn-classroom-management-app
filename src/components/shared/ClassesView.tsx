@@ -12,25 +12,34 @@ const ClassesView: React.FC<ClassesViewProps> = ({ classesVersion, onSelectClass
   const { user } = useAuth();
   const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   // Removed selectedClass state, now handled by parent
 
   useEffect(() => {
     if (user) {
-      setLoading(true); // Force spinner and re-fetch
-      fetchClasses();
+      fetchClasses(loading);
     }
   }, [user, classesVersion]);
 
-  const fetchClasses = async () => {
+  const fetchClasses = async (showInitialLoader = false) => {
     if (!user) return;
+    if (showInitialLoader) {
+      setLoading(true);
+    } else {
+      setRefreshing(true);
+    }
     try {
       const data = await api.getMyClasses();
       setClasses(data || []);
     } catch (err) {
       console.error('Failed to fetch classes:', err);
-      setClasses([]);
+      if (showInitialLoader) {
+        setClasses([]);
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-    setLoading(false);
   };
 
   const copyToClipboard = (text: string) => {
@@ -84,6 +93,9 @@ const ClassesView: React.FC<ClassesViewProps> = ({ classesVersion, onSelectClass
               : 'View your enrolled classes'}
           </p>
         </div>
+        {refreshing && (
+          <span className="text-xs text-gray-400">Refreshing…</span>
+        )}
       </div>
 
       {classes.length === 0 ? (
