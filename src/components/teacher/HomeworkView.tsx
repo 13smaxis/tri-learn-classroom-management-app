@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { api } from '@/lib/api';
 
 /* ═══════════════════════════════════════════════════════════════
@@ -79,11 +79,14 @@ const HomeworkView: React.FC = () => {
 
   const [homeworkList, setHomeworkList] = useState<HomeworkItem[]>([]);
   const [loadingHomework, setLoadingHomework] = useState(false);
+  const [refreshingHomework, setRefreshingHomework] = useState(false);
   const [viewRequested, setViewRequested] = useState(false);
 
   const [selectedHomework, setSelectedHomework] = useState<HomeworkItem | null>(null);
   const [detail, setDetail] = useState<HomeworkDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [refreshingDetail, setRefreshingDetail] = useState(false);
+  const rightPanelRef = useRef<HTMLDivElement | null>(null);
 
   /* ── create form state ── */
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -139,20 +142,73 @@ const HomeworkView: React.FC = () => {
   };
 
   /* ── Fetch homework list for a class ── */
-  const fetchHomework = useCallback(async (classId: string) => {
-    setHomeworkError(''); setViewRequested(true); setLoadingHomework(true);
-    setSelectedHomework(null); setDetail(null); setShowCreateForm(false);
-    try { setHomeworkList((await api.getHomeworkList(classId)) || []); }
-    catch (err) { setHomeworkList([]); setHomeworkError(err instanceof Error ? err.message : 'Failed to load homework'); }
-    setLoadingHomework(false);
-  }, []);
+  const fetchHomework = useCallback(async (classId: string, options?: { silent?: boolean }) => {
+    const silent = !!options?.silent;
+    setHomeworkError('');
+    setViewRequested(true);
+    setShowCreateForm(false);
+    if (silent) {
+      setRefreshingHomework(true);
+    } else {
+      setLoadingHomework(true);
+    }
+
+    try {
+      const nextList = (await api.getHomeworkList(classId)) || [];
+      setHomeworkList(nextList);
+
+      if (selectedHomework) {
+        const nextSelected = nextList.find((item) => item.id === selectedHomework.id) || null;
+        if (nextSelected) {
+          setSelectedHomework(nextSelected);
+        } else {
+          setSelectedHomework(null);
+          setDetail(null);
+        }
+      }
+    }
+    catch (err) {
+      setHomeworkError(err instanceof Error ? err.message : 'Failed to load homework');
+    }
+    finally {
+      setLoadingHomework(false);
+      setRefreshingHomework(false);
+    }
+  }, [selectedHomework]);
 
   /* ── Fetch detail for a single homework ── */
-  const fetchDetail = useCallback(async (hw: HomeworkItem) => {
-    setSelectedHomework(hw); setLoadingDetail(true); setShowCreateForm(false);
-    try { setDetail(await api.getHomeworkDetail(hw.id)); }
-    catch (err) { setDetail(null); setHomeworkError(err instanceof Error ? err.message : 'Failed to load detail'); }
-    setLoadingDetail(false);
+  const fetchDetail = useCallback(async (hw: HomeworkItem, options?: { silent?: boolean }) => {
+    const silent = !!options?.silent;
+    const preservedScrollTop = silent ? rightPanelRef.current?.scrollTop ?? null : null;
+
+    setSelectedHomework(hw);
+    setShowCreateForm(false);
+    if (silent) {
+      setRefreshingDetail(true);
+    } else {
+      setLoadingDetail(true);
+    }
+
+    try {
+      setDetail(await api.getHomeworkDetail(hw.id));
+    }
+    catch (err) {
+      if (!silent) {
+        setDetail(null);
+      }
+      setHomeworkError(err instanceof Error ? err.message : 'Failed to load detail');
+    }
+    finally {
+      setLoadingDetail(false);
+      setRefreshingDetail(false);
+      if (silent && preservedScrollTop != null) {
+        requestAnimationFrame(() => {
+          if (rightPanelRef.current) {
+            rightPanelRef.current.scrollTop = preservedScrollTop;
+          }
+        });
+      }
+    }
   }, []);
 
   /* ── Delete ── */
@@ -194,14 +250,14 @@ const HomeworkView: React.FC = () => {
     if (!selectedHomework) return;
     const mark = markDraft.trim() === '' ? null : parseFloat(markDraft);
     if (mark !== null && (isNaN(mark) || mark < 0 || mark > 100)) { setHomeworkError('Mark must be 0-100'); return; }
-    try { await api.captureHomeworkMark(selectedHomework.id, learnerId, mark); setEditingMark(null); setMarkDraft(''); fetchDetail(selectedHomework); }
+    try { await api.captureHomeworkMark(selectedHomework.id, learnerId, mark); setEditingMark(null); setMarkDraft(''); fetchDetail(selectedHomework, { silent: true }); }
     catch (err) { setHomeworkError(err instanceof Error ? err.message : 'Failed to capture mark'); }
   };
 
   /* ── Toggle submission ── */
   const handleToggle = async (learnerId: string, cur: boolean) => {
     if (!selectedHomework) return;
-    try { await api.toggleHomeworkSubmission(selectedHomework.id, learnerId, !cur); fetchDetail(selectedHomework); }
+    try { await api.toggleHomeworkSubmission(selectedHomework.id, learnerId, !cur); fetchDetail(selectedHomework, { silent: true }); }
     catch (err) { setHomeworkError(err instanceof Error ? err.message : 'Toggle failed'); }
   };
 
@@ -209,7 +265,7 @@ const HomeworkView: React.FC = () => {
   const handleAwardStar = async (learnerId: string) => {
     if (!selectedHomework) return;
     setAwardingStarFor(learnerId);
-    try { await api.awardHomeworkStar(selectedHomework.id, learnerId, selectedHomework.classId, 1, 'Homework star'); fetchDetail(selectedHomework); }
+    try { await api.awardHomeworkStar(selectedHomework.id, learnerId, selectedHomework.classId, 1, 'Homework star'); fetchDetail(selectedHomework, { silent: true }); }
     catch (err) { setHomeworkError(err instanceof Error ? err.message : 'Award failed'); }
     setAwardingStarFor(null);
   };
@@ -249,7 +305,13 @@ const HomeworkView: React.FC = () => {
               <label className="block text-[11px] font-medium text-gray-400 uppercase tracking-wider mb-1">Select Class</label>
               <select
                 value={selectedClass}
-                onChange={e => { setSelectedClass(e.target.value); setViewRequested(false); setHomeworkList([]); setSelectedHomework(null); setDetail(null); setShowCreateForm(false); }}
+                onChange={e => {
+                  const nextClassId = e.target.value;
+                  setSelectedClass(nextClassId);
+                  if (nextClassId && viewRequested) {
+                    fetchHomework(nextClassId, { silent: true });
+                  }
+                }}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white"
               >
                 <option value="">— Choose a class —</option>
@@ -264,19 +326,17 @@ const HomeworkView: React.FC = () => {
               <button
                 disabled={!selectedClass}
                 onClick={() => { setShowCreateForm(true); setSelectedHomework(null); setDetail(null); setHomeworkError(''); }}
-                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                  selectedClass ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                }`}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${selectedClass ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                 Create
               </button>
               <button
                 disabled={!selectedClass}
-                onClick={() => selectedClass && fetchHomework(selectedClass)}
-                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                  selectedClass ? 'bg-gray-800 text-white hover:bg-gray-900' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                }`}
+                onClick={() => selectedClass && fetchHomework(selectedClass, { silent: viewRequested })}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${selectedClass ? 'bg-gray-800 text-white hover:bg-gray-900' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                 View
@@ -285,6 +345,7 @@ const HomeworkView: React.FC = () => {
 
             {homeworkError && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-1.5">{homeworkError}</p>}
             {homeworkSuccess && <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-1.5">{homeworkSuccess}</p>}
+            {refreshingHomework && <p className="text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-1.5">Refreshing…</p>}
           </div>
 
           {/* Scrollable homework list */}
@@ -336,7 +397,7 @@ const HomeworkView: React.FC = () => {
         {/* ████████████████████████████████████
            RIGHT PANEL – 70 %
            ████████████████████████████████████ */}
-        <div className="w-full md:w-[70%] overflow-y-auto" style={{ maxHeight: '100vh' }}>
+        <div ref={rightPanelRef} className="w-full md:w-[70%] overflow-y-auto" style={{ maxHeight: '100vh' }}>
 
           {/* ─────────────── PLACEHOLDER (landing) ─────────────── */}
           {placeholderMode && (
@@ -366,7 +427,7 @@ const HomeworkView: React.FC = () => {
               <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
                 <h3 className="text-sm font-semibold text-gray-400 mb-3">Top 5 Learners</h3>
                 <div className="grid grid-cols-5 gap-3">
-                  {[1,2,3,4,5].map(i => (
+                  {[1, 2, 3, 4, 5].map(i => (
                     <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-lg p-3">
                       <div className="w-8 h-8 rounded-full bg-gray-200" />
                       <div className="flex-1"><div className="h-3 bg-gray-200 rounded w-full mb-1" /><div className="h-2 bg-gray-100 rounded w-2/3" /></div>
@@ -383,7 +444,7 @@ const HomeworkView: React.FC = () => {
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 min-h-[160px]">
                   <h4 className="text-xs font-semibold text-gray-300 mb-3">Marks Distribution</h4>
                   <div className="flex items-end gap-2 h-20">
-                    {['0-20','21-40','41-60','61-80','81-100'].map(l => (
+                    {['0-20', '21-40', '41-60', '61-80', '81-100'].map(l => (
                       <div key={l} className="flex-1 flex flex-col items-center gap-1">
                         <div className="w-full h-4 bg-gray-100 rounded-t" /><span className="text-[9px] text-gray-300">{l}</span>
                       </div>
@@ -393,7 +454,7 @@ const HomeworkView: React.FC = () => {
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 min-h-[160px]">
                   <h4 className="text-xs font-semibold text-gray-300 mb-3">Stars – Top Learners</h4>
                   <div className="flex items-end gap-2 h-20">
-                    {[1,2,3,4,5].map(i => (
+                    {[1, 2, 3, 4, 5].map(i => (
                       <div key={i} className="flex-1 flex flex-col items-center gap-1">
                         <div className="w-full h-4 bg-gray-100 rounded-t" /><span className="text-[9px] text-gray-300">—</span>
                       </div>
@@ -483,6 +544,7 @@ const HomeworkView: React.FC = () => {
                       <div className="flex gap-4 mt-1 text-xs text-gray-400">
                         <span>Due: {fmtDate(detail.dueDate)}</span>
                         <span>Created: {fmtDate(detail.createdAt)}</span>
+                        {refreshingDetail && <span>Updating…</span>}
                       </div>
                     </div>
                     <button onClick={() => { setSelectedHomework(null); setDetail(null); }}
@@ -546,7 +608,7 @@ const HomeworkView: React.FC = () => {
                       </div>
                       <MiniBarChart
                         data={chartData.marksDistro}
-                        labels={['0-20','21-40','41-60','61-80','81-100']}
+                        labels={['0-20', '21-40', '41-60', '61-80', '81-100']}
                         title="Marks Distribution"
                         color="#6366f1"
                       />

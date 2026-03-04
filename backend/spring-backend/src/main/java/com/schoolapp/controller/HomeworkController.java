@@ -24,6 +24,7 @@ import java.nio.file.Paths;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -43,11 +44,9 @@ public class HomeworkController {
     @PostMapping("/create")
     public ResponseEntity<Map<String, Object>> createHomework(@RequestBody CreateHomeworkRequest request, Authentication auth) {
         try {
-            Object principal = auth.getPrincipal();
-            if (!(principal instanceof AppUser)) {
+            if (!(auth.getPrincipal() instanceof AppUser teacher)) {
                 return ResponseEntity.status(401).body(errorBody("Unauthorized"));
             }
-            AppUser teacher = (AppUser) principal;
             Homework homework = homeworkService.createHomework(teacher, request);
             return ResponseEntity.status(201).body(Map.of("success", true, "data", toMap(homework)));
         } catch (RuntimeException e) {
@@ -59,11 +58,9 @@ public class HomeworkController {
     @GetMapping("/count")
     public ResponseEntity<Map<String, Object>> getHomeworkCount(Authentication auth) {
         try {
-            Object principal = auth.getPrincipal();
-            if (!(principal instanceof AppUser)) {
+            if (!(auth.getPrincipal() instanceof AppUser teacher)) {
                 return ResponseEntity.status(401).body(errorBody("Unauthorized"));
             }
-            AppUser teacher = (AppUser) principal;
             long count = homeworkService.countByTeacher(teacher.getId());
             return ResponseEntity.ok(Map.of("success", true, "data", count));
         } catch (RuntimeException e) {
@@ -97,11 +94,9 @@ public class HomeworkController {
     @DeleteMapping("/{homeworkId}")
     public ResponseEntity<Map<String, Object>> deleteHomework(@PathVariable String homeworkId, Authentication auth) {
         try {
-            Object principal = auth.getPrincipal();
-            if (!(principal instanceof AppUser)) {
+            if (!(auth.getPrincipal() instanceof AppUser teacher)) {
                 return ResponseEntity.status(401).body(errorBody("Unauthorized"));
             }
-            AppUser teacher = (AppUser) principal;
             homeworkService.deleteHomework(homeworkId, teacher);
             return ResponseEntity.ok(Map.of("success", true, "data", "Homework deleted"));
         } catch (RuntimeException e) {
@@ -119,11 +114,13 @@ public class HomeworkController {
             Files.createDirectories(uploadDir);
 
             String originalName = file.getOriginalFilename() != null ? file.getOriginalFilename() : "file";
-            String sanitizedName = Paths.get(originalName).getFileName().toString();
+            Path originalPath = Paths.get(originalName);
+            Path fileNamePath = originalPath.getFileName();
+            String sanitizedName = Objects.toString(fileNamePath, "file");
             String storedName = UUID.randomUUID() + "-" + sanitizedName;
 
             Path targetPath = uploadDir.resolve(storedName).normalize();
-            file.transferTo(targetPath.toFile());
+            file.transferTo(targetPath);
 
             return ResponseEntity.ok(Map.of("success", true, "url", "/api/homework/attachments/" + storedName));
         } catch (Exception e) {
@@ -148,7 +145,10 @@ public class HomeworkController {
 
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "inline; filename=\"" +
+                            Objects.toString(resource.getFilename(), Objects.toString(filePath.getFileName(), "attachment")) +
+                            "\"")
                     .body(resource);
         } catch (MalformedURLException e) {
             return ResponseEntity.badRequest().build();
@@ -190,8 +190,7 @@ public class HomeworkController {
             @RequestBody Map<String, Object> body,
             Authentication auth) {
         try {
-            Object principal = auth.getPrincipal();
-            if (!(principal instanceof AppUser)) {
+            if (!(auth.getPrincipal() instanceof AppUser)) {
                 return ResponseEntity.status(401).body(errorBody("Unauthorized"));
             }
             String learnerId = (String) body.get("learnerId");
@@ -214,8 +213,7 @@ public class HomeworkController {
             @RequestBody Map<String, Object> body,
             Authentication auth) {
         try {
-            Object principal = auth.getPrincipal();
-            if (!(principal instanceof AppUser)) {
+            if (!(auth.getPrincipal() instanceof AppUser)) {
                 return ResponseEntity.status(401).body(errorBody("Unauthorized"));
             }
             String learnerId = (String) body.get("learnerId");
@@ -238,7 +236,10 @@ public class HomeworkController {
             @RequestBody Map<String, Object> body,
             Authentication auth) {
         try {
-            String teacherId = auth.getName();
+            if (!(auth.getPrincipal() instanceof AppUser teacher)) {
+                return ResponseEntity.status(401).body(errorBody("Unauthorized"));
+            }
+            String teacherId = teacher.getId();
             String learnerId = (String) body.get("learnerId");
             String classId = (String) body.get("classId");
             String note = (String) body.get("note");

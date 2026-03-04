@@ -4,18 +4,33 @@ const API_BASE = '/api';
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem('authToken');
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> || {}),
   };
+
+  // Only add Content-Type if there's a body
+  if (options.body && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  }
+
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
+
   const res = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
     headers,
     cache: 'no-store',
   });
   const text = await res.text();
+
+  // Handle 401 – token expired / missing → clear token so user is prompted to log in again
+  if (res.status === 401) {
+    localStorage.removeItem('authToken');
+    let msg = 'Session expired – please log in again';
+    try { const j = JSON.parse(text); msg = j.error?.message || msg; } catch { /* use default */ }
+    throw new Error(msg);
+  }
+
   if (!text) {
     if (!res.ok) {
       throw new Error(`Request failed with status ${res.status}`);
@@ -29,7 +44,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     throw new Error(`Invalid JSON response (status ${res.status}): ${text.substring(0, 200)}`);
   }
   if (!res.ok || !json.success) {
-    throw new Error(json.error?.message || json.message || 'Request failed');
+    throw new Error(json.error?.message || json.message || `Request failed (${res.status})`);
   }
   return json.data as T;
 }
