@@ -28,7 +28,7 @@ spring:
 
 logging:
   level:
-    com.schoolapp.security: DEBUG
+    "[com.schoolapp.security]": DEBUG
 
 app:
   jwt:

@@ -120,7 +120,7 @@ public class HomeworkController {
             String storedName = UUID.randomUUID() + "-" + sanitizedName;
 
             Path targetPath = uploadDir.resolve(storedName).normalize();
-            file.transferTo(targetPath);
+            file.transferTo(Objects.requireNonNull(targetPath, "targetPath"));
 
             return ResponseEntity.ok(Map.of("success", true, "url", "/api/homework/attachments/" + storedName));
         } catch (Exception e) {
@@ -132,7 +132,7 @@ public class HomeworkController {
     public ResponseEntity<Resource> getAttachment(@PathVariable String fileName) {
         try {
             Path filePath = uploadDir.resolve(fileName).normalize();
-            Resource resource = new UrlResource(filePath.toUri());
+            Resource resource = new UrlResource(Objects.requireNonNull(filePath.toUri(), "fileUri"));
 
             if (!resource.exists() || !resource.isReadable()) {
                 return ResponseEntity.notFound().build();

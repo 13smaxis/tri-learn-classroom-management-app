@@ -25,6 +25,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -64,7 +65,7 @@ public class AssignmentService {
             throw new RuntimeException("dueDate is required");
         }
 
-        SchoolClass schoolClass = classRepository.findById(request.getClassId())
+        SchoolClass schoolClass = classRepository.findById(Objects.requireNonNull(request.getClassId(), "classId"))
                 .orElseThrow(() -> new RuntimeException("Class not found"));
 
         if (schoolClass.getTeacher() == null || !schoolClass.getTeacher().getId().equals(teacher.getId())) {
@@ -102,7 +103,7 @@ public class AssignmentService {
     }
 
     public void deleteAssignment(String assignmentId, AppUser teacher) {
-        Assignment assignment = assignmentRepository.findById(assignmentId)
+        Assignment assignment = assignmentRepository.findById(Objects.requireNonNull(assignmentId, "assignmentId"))
                 .orElseThrow(() -> new RuntimeException("Assignment not found"));
         if (assignment.getTeacher() == null || !assignment.getTeacher().getId().equals(teacher.getId())) {
             throw new RuntimeException("You are not allowed to delete this assignment");
@@ -128,7 +129,7 @@ public class AssignmentService {
     }
 
     public AssignmentDetailDTO getAssignmentDetail(String assignmentId) {
-        Assignment assignment = assignmentRepository.findById(assignmentId)
+        Assignment assignment = assignmentRepository.findById(Objects.requireNonNull(assignmentId, "assignmentId"))
                 .orElseThrow(() -> new RuntimeException("Assignment not found"));
 
         String classId = assignment.getSchoolClass().getId();
@@ -216,7 +217,7 @@ public class AssignmentService {
 
     @Transactional
     public int bulkUpdateSubmissions(String assignmentId, List<?> entries, String teacherId) {
-        Assignment assignment = assignmentRepository.findById(assignmentId)
+        Assignment assignment = assignmentRepository.findById(Objects.requireNonNull(assignmentId, "assignmentId"))
                 .orElseThrow(() -> new RuntimeException("Assignment not found"));
 
         if (assignment.getTeacher() == null || !assignment.getTeacher().getId().equals(teacherId)) {
@@ -261,7 +262,7 @@ public class AssignmentService {
     }
 
     public boolean toggleAssignmentStar(String assignmentId, String learnerId, String classId, String teacherId) {
-        Assignment assignment = assignmentRepository.findById(assignmentId)
+        Assignment assignment = assignmentRepository.findById(Objects.requireNonNull(assignmentId, "assignmentId"))
                 .orElseThrow(() -> new RuntimeException("Assignment not found"));
 
         if (assignment.getTeacher() == null || !assignment.getTeacher().getId().equals(teacherId)) {
@@ -272,7 +273,7 @@ public class AssignmentService {
             throw new RuntimeException("Assignment does not belong to the provided class");
         }
 
-        Learner learner = learnerRepository.findById(learnerId)
+        Learner learner = learnerRepository.findById(Objects.requireNonNull(learnerId, "learnerId"))
                 .orElseThrow(() -> new RuntimeException("Learner not found"));
 
         String note = buildAssignmentStarNote(assignmentId);
@@ -284,7 +285,8 @@ public class AssignmentService {
         );
 
         if (existing.isPresent()) {
-            starRepository.delete(existing.get());
+            StudentStar starToDelete = existing.orElseThrow(() -> new RuntimeException("Star not found"));
+            starRepository.delete(Objects.requireNonNull(starToDelete, "starToDelete"));
             return false;
         }
 

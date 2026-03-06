@@ -56,7 +56,7 @@ public class HomeworkService {
             throw new RuntimeException("dueDate is required");
         }
 
-        SchoolClass schoolClass = classRepository.findById(request.getClassId())
+        SchoolClass schoolClass = classRepository.findById(Objects.requireNonNull(request.getClassId(), "classId"))
                 .orElseThrow(() -> new RuntimeException("Class not found"));
 
         if (schoolClass.getTeacher() == null || !schoolClass.getTeacher().getId().equals(teacher.getId())) 
@@ -96,7 +96,7 @@ public class HomeworkService {
 
 
     public void deleteHomework(String homeworkId, AppUser teacher) {
-        Homework homework = homeworkRepository.findById(homeworkId)
+        Homework homework = homeworkRepository.findById(Objects.requireNonNull(homeworkId, "homeworkId"))
                 .orElseThrow(() -> new RuntimeException("Homework not found"));
         if (homework.getTeacher() == null || !homework.getTeacher().getId().equals(teacher.getId())) {
             throw new RuntimeException("You are not allowed to delete this homework");
@@ -125,7 +125,7 @@ public class HomeworkService {
 
     public HomeworkDetailDTO getHomeworkDetail(String homeworkId) 
     {
-        Homework homework = homeworkRepository.findById(homeworkId)
+        Homework homework = homeworkRepository.findById(Objects.requireNonNull(homeworkId, "homeworkId"))
                 .orElseThrow(() -> new RuntimeException("Homework not found"));
 
         String classId = homework.getSchoolClass().getId();
@@ -242,7 +242,7 @@ public class HomeworkService {
 
     @Transactional
     public int bulkUpdateSubmissions(String homeworkId, List<?> entries, String teacherId) {
-        Homework homework = homeworkRepository.findById(homeworkId)
+        Homework homework = homeworkRepository.findById(Objects.requireNonNull(homeworkId, "homeworkId"))
                 .orElseThrow(() -> new RuntimeException("Homework not found"));
 
         if (homework.getTeacher() == null || !homework.getTeacher().getId().equals(teacherId)) {
@@ -287,7 +287,7 @@ public class HomeworkService {
     }
 
     public boolean toggleHomeworkStar(String homeworkId, String learnerId, String classId, String teacherId) {
-        Homework homework = homeworkRepository.findById(homeworkId)
+        Homework homework = homeworkRepository.findById(Objects.requireNonNull(homeworkId, "homeworkId"))
                 .orElseThrow(() -> new RuntimeException("Homework not found"));
 
         if (homework.getTeacher() == null || !homework.getTeacher().getId().equals(teacherId)) {
@@ -298,7 +298,7 @@ public class HomeworkService {
             throw new RuntimeException("Homework does not belong to the provided class");
         }
 
-        Learner learner = learnerRepository.findById(learnerId)
+        Learner learner = learnerRepository.findById(Objects.requireNonNull(learnerId, "learnerId"))
                 .orElseThrow(() -> new RuntimeException("Learner not found"));
 
         String note = buildHomeworkStarNote(homeworkId);
@@ -311,7 +311,8 @@ public class HomeworkService {
                 );
 
         if (existing.isPresent()) {
-            starRepository.delete(existing.get());
+            StudentStar starToDelete = existing.orElseThrow(() -> new RuntimeException("Star not found"));
+            starRepository.delete(Objects.requireNonNull(starToDelete, "starToDelete"));
             return false;
         }
 
