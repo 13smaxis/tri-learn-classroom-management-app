@@ -228,6 +228,32 @@ public class HomeworkController {
         }
     }
 
+    @PostMapping("/{homeworkId}/bulk-submissions")
+    public ResponseEntity<Map<String, Object>> bulkUpdateSubmissions(
+            @PathVariable String homeworkId,
+            @RequestBody Map<String, Object> body,
+            Authentication auth) {
+        try {
+            if (!(auth.getPrincipal() instanceof AppUser teacher)) {
+                return ResponseEntity.status(401).body(errorBody("Unauthorized"));
+            }
+
+            Object rawEntries = body.get("entries");
+            if (!(rawEntries instanceof List<?> entries) || entries.isEmpty()) {
+                return ResponseEntity.badRequest().body(errorBody("entries is required"));
+            }
+
+            int updatedCount = homeworkService.bulkUpdateSubmissions(homeworkId, entries, teacher.getId());
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "data", Map.of("updatedCount", updatedCount),
+                    "message", "Homework entries submitted"
+            ));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+        }
+    }
+
     // ── NEW: Award star from homework view ──
 
     @PostMapping("/{homeworkId}/award-star")
@@ -255,6 +281,33 @@ public class HomeworkController {
             req.setNote(note != null ? note : "Homework star");
             starsService.awardStar(req, teacherId);
             return ResponseEntity.ok(Map.of("success", true, "message", "Star awarded"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{homeworkId}/toggle-star")
+    public ResponseEntity<Map<String, Object>> toggleStarFromHomework(
+            @PathVariable String homeworkId,
+            @RequestBody Map<String, Object> body,
+            Authentication auth) {
+        try {
+            if (!(auth.getPrincipal() instanceof AppUser teacher)) {
+                return ResponseEntity.status(401).body(errorBody("Unauthorized"));
+            }
+
+            String learnerId = (String) body.get("learnerId");
+            String classId = (String) body.get("classId");
+            if (learnerId == null || classId == null) {
+                return ResponseEntity.badRequest().body(errorBody("learnerId and classId are required"));
+            }
+
+            boolean awarded = homeworkService.toggleHomeworkStar(homeworkId, learnerId, classId, teacher.getId());
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "data", Map.of("awarded", awarded),
+                    "message", awarded ? "Star awarded" : "Star removed"
+            ));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
         }

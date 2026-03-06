@@ -75,16 +75,16 @@ const LearnerDashboard: React.FC<LearnerDashboardProps> = ({ onViewChange }) => 
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-6 md:p-8 text-white">
+      <div className="bg-gradient-to-r from-slate-700 to-blue-700 rounded-2xl p-6 md:p-8 text-white">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">Hey, {user?.fullName?.split(' ')[0]}!</h1>
-            <p className="text-purple-100 mt-2">Ready to learn something new today?</p>
+            <p className="text-slate-100 mt-2">Ready to learn something new today?</p>
           </div>
           <div className="flex gap-3">
             <button
               onClick={() => onViewChange('assignments')}
-              className="flex items-center gap-2 px-5 py-3 bg-white text-purple-600 font-semibold rounded-xl hover:bg-purple-50 transition-all"
+              className="flex items-center gap-2 px-5 py-3 bg-white text-slate-700 font-semibold rounded-xl hover:bg-slate-100 transition-all"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -151,7 +151,7 @@ const LearnerDashboard: React.FC<LearnerDashboardProps> = ({ onViewChange }) => 
                 className={`flex items-center gap-3 p-3 rounded-lg ${
                   item.subject === 'Break' || item.subject === 'Lunch' 
                     ? 'bg-gray-50' 
-                    : 'bg-purple-50'
+                    : 'bg-slate-50'
                 }`}
               >
                 <span className="text-sm font-mono text-gray-500 w-12">{item.time}</span>
@@ -252,7 +252,7 @@ const LearnerDashboard: React.FC<LearnerDashboardProps> = ({ onViewChange }) => 
           <h3 className="font-semibold text-gray-900 mb-4">My Achievements</h3>
           <div className="space-y-3">
             {achievements.map((achievement, idx) => (
-              <div key={idx} className="flex items-center gap-4 p-3 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg border border-yellow-200">
+              <div key={idx} className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
                 <span className="text-3xl">{achievement.icon}</span>
                 <div>
                   <p className="font-medium text-gray-900">{achievement.title}</p>

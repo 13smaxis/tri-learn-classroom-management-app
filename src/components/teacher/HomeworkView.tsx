@@ -17,7 +17,7 @@ interface TopLearner { learnerId: string; fullName: string; learnerNumber: strin
 interface LearnerRow {
   learnerId: string; learnerNumber: string; fullName: string;
   submitted: boolean; mark: number | null;
-  totalStars: number; homeworkStars: number; submissionId: string;
+  totalStars: number; homeworkStars: number; homeworkStarAwarded?: boolean; submissionId: string;
 }
 interface HomeworkDetail {
   homeworkId: string; title: string; description?: string;
@@ -25,6 +25,11 @@ interface HomeworkDetail {
   totalLearners: number; submittedCount: number;
   submissionRate: number; passRate: number;
   topLearners: TopLearner[]; learnerRows: LearnerRow[];
+}
+
+interface DraftLearnerRow {
+  submitted: boolean;
+  mark: string;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -53,7 +58,7 @@ const DonutChart: React.FC<{ value: number; label: string; color: string }> = ({
 const MiniBarChart: React.FC<{ data: number[]; labels: string[]; title: string; color: string }> = ({ data, labels, title, color }) => {
   const max = Math.max(...data, 1);
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-col">
+    <div className="bg-blue-50/90 rounded-xl border border-blue-200 shadow-sm p-4 flex flex-col">
       <h4 className="text-xs font-semibold text-gray-600 mb-3">{title}</h4>
       <div className="flex items-end gap-2 flex-1 min-h-[80px]">
         {data.map((v, i) => (
@@ -96,8 +101,8 @@ const HomeworkView: React.FC = () => {
   const [successOverlay, setSuccessOverlay] = useState('');
 
   /* ── inline editing ── */
-  const [editingMark, setEditingMark] = useState<string | null>(null);
-  const [markDraft, setMarkDraft] = useState('');
+  const [draftRows, setDraftRows] = useState<Record<string, DraftLearnerRow>>({});
+  const [isSubmittingRows, setIsSubmittingRows] = useState(false);
   const [awardingStarFor, setAwardingStarFor] = useState<string | null>(null);
 
   /* ── messages ── */
@@ -190,7 +195,16 @@ const HomeworkView: React.FC = () => {
     }
 
     try {
-      setDetail(await api.getHomeworkDetail(hw.id));
+      const nextDetail = await api.getHomeworkDetail(hw.id);
+      setDetail(nextDetail);
+      const nextDrafts: Record<string, DraftLearnerRow> = {};
+      nextDetail.learnerRows.forEach((row: LearnerRow) => {
+        nextDrafts[row.learnerId] = {
+          submitted: row.submitted,
+          mark: row.mark != null ? String(row.mark) : '',
+        };
+      });
+      setDraftRows(nextDrafts);
     }
     catch (err) {
       if (!silent) {
@@ -245,28 +259,98 @@ const HomeworkView: React.FC = () => {
     }
   };
 
-  /* ── Capture mark ── */
-  const handleCaptureMark = async (learnerId: string) => {
-    if (!selectedHomework) return;
-    const mark = markDraft.trim() === '' ? null : parseFloat(markDraft);
-    if (mark !== null && (isNaN(mark) || mark < 0 || mark > 100)) { setHomeworkError('Mark must be 0-100'); return; }
-    try { await api.captureHomeworkMark(selectedHomework.id, learnerId, mark); setEditingMark(null); setMarkDraft(''); fetchDetail(selectedHomework, { silent: true }); }
-    catch (err) { setHomeworkError(err instanceof Error ? err.message : 'Failed to capture mark'); }
+  const onDraftSubmissionChange = (learnerId: string, submitted: boolean) => {
+    setDraftRows((prev) => ({
+      ...prev,
+      [learnerId]: {
+        ...(prev[learnerId] || { submitted: false, mark: '' }),
+        submitted,
+      },
+    }));
   };
 
-  /* ── Toggle submission ── */
-  const handleToggle = async (learnerId: string, cur: boolean) => {
-    if (!selectedHomework) return;
-    try { await api.toggleHomeworkSubmission(selectedHomework.id, learnerId, !cur); fetchDetail(selectedHomework, { silent: true }); }
-    catch (err) { setHomeworkError(err instanceof Error ? err.message : 'Toggle failed'); }
+  const onDraftMarkChange = (learnerId: string, mark: string) => {
+    setDraftRows((prev) => ({
+      ...prev,
+      [learnerId]: {
+        ...(prev[learnerId] || { submitted: false, mark: '' }),
+        mark,
+      },
+    }));
+  };
+
+  const hasDraftChanges = useMemo(() => {
+    if (!detail) return false;
+    return detail.learnerRows.some((row) => {
+      const draft = draftRows[row.learnerId];
+      if (!draft) return false;
+      const submittedChanged = draft.submitted !== row.submitted;
+      const originalMark = row.mark != null ? String(row.mark) : '';
+      const markChanged = draft.mark.trim() !== originalMark;
+      return submittedChanged || markChanged;
+    });
+  }, [detail, draftRows]);
+
+  const handleSubmitLearnerRows = async () => {
+    if (!selectedHomework || !detail) return;
+
+    const entries: { learnerId: string; submitted: boolean; mark: number | null }[] = [];
+    for (const row of detail.learnerRows) {
+      const draft = draftRows[row.learnerId];
+      if (!draft) continue;
+
+      const submittedChanged = draft.submitted !== row.submitted;
+      const originalMark = row.mark != null ? String(row.mark) : '';
+      const markChanged = draft.mark.trim() !== originalMark;
+      if (!submittedChanged && !markChanged) {
+        continue;
+      }
+
+      const markRaw = draft.mark.trim();
+      const mark = markRaw === '' ? null : parseFloat(markRaw);
+      if (mark !== null && (isNaN(mark) || mark < 0 || mark > 100)) {
+        setHomeworkError(`Mark must be 0-100 for ${row.fullName}`);
+        return;
+      }
+      if (!draft.submitted && mark !== null) {
+        setHomeworkError(`Cannot capture mark before marking ${row.fullName} as submitted`);
+        return;
+      }
+
+      entries.push({
+        learnerId: row.learnerId,
+        submitted: draft.submitted,
+        mark,
+      });
+    }
+
+    if (entries.length === 0) {
+      return;
+    }
+
+    setHomeworkError('');
+    setIsSubmittingRows(true);
+    try {
+      await api.submitHomeworkEntries(selectedHomework.id, entries);
+      setHomeworkSuccess('Homework entries submitted successfully.');
+      setTimeout(() => setHomeworkSuccess(''), 2500);
+      await fetchDetail(selectedHomework, { silent: true });
+    } catch (err) {
+      setHomeworkError(err instanceof Error ? err.message : 'Failed to submit homework entries');
+    } finally {
+      setIsSubmittingRows(false);
+    }
   };
 
   /* ── Award star ── */
   const handleAwardStar = async (learnerId: string) => {
     if (!selectedHomework) return;
     setAwardingStarFor(learnerId);
-    try { await api.awardHomeworkStar(selectedHomework.id, learnerId, selectedHomework.classId, 1, 'Homework star'); fetchDetail(selectedHomework, { silent: true }); }
-    catch (err) { setHomeworkError(err instanceof Error ? err.message : 'Award failed'); }
+    try {
+      await api.toggleHomeworkStar(selectedHomework.id, learnerId, selectedHomework.classId);
+      fetchDetail(selectedHomework, { silent: true });
+    }
+    catch (err) { setHomeworkError(err instanceof Error ? err.message : 'Star toggle failed'); }
     setAwardingStarFor(null);
   };
 
@@ -289,15 +373,15 @@ const HomeworkView: React.FC = () => {
 
   /* ═══════════════════════════════════════════ RENDER ═══════════════════════════════════════════ */
   return (
-    <div className="w-full h-full min-h-screen bg-gray-50 relative">
+    <div className="w-full h-full min-h-screen bg-transparent relative">
       <div className="flex flex-row h-full min-h-screen">
 
         {/* ████████████████████████████████████
            LEFT PANEL – 30 %
            ████████████████████████████████████ */}
-        <div className="w-full md:w-[30%] bg-white border-r border-gray-200 flex flex-col" style={{ maxHeight: '100vh' }}>
+        <div className="w-full md:w-[30%] bg-blue-100/80 border-r border-blue-200 flex flex-col backdrop-blur-sm" style={{ maxHeight: '100vh' }}>
           {/* Fixed header area */}
-          <div className="p-5 pb-3 space-y-3 border-b border-gray-100">
+          <div className="p-5 pb-3 space-y-3 border-b border-blue-200/70">
             <h1 className="text-xl font-bold text-gray-900">Homework</h1>
 
             {/* Class dropdown */}
@@ -312,7 +396,7 @@ const HomeworkView: React.FC = () => {
                     fetchHomework(nextClassId, { silent: true });
                   }
                 }}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white"
+                className="w-full rounded-lg border border-blue-200 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-blue-50"
               >
                 <option value="">— Choose a class —</option>
                 {classes.map(cls => (
@@ -345,7 +429,7 @@ const HomeworkView: React.FC = () => {
 
             {homeworkError && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-1.5">{homeworkError}</p>}
             {homeworkSuccess && <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-1.5">{homeworkSuccess}</p>}
-            {refreshingHomework && <p className="text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-1.5">Refreshing…</p>}
+            {refreshingHomework && <p className="text-xs text-blue-700 bg-blue-100 rounded-lg px-3 py-1.5">Refreshing…</p>}
           </div>
 
           {/* Scrollable homework list */}
@@ -368,7 +452,7 @@ const HomeworkView: React.FC = () => {
                 const past = hw.dueDate ? new Date(hw.dueDate) < new Date() : false;
                 return (
                   <div key={hw.id} onClick={() => fetchDetail(hw)}
-                    className={`cursor-pointer rounded-xl border p-3.5 transition-all hover:shadow ${sel ? 'border-blue-500 bg-blue-50 shadow' : 'border-gray-200 bg-white hover:border-blue-300'}`}>
+                    className={`cursor-pointer rounded-xl border p-3.5 transition-all hover:shadow ${sel ? 'border-blue-500 bg-blue-100 shadow' : 'border-blue-200 bg-blue-50 hover:border-blue-300'}`}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         <p className="font-semibold text-gray-900 text-sm truncate">{hw.title}</p>
@@ -410,7 +494,7 @@ const HomeworkView: React.FC = () => {
                   { label: 'Number of Learners', value: '—', icon: '👥', bg: 'bg-purple-50' },
                   { label: 'Stars Awarded', value: '—', icon: '⭐', bg: 'bg-amber-50' },
                 ].map(c => (
-                  <div key={c.label} className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex items-center gap-4">
+                  <div key={c.label} className="bg-blue-50 rounded-xl border border-blue-200 shadow-sm p-5 flex items-center gap-4">
                     <div className={`flex items-center justify-center w-12 h-12 rounded-xl text-2xl ${c.bg}`}>{c.icon}</div>
                     <div><div className="text-xl font-bold text-gray-300">{c.value}</div><div className="text-xs text-gray-400">{c.label}</div></div>
                   </div>
@@ -418,17 +502,17 @@ const HomeworkView: React.FC = () => {
               </div>
 
               {/* placeholder description */}
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+              <div className="bg-blue-50 rounded-xl border border-blue-200 shadow-sm p-5">
                 <h3 className="text-sm font-semibold text-gray-400 mb-2">Homework Description</h3>
                 <div className="h-4 bg-gray-100 rounded w-3/4 mb-2" /><div className="h-4 bg-gray-100 rounded w-1/2" />
               </div>
 
               {/* placeholder top 5 */}
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+              <div className="bg-blue-50 rounded-xl border border-blue-200 shadow-sm p-5">
                 <h3 className="text-sm font-semibold text-gray-400 mb-3">Top 5 Learners</h3>
                 <div className="grid grid-cols-5 gap-3">
                   {[1, 2, 3, 4, 5].map(i => (
-                    <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-lg p-3">
+                    <div key={i} className="flex items-center gap-2 bg-blue-100/80 rounded-lg p-3">
                       <div className="w-8 h-8 rounded-full bg-gray-200" />
                       <div className="flex-1"><div className="h-3 bg-gray-200 rounded w-full mb-1" /><div className="h-2 bg-gray-100 rounded w-2/3" /></div>
                     </div>
@@ -438,10 +522,10 @@ const HomeworkView: React.FC = () => {
 
               {/* placeholder charts */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex flex-col items-center justify-center min-h-[160px]">
+                <div className="bg-blue-50 rounded-xl border border-blue-200 shadow-sm p-5 flex flex-col items-center justify-center min-h-[160px]">
                   <DonutChart value={0} label="Submission Rate" color="#d1d5db" />
                 </div>
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 min-h-[160px]">
+                <div className="bg-blue-50 rounded-xl border border-blue-200 shadow-sm p-4 min-h-[160px]">
                   <h4 className="text-xs font-semibold text-gray-300 mb-3">Marks Distribution</h4>
                   <div className="flex items-end gap-2 h-20">
                     {['0-20', '21-40', '41-60', '61-80', '81-100'].map(l => (
@@ -451,7 +535,7 @@ const HomeworkView: React.FC = () => {
                     ))}
                   </div>
                 </div>
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 min-h-[160px]">
+                <div className="bg-blue-50 rounded-xl border border-blue-200 shadow-sm p-4 min-h-[160px]">
                   <h4 className="text-xs font-semibold text-gray-300 mb-3">Stars – Top Learners</h4>
                   <div className="flex items-end gap-2 h-20">
                     {[1, 2, 3, 4, 5].map(i => (
@@ -464,7 +548,7 @@ const HomeworkView: React.FC = () => {
               </div>
 
               {/* placeholder learner table */}
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="bg-blue-50 rounded-xl border border-blue-200 shadow-sm overflow-hidden">
                 <div className="p-4 border-b border-gray-100"><h3 className="text-sm font-semibold text-gray-400">Learner Results &amp; Stars</h3></div>
                 <div className="p-6 text-center text-gray-300 text-sm">Select a class and click <b>View</b>, then choose a homework to see results.</div>
               </div>
@@ -474,7 +558,7 @@ const HomeworkView: React.FC = () => {
           {/* ─────────────── CREATE HOMEWORK FORM ─────────────── */}
           {showCreateForm && (
             <div className="p-6 animate-in fade-in duration-200">
-              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+              <div className="bg-blue-50 rounded-2xl border border-blue-200 p-6 shadow-sm">
                 <h2 className="text-xl font-bold mb-6 text-gray-900 flex items-center gap-2">
                   <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                   Create New Homework
@@ -484,14 +568,14 @@ const HomeworkView: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Homework Title <span className="text-red-400">*</span></label>
                     <input type="text" value={newHomework.title}
                       onChange={e => setNewHomework({ ...newHomework, title: e.target.value })}
-                      className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      className="w-full rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                       placeholder="e.g., Exercise 5.2 – Functions" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Instructions</label>
                     <textarea value={newHomework.description}
                       onChange={e => setNewHomework({ ...newHomework, description: e.target.value })}
-                      rows={4} className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      rows={4} className="w-full rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                       placeholder="Enter homework instructions…" />
                   </div>
                   <div className="space-y-5">
@@ -499,11 +583,11 @@ const HomeworkView: React.FC = () => {
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">Due Date <span className="text-red-400">*</span></label>
                       <input type="datetime-local" value={newHomework.dueDate}
                         onChange={e => setNewHomework({ ...newHomework, dueDate: e.target.value })}
-                        className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+                        className="w-full rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">Attachments <span className="text-gray-400 font-normal">(optional)</span></label>
-                      <label className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-400 transition-colors cursor-pointer block">
+                      <label className="border-2 border-dashed border-blue-300 bg-blue-50 rounded-lg p-4 text-center hover:border-blue-400 transition-colors cursor-pointer block">
                         <svg className="h-8 w-8 text-gray-300 mx-auto mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
                         <p className="text-xs text-gray-400">Click to browse</p>
                         <input type="file" multiple className="hidden" onChange={handleFileChange} accept=".pdf,.doc,.docx,image/*" />
@@ -513,9 +597,9 @@ const HomeworkView: React.FC = () => {
                       )}
                     </div>
                   </div>
-                  <div className="md:col-span-2 flex gap-3 pt-4 border-t border-gray-100">
+                  <div className="md:col-span-2 flex gap-3 pt-4 border-t border-blue-200/70">
                     <button type="button" onClick={() => { setShowCreateForm(false); setNewHomework({ title: '', description: '', dueDate: '', attachments: [], attachmentUrls: [] }); }}
-                      className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-all">Cancel</button>
+                      className="flex-1 px-4 py-3 border border-blue-200 text-gray-700 font-medium rounded-xl hover:bg-blue-100 transition-all">Cancel</button>
                     <button type="button" disabled={!canCreate}
                       onClick={() => setShowConfirmDialog(true)}
                       className={`flex-1 px-4 py-3 font-semibold rounded-xl transition-all ${canCreate ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>
@@ -561,7 +645,7 @@ const HomeworkView: React.FC = () => {
                       { v: detail.totalLearners, l: 'Number of Learners', icon: '👥', bg: 'bg-purple-50' },
                       { v: detail.learnerRows.reduce((s, r) => s + r.totalStars, 0), l: 'Stars Awarded', icon: '⭐', bg: 'bg-amber-50' },
                     ].map(c => (
-                      <div key={c.l} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3">
+                      <div key={c.l} className="bg-blue-50 rounded-xl border border-blue-200 shadow-sm p-4 flex items-center gap-3">
                         <div className={`flex items-center justify-center w-11 h-11 rounded-xl text-xl ${c.bg}`}>{c.icon}</div>
                         <div><div className="text-lg font-bold text-gray-900">{c.v}</div><div className="text-[11px] text-gray-500">{c.l}</div></div>
                       </div>
@@ -570,7 +654,7 @@ const HomeworkView: React.FC = () => {
 
                   {/* Description */}
                   {detail.description && (
-                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+                    <div className="bg-blue-50 rounded-xl border border-blue-200 shadow-sm p-4">
                       <h3 className="text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Description</h3>
                       <p className="text-sm text-gray-700 whitespace-pre-line">{detail.description}</p>
                     </div>
@@ -578,7 +662,7 @@ const HomeworkView: React.FC = () => {
 
                   {/* Top 5 Learners – marks & stars */}
                   {detail.topLearners.length > 0 && (
-                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+                    <div className="bg-blue-50 rounded-xl border border-blue-200 shadow-sm p-4">
                       <h3 className="text-xs font-semibold text-gray-500 mb-3 uppercase tracking-wider flex items-center gap-1.5">
                         <svg className="h-3.5 w-3.5 text-amber-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
                         Top 5 Learners – Marks &amp; Stars
@@ -603,7 +687,7 @@ const HomeworkView: React.FC = () => {
                   {/* Charts row: 2 trend + 1 donut */}
                   {chartData && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-col items-center justify-center">
+                      <div className="bg-blue-50 rounded-xl border border-blue-200 shadow-sm p-4 flex flex-col items-center justify-center">
                         <DonutChart value={detail.submissionRate} label="Submission Rate" color="#22c55e" />
                       </div>
                       <MiniBarChart
@@ -622,7 +706,7 @@ const HomeworkView: React.FC = () => {
                   )}
 
                   {/* Learner Table */}
-                  <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="bg-blue-50 rounded-xl border border-blue-200 shadow-sm overflow-hidden">
                     <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                       <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Learner Results &amp; Stars</h3>
                       <span className="text-[11px] text-gray-400">{detail.learnerRows.length} learners</span>
@@ -630,59 +714,69 @@ const HomeworkView: React.FC = () => {
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="bg-gray-50/80 text-left text-[11px] text-gray-400 uppercase tracking-wider">
+                          <tr className="bg-blue-100/70 text-left text-[11px] text-gray-500 uppercase tracking-wider">
                             <th className="px-4 py-2.5 w-8">#</th>
                             <th className="px-4 py-2.5">Learner</th>
                             <th className="px-4 py-2.5 text-center">Submitted</th>
                             <th className="px-4 py-2.5 text-center">Mark</th>
-                            <th className="px-4 py-2.5 text-center">HW Stars</th>
-                            <th className="px-4 py-2.5 text-center">Total Stars</th>
+                            <th className="px-4 py-2.5 text-center">Homework Stars</th>
                             <th className="px-4 py-2.5 text-center">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                           {detail.learnerRows.map((row, idx) => (
-                            <tr key={row.learnerId} className="hover:bg-blue-50/30 transition-colors">
+                            <tr key={row.learnerId} className="hover:bg-blue-100/60 transition-colors">
                               <td className="px-4 py-2.5 text-gray-400 text-xs">{idx + 1}</td>
                               <td className="px-4 py-2.5">
                                 <span className="font-medium text-gray-900 text-sm">{row.fullName}</span>
                                 <span className="text-[11px] text-gray-400 ml-2">{row.learnerNumber}</span>
                               </td>
                               <td className="px-4 py-2.5 text-center">
-                                <button onClick={() => handleToggle(row.learnerId, row.submitted)}
-                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium transition ${row.submitted ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-                                  {row.submitted ? '✓ Yes' : '✗ No'}
+                                <button
+                                  onClick={() => onDraftSubmissionChange(row.learnerId, !(draftRows[row.learnerId]?.submitted ?? row.submitted))}
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium transition ${(draftRows[row.learnerId]?.submitted ?? row.submitted) ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                                  {(draftRows[row.learnerId]?.submitted ?? row.submitted) ? '✓ Yes' : '✗ No'}
                                 </button>
                               </td>
                               <td className="px-4 py-2.5 text-center">
-                                {editingMark === row.learnerId ? (
-                                  <div className="inline-flex items-center gap-1">
-                                    <input type="number" min="0" max="100" autoFocus value={markDraft}
-                                      onChange={e => setMarkDraft(e.target.value)}
-                                      onKeyDown={e => { if (e.key === 'Enter') handleCaptureMark(row.learnerId); if (e.key === 'Escape') { setEditingMark(null); setMarkDraft(''); } }}
-                                      className="w-14 px-1.5 py-0.5 text-center border border-blue-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400" />
-                                    <button onClick={() => handleCaptureMark(row.learnerId)} className="p-0.5 text-green-600 hover:bg-green-50 rounded"><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg></button>
-                                    <button onClick={() => { setEditingMark(null); setMarkDraft(''); }} className="p-0.5 text-gray-400 hover:bg-gray-100 rounded"><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
-                                  </div>
+                                {(draftRows[row.learnerId]?.submitted ?? row.submitted) ? (
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    max={100}
+                                    step="0.01"
+                                    value={draftRows[row.learnerId]?.mark ?? (row.mark != null ? String(row.mark) : '')}
+                                    onChange={(e) => onDraftMarkChange(row.learnerId, e.target.value)}
+                                    className="w-20 px-2 py-1 text-center border border-blue-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                    placeholder="0-100"
+                                  />
                                 ) : (
-                                  <button onClick={() => { setEditingMark(row.learnerId); setMarkDraft(row.mark != null ? String(row.mark) : ''); }}
-                                    className={`px-2.5 py-0.5 rounded text-xs font-medium transition ${row.mark != null ? (row.mark >= 50 ? 'bg-green-50 text-green-700 hover:bg-green-100' : 'bg-red-50 text-red-600 hover:bg-red-100') : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>
-                                    {row.mark != null ? `${row.mark}%` : 'Set'}
-                                  </button>
+                                  <span className="inline-flex px-2.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-400 cursor-not-allowed" title="Marking unlocks when submission is Yes">
+                                    Inactive
+                                  </span>
                                 )}
                               </td>
-                              <td className="px-4 py-2.5 text-center text-amber-500 font-semibold text-xs">⭐ {row.homeworkStars}</td>
-                              <td className="px-4 py-2.5 text-center text-gray-600 font-semibold text-xs">{row.totalStars}</td>
+                              <td className="px-4 py-2.5 text-center text-amber-500 font-semibold text-xs">⭐ {row.homeworkStarAwarded ? 1 : 0}</td>
                               <td className="px-4 py-2.5 text-center">
                                 <button onClick={() => handleAwardStar(row.learnerId)} disabled={awardingStarFor === row.learnerId}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-600 rounded-lg text-[11px] font-medium hover:bg-amber-100 transition disabled:opacity-50">
-                                  ⭐ Award
+                                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition disabled:opacity-50 ${row.homeworkStarAwarded ? 'bg-rose-50 text-rose-700 hover:bg-rose-100' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'}`}>
+                                  {row.homeworkStarAwarded ? '⭐ Remove' : '⭐ Award'}
                                 </button>
                               </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
+                    </div>
+                    <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between gap-3">
+                      <p className="text-[11px] text-gray-500">Captured changes are saved only when you submit the full payload.</p>
+                      <button
+                        onClick={handleSubmitLearnerRows}
+                        disabled={!hasDraftChanges || isSubmittingRows}
+                        className={`px-4 py-2 rounded-lg text-xs font-semibold transition ${!hasDraftChanges || isSubmittingRows ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                      >
+                        {isSubmittingRows ? 'Submitting...' : 'Submit All Entries'}
+                      </button>
                     </div>
                   </div>
                 </div>

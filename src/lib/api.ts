@@ -94,6 +94,12 @@ export const api = {
   getHomeworkDetail: (homeworkId: string) =>
     request<any>(`/homework/detail/${homeworkId}`),
 
+  submitHomeworkEntries: (homeworkId: string, entries: { learnerId: string; submitted: boolean; mark: number | null }[]) =>
+    request<any>(`/homework/${homeworkId}/bulk-submissions`, {
+      method: 'POST',
+      body: JSON.stringify({ entries }),
+    }),
+
   captureHomeworkMark: (homeworkId: string, learnerId: string, mark: number | null) =>
     request<any>(`/homework/${homeworkId}/mark`, { method: 'POST', body: JSON.stringify({ learnerId, mark }) }),
 
@@ -102,6 +108,36 @@ export const api = {
 
   awardHomeworkStar: (homeworkId: string, learnerId: string, classId: string, starCount?: number, note?: string) =>
     request<any>(`/homework/${homeworkId}/award-star`, { method: 'POST', body: JSON.stringify({ learnerId, classId, starCount: starCount || 1, note: note || 'Homework star' }) }),
+
+  toggleHomeworkStar: (homeworkId: string, learnerId: string, classId: string) =>
+    request<{ awarded: boolean }>(`/homework/${homeworkId}/toggle-star`, {
+      method: 'POST',
+      body: JSON.stringify({ learnerId, classId }),
+    }),
+
+  // Assignment
+  createAssignment: (data: { classId: string; title: string; description: string; dueDate: string; attachmentUrls: string[] }) =>
+    request<any>('/assignment/create', { method: 'POST', body: JSON.stringify(data) }),
+  getAssignmentList: (classId: string) =>
+    request<any[]>(`/assignment/list/${classId}`),
+  getAssignmentCount: () =>
+    request<number>('/assignment/count'),
+  getAssignmentCountForClass: (classId: string) =>
+    request<number>(`/assignment/count/${classId}`),
+  deleteAssignment: (assignmentId: string) =>
+    request<string>(`/assignment/${assignmentId}`, { method: 'DELETE' }),
+  getAssignmentDetail: (assignmentId: string) =>
+    request<any>(`/assignment/detail/${assignmentId}`),
+  submitAssignmentEntries: (assignmentId: string, entries: { learnerId: string; submitted: boolean; mark: number | null }[]) =>
+    request<any>(`/assignment/${assignmentId}/bulk-submissions`, {
+      method: 'POST',
+      body: JSON.stringify({ entries }),
+    }),
+  toggleAssignmentStar: (assignmentId: string, learnerId: string, classId: string) =>
+    request<{ awarded: boolean }>(`/assignment/${assignmentId}/toggle-star`, {
+      method: 'POST',
+      body: JSON.stringify({ learnerId, classId }),
+    }),
 
   // Auth
   register: (data: RegisterPayload) =>

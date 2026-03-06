@@ -1,4 +1,5 @@
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\config\SecurityConfig.java
+C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\controller\AssignmentController.java
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\controller\AttendanceController.java
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\controller\AuthController.java
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\controller\ClassController.java
@@ -6,8 +7,10 @@ C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\controller\HomeworkController.java
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\controller\LearnerController.java
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\controller\StarsController.java
+C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\dto\AssignmentDetailDTO.java
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\dto\AttendanceRecordDTO.java
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\dto\AwardStarRequest.java
+C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\dto\CreateAssignmentRequest.java
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\dto\CreateHomeworkRequest.java
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\dto\HomeworkDetailDTO.java
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\dto\LearnerDTO.java
@@ -18,6 +21,8 @@ C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\dto\UploadLearnersRequest.java
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\dto\UserResponse.java
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\model\AppUser.java
+C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\model\Assignment.java
+C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\model\AssignmentSubmission.java
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\model\AttendanceRecord.java
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\model\AttendanceStatus.java
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\model\Enrollment.java
@@ -28,6 +33,8 @@ C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\model\SchoolClass.java
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\model\StarCategory.java
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\model\StudentStar.java
+C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\repository\AssignmentRepository.java
+C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\repository\AssignmentSubmissionRepository.java
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\repository\AttendanceRepository.java
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\repository\ClassRepository.java
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\repository\EnrollmentRepository.java
@@ -39,6 +46,7 @@ C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\SchoolAppApplication.java
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\security\JwtAuthFilter.java
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\security\JwtUtil.java
+C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\service\AssignmentService.java
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\service\AttendanceService.java
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\service\AuthService.java
 C:\Users\E949238\OneDrive - Sanlam Life Insurance Limited\Desktop\Axis\Axis-Apps\tri-learn-app\backend\spring-backend\src\main\java\com\schoolapp\service\ClassService.java

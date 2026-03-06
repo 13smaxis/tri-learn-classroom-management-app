@@ -93,6 +93,7 @@ public class HomeworkDetailDTO {
         private Double mark;
         private int totalStars;
         private int homeworkStars;
+        private boolean homeworkStarAwarded;
         private String submissionId;
 
         public LearnerRowDTO() {}
@@ -111,6 +112,8 @@ public class HomeworkDetailDTO {
         public void setTotalStars(int totalStars) { this.totalStars = totalStars; }
         public int getHomeworkStars() { return homeworkStars; }
         public void setHomeworkStars(int homeworkStars) { this.homeworkStars = homeworkStars; }
+        public boolean isHomeworkStarAwarded() { return homeworkStarAwarded; }
+        public void setHomeworkStarAwarded(boolean homeworkStarAwarded) { this.homeworkStarAwarded = homeworkStarAwarded; }
         public String getSubmissionId() { return submissionId; }
         public void setSubmissionId(String submissionId) { this.submissionId = submissionId; }
     }
