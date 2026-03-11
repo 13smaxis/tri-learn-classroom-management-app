@@ -48,7 +48,8 @@ public class SecurityConfig {
                     "/auth/login",
                     "/class/validate-invite",
                     "/health",
-                    "/h2-console/**"
+                    "/h2-console/**",
+                    "/error"
                 ).permitAll()
                 .anyRequest().authenticated()
             )

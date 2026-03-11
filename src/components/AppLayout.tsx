@@ -151,10 +151,10 @@ const AppLayout: React.FC = () => {
           onGoHome={goHome}
         />
         
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto h-screen">
           <LandingPage
             onOpenLogin={() => { setShowRegisterModal(false); setShowInviteModal(false); setShowLoginModal(true); }}
-            onOpenRegister={() => { setShowLoginModal(false); setShowInviteModal(false); setShowRegisterModal(true); }}
+            onOpenRegister={() => { setShowLoginModal(false); setShowInviteModal(false); setRegisterRole(undefined); setShowRegisterModal(true); }}
             onOpenInvite={() => { setShowLoginModal(false); setShowRegisterModal(false); setShowInviteModal(true); }}
             showLogin={showLoginModal}
             showRegister={showRegisterModal}
@@ -163,7 +163,7 @@ const AppLayout: React.FC = () => {
             onSwitchToRegister={(role) => {
               setShowLoginModal(false);
               setShowInviteModal(false);
-              if (role) setRegisterRole(role);
+              setRegisterRole(role || undefined);
               setShowRegisterModal(true);
             }}
             onSwitchToInvite={() => {

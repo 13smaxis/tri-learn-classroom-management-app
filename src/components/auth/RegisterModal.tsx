@@ -189,9 +189,9 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, defaultRol
   );
 
   return (
-    <div className="w-full max-w-md mx-auto space-y-4 max-h-[70vh] overflow-y-auto no-scrollbar border border-white/20 rounded-2xl p-6 bg-white/5 backdrop-blur-sm">
+    <div className="w-full max-w-2xl mx-auto space-y-6 border border-white/20 rounded-2xl p-8 bg-white/5 backdrop-blur-sm">
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-white">Create Account</h1>
+        <h1 className="text-3xl font-bold text-white">Create Account</h1>
         <p className="text-sm text-blue-100 mt-1">Join the platform</p>
       </div>
 
@@ -301,7 +301,7 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, defaultRol
           </div>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <div className="rounded-lg bg-red-500/20 border border-red-300/30 p-3 text-sm text-red-100">
               {error}
@@ -335,38 +335,29 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, defaultRol
             </div>
           )}
 
-          <div>
-            <label className={labelClass}>Title (optional)</label>
-            <input type="text" name="title" value={formData.title} onChange={handleChange} className={inputClass} placeholder="e.g. Mr, Ms, Dr" />
-          </div>
+          {/* Two-column grid for fields on wider screens */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>Title (optional)</label>
+              <input type="text" name="title" value={formData.title} onChange={handleChange} className={inputClass} placeholder="e.g. Mr, Ms, Dr" />
+            </div>
 
-          <div>
-            <label className={labelClass}>Full Name *</label>
-            <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} className={inputClass} placeholder="Enter your full name" required />
-          </div>
+            <div>
+              <label className={labelClass}>Full Name *</label>
+              <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} className={inputClass} placeholder="Enter your full name" required />
+            </div>
 
-          <div>
-            <label className={labelClass}>Email Address (optional)</label>
-            <input type="email" name="email" value={formData.email} onChange={handleChange} className={inputClass} placeholder="you@example.com" />
-          </div>
+            <div>
+              <label className={labelClass}>Email Address (optional)</label>
+              <input type="email" name="email" value={formData.email} onChange={handleChange} className={inputClass} placeholder="you@example.com" />
+            </div>
 
-          <div>
-            <label className={labelClass}>Phone Number *</label>
-            <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className={inputClass} placeholder="0821234567" required />
-          </div>
+            <div>
+              <label className={labelClass}>Phone Number *</label>
+              <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className={inputClass} placeholder="0821234567" required />
+            </div>
 
-          {formData.role === 'teacher' && (
-            <>
-              <div>
-                <label className={labelClass}>Primary Teaching Grade *</label>
-                <select name="teacherGrade" value={formData.teacherGrade} onChange={handleChange} className={inputClass} required disabled={!formData.role || loading}>
-                  <option value="">Select grade</option>
-                  {Array.from({ length: 12 }, (_, i) => (
-                    <option key={i + 1} value={String(i + 1)}>Grade {i + 1}</option>
-                  ))}
-                </select>
-              </div>
-
+            {formData.role === 'teacher' && (
               <div>
                 <label className={labelClass}>School Invite Code *</label>
                 <input type="text" name="schoolInviteCode" value={formData.schoolInviteCode} onChange={handleChange} className={`${inputClass} font-mono tracking-widest`} placeholder="e.g. JAN021234" maxLength={9} required disabled={!formData.role || loading} />
@@ -374,29 +365,29 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, defaultRol
                   Demo format: first 3 letters of school + district + unique code
                 </p>
               </div>
-            </>
-          )}
+            )}
 
-          <div>
-            <label className={labelClass}>Password *</label>
-            <div className="relative">
-              <input type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange} className={`${inputClass} pr-12`} placeholder="At least 6 characters" required disabled={!formData.role || loading} />
-              <EyeToggle show={showPassword} onToggle={() => setShowPassword(!showPassword)} />
+            <div>
+              <label className={labelClass}>Password *</label>
+              <div className="relative">
+                <input type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange} className={`${inputClass} pr-12`} placeholder="At least 6 characters" required disabled={!formData.role || loading} />
+                <EyeToggle show={showPassword} onToggle={() => setShowPassword(!showPassword)} />
+              </div>
             </div>
-          </div>
 
-          <div>
-            <label className={labelClass}>Confirm Password *</label>
-            <div className="relative">
-              <input type={showConfirm ? 'text' : 'password'} name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} className={`${inputClass} pr-12`} placeholder="Confirm your password" required disabled={!formData.role || loading} />
-              <EyeToggle show={showConfirm} onToggle={() => setShowConfirm(!showConfirm)} />
+            <div>
+              <label className={labelClass}>Confirm Password *</label>
+              <div className="relative">
+                <input type={showConfirm ? 'text' : 'password'} name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} className={`${inputClass} pr-12`} placeholder="Confirm your password" required disabled={!formData.role || loading} />
+                <EyeToggle show={showConfirm} onToggle={() => setShowConfirm(!showConfirm)} />
+              </div>
             </div>
           </div>
 
           <button
             type="submit"
             disabled={loading || !formData.role}
-            className="w-full rounded-lg bg-blue-600 px-4 py-2.5 font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-lg"
           >
             {loading ? (
               <span className="flex items-center justify-center">
