@@ -48,7 +48,7 @@ public class HomeworkController {
                 return ResponseEntity.status(401).body(errorBody("Unauthorized"));
             }
             Homework homework = homeworkService.createHomework(teacher, request);
-            return ResponseEntity.status(201).body(Map.of("success", true, "data", toMap(homework)));
+            return ResponseEntity.status(201).body(successBody(toMap(homework)));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
         }
@@ -62,7 +62,7 @@ public class HomeworkController {
                 return ResponseEntity.status(401).body(errorBody("Unauthorized"));
             }
             long count = homeworkService.countByTeacher(teacher.getId());
-            return ResponseEntity.ok(Map.of("success", true, "data", count));
+            return ResponseEntity.ok(successBody(count));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
         }
@@ -72,7 +72,7 @@ public class HomeworkController {
     public ResponseEntity<Map<String, Object>> getHomeworkCountForClass(@PathVariable String classId) {
         try {
             long count = homeworkService.countByClass(classId);
-            return ResponseEntity.ok(Map.of("success", true, "data", count));
+            return ResponseEntity.ok(successBody(count));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
         }
@@ -85,7 +85,7 @@ public class HomeworkController {
                     .stream()
                     .map(this::toMap)
                     .collect(Collectors.toList());
-            return ResponseEntity.ok(Map.of("success", true, "data", data));
+            return ResponseEntity.ok(successBody(data));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
         }
@@ -98,7 +98,7 @@ public class HomeworkController {
                 return ResponseEntity.status(401).body(errorBody("Unauthorized"));
             }
             homeworkService.deleteHomework(homeworkId, teacher);
-            return ResponseEntity.ok(Map.of("success", true, "data", "Homework deleted"));
+            return ResponseEntity.ok(successBody("Homework deleted", "Homework deleted"));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
         }
@@ -176,7 +176,7 @@ public class HomeworkController {
     public ResponseEntity<Map<String, Object>> getHomeworkDetail(@PathVariable String homeworkId) {
         try {
             HomeworkDetailDTO detail = homeworkService.getHomeworkDetail(homeworkId);
-            return ResponseEntity.ok(Map.of("success", true, "data", detail));
+            return ResponseEntity.ok(successBody(detail));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
         }
@@ -244,11 +244,7 @@ public class HomeworkController {
             }
 
             int updatedCount = homeworkService.bulkUpdateSubmissions(homeworkId, entries, teacher.getId());
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "data", Map.of("updatedCount", updatedCount),
-                    "message", "Homework entries submitted"
-            ));
+            return ResponseEntity.ok(successBody(Map.of("updatedCount", updatedCount), "Homework entries submitted"));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
         }
@@ -303,14 +299,18 @@ public class HomeworkController {
             }
 
             boolean awarded = homeworkService.toggleHomeworkStar(homeworkId, learnerId, classId, teacher.getId());
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "data", Map.of("awarded", awarded),
-                    "message", awarded ? "Star awarded" : "Star removed"
-            ));
+            return ResponseEntity.ok(successBody(Map.of("awarded", awarded), awarded ? "Star awarded" : "Star removed"));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
         }
+    }
+
+    private Map<String, Object> successBody(Object payload) {
+        return Map.of("success", true, "data", payload, "payload", payload);
+    }
+
+    private Map<String, Object> successBody(Object payload, String message) {
+        return Map.of("success", true, "data", payload, "payload", payload, "message", message);
     }
 
     private Map<String, Object> errorBody(String message) {

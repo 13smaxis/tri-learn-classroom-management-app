@@ -1170,12 +1170,24 @@ const AttendanceView: React.FC = () => {
                     Locked: {lockedCountForSelectedDate} • Open: {openCountForSelectedDate}
                   </p>
                 </div>
-                <button
-                  onClick={markAllPresent}
-                  className="px-4 py-2 text-sm font-medium text-green-600 bg-green-50 rounded-lg hover:bg-green-100 transition-all"
-                >
-                  Mark All Present
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={markAllPresent}
+                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-all"
+                  >
+                    Mark All Present
+                  </button>
+                  <button
+                    onClick={openSaveConfirmation}
+                    disabled={isSavingAttendance}
+                    className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-all ${isSavingAttendance
+                      ? 'bg-blue-400 cursor-not-allowed'
+                      : 'bg-blue-600 hover:bg-blue-700'
+                      }`}
+                  >
+                    {isSavingAttendance ? 'Saving...' : 'Save Attendance'}
+                  </button>
+                </div>
               </div>
               <div className="divide-y divide-gray-100">
                 {learners.map((learner) => {
@@ -1339,21 +1351,6 @@ const AttendanceView: React.FC = () => {
             </div>
           )}
 
-          {/* Save Button - Daily View Only */}
-          {viewMode === 'daily' && (
-            <div className="flex justify-end">
-              <button
-                onClick={openSaveConfirmation}
-                disabled={isSavingAttendance}
-                className={`px-6 py-3 text-white font-semibold rounded-xl transition-all ${isSavingAttendance
-                  ? 'bg-blue-400 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700'
-                  }`}
-              >
-                {isSavingAttendance ? 'Saving...' : 'Save Attendance'}
-              </button>
-            </div>
-          )}
         </>
       )}
 

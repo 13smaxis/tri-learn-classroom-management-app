@@ -21,6 +21,8 @@ import AttendanceView from '@/components/teacher/AttendanceView';
 import MarksView from '@/components/teacher/MarksView';
 import AssignmentsView from '@/components/teacher/AssignmentsView';
 import HomeworkView from '@/components/teacher/HomeworkView';
+import ClassworkView from '@/components/teacher/ClassworkView';
+import TestView from '@/components/teacher/TestsView';
 import StarsView from '@/components/teacher/StarsView';
 import MessagesView from '@/components/shared/MessagesView';
 import ClassesView from '@/components/shared/ClassesView';
@@ -199,13 +201,12 @@ const AppLayout: React.FC = () => {
               <ClassesView
                 classesVersion={classesVersion}
                 onSelectClass={setSelectedClass}
+                onCreateClass={user.role === 'teacher' ? () => setShowCreateClassModal(true) : undefined}
               />
             </div>
             <div className="w-[70%] flex-1 overflow-auto">
               <ClassDetailsView
                 selectedClass={selectedClass}
-                canCreateClass={user.role === 'teacher'}
-                onCreateClass={user.role === 'teacher' ? () => setShowCreateClassModal(true) : undefined}
               />
             </div>
           </div>
@@ -236,6 +237,18 @@ const AppLayout: React.FC = () => {
           return <LearnerAssignmentsView />;
         }
         return <HomeworkView />;
+
+      case 'classwork':
+        if (user.role === 'learner') {
+          return <LearnerAssignmentsView />;
+        }
+        return <ClassworkView />;
+
+      case 'tests':
+        if (user.role === 'learner') {
+          return <LearnerAssignmentsView />;
+        }
+        return <TestView />;
 
       case 'stars':
         return <StarsView />;
