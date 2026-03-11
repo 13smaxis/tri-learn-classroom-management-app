@@ -14,29 +14,29 @@ interface StatsCardProps {
 }
 
 const colorClasses = {
-  blue: 'bg-white text-blue-600 border-blue-200',
-  green: 'bg-white text-green-600 border-green-200',
-  orange: 'bg-white text-orange-600 border-orange-200',
-  purple: 'bg-white text-purple-600 border-purple-200',
-  red: 'bg-white text-red-600 border-red-200',
-  indigo: 'bg-white text-indigo-600 border-indigo-200'
+  blue: 'bg-white text-sky-700 border-sky-200',
+  green: 'bg-white text-emerald-700 border-emerald-200',
+  orange: 'bg-white text-amber-700 border-amber-200',
+  purple: 'bg-white text-slate-700 border-slate-200',
+  red: 'bg-white text-rose-700 border-rose-200',
+  indigo: 'bg-white text-indigo-700 border-indigo-200'
 };
 
 const dynamicColorClasses = {
-  blue: 'bg-white text-blue-600 border-blue-300 ring-1 ring-blue-200/60',
-  green: 'bg-white text-green-600 border-green-300 ring-1 ring-green-200/60',
-  orange: 'bg-white text-orange-600 border-orange-300 ring-1 ring-orange-200/60',
-  purple: 'bg-white text-purple-600 border-purple-300 ring-1 ring-purple-200/60',
-  red: 'bg-white text-red-600 border-red-300 ring-1 ring-red-200/60',
-  indigo: 'bg-white text-indigo-600 border-indigo-300 ring-1 ring-indigo-200/60'
+  blue: 'bg-white text-sky-700 border-sky-300 ring-1 ring-sky-200/70',
+  green: 'bg-white text-emerald-700 border-emerald-300 ring-1 ring-emerald-200/70',
+  orange: 'bg-white text-amber-700 border-amber-300 ring-1 ring-amber-200/70',
+  purple: 'bg-white text-slate-700 border-slate-300 ring-1 ring-slate-200/70',
+  red: 'bg-white text-rose-700 border-rose-300 ring-1 ring-rose-200/70',
+  indigo: 'bg-white text-indigo-700 border-indigo-300 ring-1 ring-indigo-200/70'
 };
 
 const iconBgClasses = {
-  blue: 'bg-blue-100',
-  green: 'bg-green-100',
-  orange: 'bg-orange-100',
-  purple: 'bg-purple-100',
-  red: 'bg-red-100',
+  blue: 'bg-sky-100',
+  green: 'bg-emerald-100',
+  orange: 'bg-amber-100',
+  purple: 'bg-slate-100',
+  red: 'bg-rose-100',
   indigo: 'bg-indigo-100'
 };
 

@@ -2,17 +2,28 @@ package com.schoolapp.controller;
 
 import com.schoolapp.model.AppUser;
 import com.schoolapp.model.Enrollment;
+import com.schoolapp.model.Learner;
 import com.schoolapp.model.SchoolClass;
+import com.schoolapp.repository.AssignmentRepository;
+import com.schoolapp.repository.AssignmentSubmissionRepository;
+import com.schoolapp.repository.ClassworkRepository;
+import com.schoolapp.repository.ClassworkSubmissionRepository;
 import com.schoolapp.repository.EnrollmentRepository;
+import com.schoolapp.repository.HomeworkRepository;
+import com.schoolapp.repository.HomeworkSubmissionRepository;
+import com.schoolapp.repository.LearnerRepository;
 import com.schoolapp.service.ClassService;
 import org.springframework.lang.NonNull;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/class")
@@ -20,10 +31,32 @@ public class ClassController {
 
     private final ClassService classService;
     private final EnrollmentRepository enrollmentRepository;
+    private final LearnerRepository learnerRepository;
+    private final HomeworkRepository homeworkRepository;
+    private final HomeworkSubmissionRepository homeworkSubmissionRepository;
+    private final ClassworkRepository classworkRepository;
+    private final ClassworkSubmissionRepository classworkSubmissionRepository;
+    private final AssignmentRepository assignmentRepository;
+    private final AssignmentSubmissionRepository assignmentSubmissionRepository;
 
-    public ClassController(ClassService classService, EnrollmentRepository enrollmentRepository) {
+    public ClassController(ClassService classService,
+                           EnrollmentRepository enrollmentRepository,
+                           LearnerRepository learnerRepository,
+                           HomeworkRepository homeworkRepository,
+                           HomeworkSubmissionRepository homeworkSubmissionRepository,
+                           ClassworkRepository classworkRepository,
+                           ClassworkSubmissionRepository classworkSubmissionRepository,
+                           AssignmentRepository assignmentRepository,
+                           AssignmentSubmissionRepository assignmentSubmissionRepository) {
         this.classService = classService;
         this.enrollmentRepository = enrollmentRepository;
+        this.learnerRepository = learnerRepository;
+        this.homeworkRepository = homeworkRepository;
+        this.homeworkSubmissionRepository = homeworkSubmissionRepository;
+        this.classworkRepository = classworkRepository;
+        this.classworkSubmissionRepository = classworkSubmissionRepository;
+        this.assignmentRepository = assignmentRepository;
+        this.assignmentSubmissionRepository = assignmentSubmissionRepository;
     }
 
     // ── POST /class/create ──
@@ -119,6 +152,91 @@ public class ClassController {
             data.put("subject", sc.getSubject());
             data.put("teacherName", sc.getTeacher().getFullName());
             return ResponseEntity.ok(Map.of("success", true, "data", data));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", Map.of("message", e.getMessage())));
+        }
+    }
+
+    // ── GET /class/{classId}/performance-summary ──
+    @GetMapping("/{classId}/performance-summary")
+    public ResponseEntity<?> getPerformanceSummary(@PathVariable String classId) {
+        try {
+            List<Learner> learners = learnerRepository.findBySchoolClassId(classId);
+
+            // Build maps: learnerId -> list of marks from each category
+            Map<String, List<Double>> hwMarks = new java.util.HashMap<>();
+            Map<String, List<Double>> cwMarks = new java.util.HashMap<>();
+            Map<String, List<Double>> assnMarks = new java.util.HashMap<>();
+
+            homeworkRepository.findBySchoolClassIdOrderByCreatedAtDesc(classId).forEach(hw ->
+                homeworkSubmissionRepository.findByHomeworkId(hw.getId()).forEach(sub -> {
+                    if (sub.getMark() != null) {
+                        hwMarks.computeIfAbsent(sub.getLearner().getId(), k -> new ArrayList<>()).add(sub.getMark());
+                    }
+                })
+            );
+
+            classworkRepository.findBySchoolClassIdOrderByCreatedAtDesc(classId).forEach(cw ->
+                classworkSubmissionRepository.findByClassworkId(cw.getId()).forEach(sub -> {
+                    if (sub.getMark() != null) {
+                        cwMarks.computeIfAbsent(sub.getLearner().getId(), k -> new ArrayList<>()).add(sub.getMark());
+                    }
+                })
+            );
+
+            assignmentRepository.findBySchoolClassIdOrderByCreatedAtDesc(classId).forEach(assn ->
+                assignmentSubmissionRepository.findByAssignmentId(assn.getId()).forEach(sub -> {
+                    if (sub.getMark() != null) {
+                        assnMarks.computeIfAbsent(sub.getLearner().getId(), k -> new ArrayList<>()).add(sub.getMark());
+                    }
+                })
+            );
+
+            List<Map<String, Object>> learnerStats = learners.stream().map(learner -> {
+                String lid = learner.getId();
+                double hwAvg = hwMarks.getOrDefault(lid, List.of()).stream().mapToDouble(Double::doubleValue).average().orElse(-1);
+                double cwAvg = cwMarks.getOrDefault(lid, List.of()).stream().mapToDouble(Double::doubleValue).average().orElse(-1);
+                double assnAvg = assnMarks.getOrDefault(lid, List.of()).stream().mapToDouble(Double::doubleValue).average().orElse(-1);
+
+                List<Double> validAvgs = new ArrayList<>();
+                if (hwAvg >= 0) validAvgs.add(hwAvg);
+                if (cwAvg >= 0) validAvgs.add(cwAvg);
+                if (assnAvg >= 0) validAvgs.add(assnAvg);
+                double overallAvg = validAvgs.isEmpty() ? -1 : validAvgs.stream().mapToDouble(Double::doubleValue).average().orElse(-1);
+
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("learnerId", lid);
+                m.put("fullName", learner.getFullName());
+                m.put("learnerNumber", learner.getLearnerNumber());
+                m.put("avgMark", overallAvg < 0 ? null : Math.round(overallAvg * 10.0) / 10.0);
+                m.put("homeworkAvg", hwAvg < 0 ? null : Math.round(hwAvg * 10.0) / 10.0);
+                m.put("classworkAvg", cwAvg < 0 ? null : Math.round(cwAvg * 10.0) / 10.0);
+                m.put("assignmentAvg", assnAvg < 0 ? null : Math.round(assnAvg * 10.0) / 10.0);
+                m.put("isAtRisk", overallAvg < 0 || overallAvg < 50);
+                return m;
+            }).collect(Collectors.toList());
+
+            List<Map<String, Object>> topPerformers = learnerStats.stream()
+                .filter(s -> s.get("avgMark") != null)
+                .sorted(Comparator.<Map<String, Object>, Double>comparing(s -> (Double) s.get("avgMark")).reversed())
+                .limit(5)
+                .collect(Collectors.toList());
+
+            List<Map<String, Object>> atRisk = learnerStats.stream()
+                .filter(s -> Boolean.TRUE.equals(s.get("isAtRisk")))
+                .collect(Collectors.toList());
+
+            long passingCount = learnerStats.stream().filter(s -> !Boolean.TRUE.equals(s.get("isAtRisk"))).count();
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("learners", learnerStats);
+            result.put("topPerformers", topPerformers);
+            result.put("atRisk", atRisk);
+            result.put("passingCount", passingCount);
+            result.put("atRiskCount", atRisk.size());
+            result.put("totalCount", learners.size());
+
+            return ResponseEntity.ok(Map.of("success", true, "data", result));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "error", Map.of("message", e.getMessage())));
         }

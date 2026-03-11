@@ -16,13 +16,13 @@ interface TeacherDashboardProps {
 const CLASS_SELECTION_STORAGE_KEY = 'triLearn:selectedClassId';
 
 const quickActions = [
-  { label: 'Take Attendance', icon: '📋', view: 'attendance', color: 'bg-blue-500' },
-  { label: 'Add Homework', icon: '📚', view: 'homework', color: 'bg-green-500' },
-  { label: 'Create Assignment', icon: '📝', view: 'assignments', color: 'bg-purple-500' },
-  { label: 'Capture Marks', icon: '📊', view: 'marks', color: 'bg-orange-500' },
-  { label: 'Recognition', icon: '⭐', view: 'stars', color: 'bg-amber-500' },
-  { label: 'Send Message', icon: '💬', view: 'messages', color: 'bg-pink-500' },
-  { label: 'View Reports', icon: '📈', view: 'reports', color: 'bg-indigo-500' }
+  { label: 'Take Attendance', icon: '📋', view: 'attendance', color: 'bg-blue-700' },
+  { label: 'Add Homework', icon: '📚', view: 'homework', color: 'bg-emerald-700' },
+  { label: 'Create Assignment', icon: '📝', view: 'assignments', color: 'bg-slate-700' },
+  { label: 'Capture Marks', icon: '📊', view: 'marks', color: 'bg-cyan-700' },
+  { label: 'Recognition', icon: '⭐', view: 'stars', color: 'bg-amber-700' },
+  { label: 'Send Message', icon: '💬', view: 'messages', color: 'bg-sky-700' },
+  { label: 'View Reports', icon: '📈', view: 'reports', color: 'bg-indigo-700' }
 ];
 
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, classesVersion }) => {
@@ -160,11 +160,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 md:p-8 text-white">
+      <div className="bg-gradient-to-r from-slate-700 to-blue-700 rounded-2xl p-6 md:p-8 text-white">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">Welcome back, {user?.fullName?.split(' ')[0]}!</h1>
-            <p className="text-blue-100 mt-2">Here's what's happening in your classes today</p>
+            <p className="text-slate-100 mt-2">Here's what's happening in your classes today</p>
           </div>
         </div>
       </div>
@@ -303,17 +303,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
                   const assignmentsAssigned = cls.assignmentsAssigned ?? 0;
                   const starsAwarded = cls.starsAwarded ?? 0;
 
-                  // Gradient color palette
+                  // Muted color palette for a professional school-facing dashboard
                   const gradients = [
-                    'bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500',
-                    'bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500',
-                    'bg-gradient-to-r from-green-400 via-blue-500 to-purple-600',
-                    'bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500',
-                    'bg-gradient-to-r from-teal-400 via-green-500 to-lime-500',
-                    'bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-500',
-                    'bg-gradient-to-r from-fuchsia-500 via-pink-500 to-rose-500',
-                    'bg-gradient-to-r from-orange-400 via-red-500 to-pink-500',
-                    'bg-gradient-to-r from-lime-400 via-green-500 to-teal-500',
+                    'bg-gradient-to-r from-slate-700 to-slate-600',
+                    'bg-gradient-to-r from-blue-700 to-indigo-700',
+                    'bg-gradient-to-r from-cyan-700 to-sky-700',
+                    'bg-gradient-to-r from-emerald-700 to-teal-700',
+                    'bg-gradient-to-r from-amber-700 to-yellow-700',
+                    'bg-gradient-to-r from-indigo-700 to-violet-700',
+                    'bg-gradient-to-r from-slate-600 to-blue-600',
+                    'bg-gradient-to-r from-sky-700 to-blue-700',
+                    'bg-gradient-to-r from-teal-700 to-cyan-700',
                   ];
 
                   return (

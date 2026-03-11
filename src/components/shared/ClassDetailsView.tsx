@@ -3,11 +3,9 @@ import { api } from '@/lib/api';
 
 interface ClassDetailsViewProps {
   selectedClass: any;
-  onCreateClass?: () => void;
-  canCreateClass?: boolean;
 }
 
-const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass, onCreateClass, canCreateClass }) => {
+const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass }) => {
   const [classDetails, setClassDetails] = useState<any>(null);
   const [learners, setLearners] = useState<{ id: string; name: string; number: string }[]>([]);
   const [attendanceTrend, setAttendanceTrend] = useState<{ date: string; presentPct: number; total: number }[]>([]);
@@ -24,6 +22,7 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass, onCr
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedQuarter, setSelectedQuarter] = useState(Math.floor(new Date().getMonth() / 3));
+  const [perfSummary, setPerfSummary] = useState<{ topPerformers: any[]; atRisk: any[]; passingCount: number; atRiskCount: number; totalCount: number } | null>(null);
 
   const selectedClassId = useMemo(() => selectedClass?.id || selectedClass?.classId || '', [selectedClass]);
 
@@ -130,21 +129,20 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass, onCr
       .finally(() => setLoadingData(false));
   }, [selectedClassId, filterMode, selectedDate, selectedYear, selectedQuarter]);
 
+  useEffect(() => {
+    if (!selectedClassId) {
+      setPerfSummary(null);
+      return;
+    }
+    api.getClassPerformanceSummary(selectedClassId)
+      .then((data: any) => setPerfSummary(data))
+      .catch(() => setPerfSummary(null));
+  }, [selectedClassId]);
+
   if (!selectedClass) {
     return (
       <div className="p-6 h-full flex flex-col items-center justify-center gap-4 text-gray-500">
         <p>Select a class to view details.</p>
-        {canCreateClass && onCreateClass && (
-          <button
-            onClick={onCreateClass}
-            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            Create Class
-          </button>
-        )}
       </div>
     );
   }
@@ -202,20 +200,7 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass, onCr
   const maxStatusValue = Math.max(...statusBars.map((bar) => bar.value), 1);
 
   return (
-    <div className="p-6 space-y-8">
-      {canCreateClass && onCreateClass && (
-        <div className="flex justify-end">
-          <button
-            onClick={onCreateClass}
-            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            Create Class
-          </button>
-        </div>
-      )}
+    <div className="p-6 space-y-6">
       <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 text-white p-6 shadow-lg">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <div>
@@ -234,6 +219,120 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass, onCr
               <p className="text-lg font-mono tracking-widest">{detailClass.inviteToken || 'N/A'}</p>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Performance Summary Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Top 5 Performers */}
+        <div className="rounded-2xl border border-green-200 bg-white p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
+            <span>🏆</span> Top 5 Performers
+          </h3>
+          {perfSummary && perfSummary.topPerformers.length > 0 ? (
+            <div className="space-y-2">
+              {perfSummary.topPerformers.map((s: any, i: number) => (
+                <div key={s.learnerId} className="flex items-center justify-between rounded-lg bg-green-50 px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-green-700 w-5">#{i + 1}</span>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 leading-tight">{s.fullName}</p>
+                      <p className="text-[10px] text-gray-400 font-mono">#{s.learnerNumber}</p>
+                    </div>
+                  </div>
+                  <span className="text-sm font-bold text-green-700">{s.avgMark}%</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400">No marks captured yet.</p>
+          )}
+        </div>
+
+        {/* At-Risk Students */}
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
+            <span>⚠️</span> At-Risk Students
+            {perfSummary && (
+              <span className="ml-auto text-xs font-medium text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
+                {perfSummary.atRiskCount}/{perfSummary.totalCount}
+              </span>
+            )}
+          </h3>
+          {perfSummary && perfSummary.atRisk.length > 0 ? (
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+              {perfSummary.atRisk.map((s: any) => (
+                <div key={s.learnerId} className="flex items-center justify-between rounded-lg bg-white border border-red-100 px-3 py-2">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 leading-tight">{s.fullName}</p>
+                    <p className="text-[10px] text-gray-400 font-mono">#{s.learnerNumber}</p>
+                  </div>
+                  <span className="text-sm font-bold text-red-600">
+                    {s.avgMark != null ? `${s.avgMark}%` : 'No data'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500">{perfSummary ? 'No at-risk students.' : 'No marks captured yet.'}</p>
+          )}
+        </div>
+
+        {/* Passing vs At-Risk Pie Chart */}
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm flex flex-col items-center">
+          <h3 className="text-base font-semibold text-gray-900 mb-3 self-start">Pass / At-Risk Split</h3>
+          {perfSummary && perfSummary.totalCount > 0 ? (() => {
+            const passing = perfSummary.passingCount;
+            const atRisk = perfSummary.atRiskCount;
+            const total = perfSummary.totalCount;
+            const passPct = total > 0 ? (passing / total) : 0;
+            const cx = 80; const cy = 80; const r = 60;
+            const passAngle = passPct * 2 * Math.PI;
+            const x1 = cx + r * Math.sin(0);
+            const y1 = cy - r * Math.cos(0);
+            const x2 = cx + r * Math.sin(passAngle);
+            const y2 = cy - r * Math.cos(passAngle);
+            const largeArc = passPct > 0.5 ? 1 : 0;
+            const riskLargeArc = (1 - passPct) > 0.5 ? 1 : 0;
+            return (
+              <div className="flex flex-col items-center gap-3 w-full">
+                <svg width="160" height="160" viewBox="0 0 160 160">
+                  {passPct === 0 ? (
+                    <circle cx={cx} cy={cy} r={r} fill="#dc2626" />
+                  ) : passPct === 1 ? (
+                    <circle cx={cx} cy={cy} r={r} fill="#16a34a" />
+                  ) : (
+                    <>
+                      <path
+                        d={`M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`}
+                        fill="#16a34a"
+                      />
+                      <path
+                        d={`M ${cx} ${cy} L ${x2} ${y2} A ${r} ${r} 0 ${riskLargeArc} 1 ${x1} ${y1} Z`}
+                        fill="#dc2626"
+                      />
+                    </>
+                  )}
+                  <text x={cx} y={cy - 6} textAnchor="middle" fontSize="16" fontWeight="700" fill="white">
+                    {Math.round(passPct * 100)}%
+                  </text>
+                  <text x={cx} y={cy + 12} textAnchor="middle" fontSize="10" fill="white">passing</text>
+                </svg>
+                <div className="flex gap-4 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <span className="inline-block w-3 h-3 rounded-full bg-green-600"></span>
+                    <span className="text-gray-700">Passing: <b>{passing}</b></span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="inline-block w-3 h-3 rounded-full bg-red-600"></span>
+                    <span className="text-gray-700">At-Risk: <b>{atRisk}</b></span>
+                  </div>
+                </div>
+              </div>
+            );
+          })() : (
+            <p className="text-sm text-gray-400 mt-4">No data yet.</p>
+          )}
         </div>
       </div>
 

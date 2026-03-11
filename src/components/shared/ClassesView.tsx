@@ -8,7 +8,7 @@ interface ClassesViewProps {
   onSelectClass?: (cls: any) => void;
 }
 
-const ClassesView: React.FC<ClassesViewProps> = ({ classesVersion, onSelectClass }) => {
+const ClassesView: React.FC<ClassesViewProps> = ({ classesVersion, onSelectClass, onCreateClass }) => {
   const { user } = useAuth();
   const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,17 +84,26 @@ const ClassesView: React.FC<ClassesViewProps> = ({ classesVersion, onSelectClass
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-bold text-gray-900">My Classes</h1>
-          <p className="text-gray-500">
+          <p className="text-gray-500 text-sm">
             {user?.role === 'teacher' 
               ? 'Manage your classes and share invite codes' 
               : 'View your enrolled classes'}
           </p>
+          {refreshing && <span className="text-xs text-gray-400">Refreshing…</span>}
         </div>
-        {refreshing && (
-          <span className="text-xs text-gray-400">Refreshing…</span>
+        {onCreateClass && (
+          <button
+            onClick={onCreateClass}
+            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-all"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Create Class
+          </button>
         )}
       </div>
 

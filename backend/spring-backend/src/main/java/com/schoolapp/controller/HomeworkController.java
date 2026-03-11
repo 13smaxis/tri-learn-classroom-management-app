@@ -48,7 +48,7 @@ public class HomeworkController {
                 return ResponseEntity.status(401).body(errorBody("Unauthorized"));
             }
             Homework homework = homeworkService.createHomework(teacher, request);
-            return ResponseEntity.status(201).body(Map.of("success", true, "data", toMap(homework)));
+            return ResponseEntity.status(201).body(successBody(toMap(homework)));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
         }
@@ -62,7 +62,7 @@ public class HomeworkController {
                 return ResponseEntity.status(401).body(errorBody("Unauthorized"));
             }
             long count = homeworkService.countByTeacher(teacher.getId());
-            return ResponseEntity.ok(Map.of("success", true, "data", count));
+            return ResponseEntity.ok(successBody(count));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
         }
@@ -72,7 +72,7 @@ public class HomeworkController {
     public ResponseEntity<Map<String, Object>> getHomeworkCountForClass(@PathVariable String classId) {
         try {
             long count = homeworkService.countByClass(classId);
-            return ResponseEntity.ok(Map.of("success", true, "data", count));
+            return ResponseEntity.ok(successBody(count));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
         }
@@ -85,7 +85,7 @@ public class HomeworkController {
                     .stream()
                     .map(this::toMap)
                     .collect(Collectors.toList());
-            return ResponseEntity.ok(Map.of("success", true, "data", data));
+            return ResponseEntity.ok(successBody(data));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
         }
@@ -98,7 +98,7 @@ public class HomeworkController {
                 return ResponseEntity.status(401).body(errorBody("Unauthorized"));
             }
             homeworkService.deleteHomework(homeworkId, teacher);
-            return ResponseEntity.ok(Map.of("success", true, "data", "Homework deleted"));
+            return ResponseEntity.ok(successBody("Homework deleted", "Homework deleted"));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
         }
@@ -120,7 +120,7 @@ public class HomeworkController {
             String storedName = UUID.randomUUID() + "-" + sanitizedName;
 
             Path targetPath = uploadDir.resolve(storedName).normalize();
-            file.transferTo(targetPath);
+            file.transferTo(Objects.requireNonNull(targetPath, "targetPath"));
 
             return ResponseEntity.ok(Map.of("success", true, "url", "/api/homework/attachments/" + storedName));
         } catch (Exception e) {
@@ -132,7 +132,7 @@ public class HomeworkController {
     public ResponseEntity<Resource> getAttachment(@PathVariable String fileName) {
         try {
             Path filePath = uploadDir.resolve(fileName).normalize();
-            Resource resource = new UrlResource(filePath.toUri());
+            Resource resource = new UrlResource(Objects.requireNonNull(filePath.toUri(), "fileUri"));
 
             if (!resource.exists() || !resource.isReadable()) {
                 return ResponseEntity.notFound().build();
@@ -176,7 +176,7 @@ public class HomeworkController {
     public ResponseEntity<Map<String, Object>> getHomeworkDetail(@PathVariable String homeworkId) {
         try {
             HomeworkDetailDTO detail = homeworkService.getHomeworkDetail(homeworkId);
-            return ResponseEntity.ok(Map.of("success", true, "data", detail));
+            return ResponseEntity.ok(successBody(detail));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
         }
@@ -228,6 +228,28 @@ public class HomeworkController {
         }
     }
 
+    @PostMapping("/{homeworkId}/bulk-submissions")
+    public ResponseEntity<Map<String, Object>> bulkUpdateSubmissions(
+            @PathVariable String homeworkId,
+            @RequestBody Map<String, Object> body,
+            Authentication auth) {
+        try {
+            if (!(auth.getPrincipal() instanceof AppUser teacher)) {
+                return ResponseEntity.status(401).body(errorBody("Unauthorized"));
+            }
+
+            Object rawEntries = body.get("entries");
+            if (!(rawEntries instanceof List<?> entries) || entries.isEmpty()) {
+                return ResponseEntity.badRequest().body(errorBody("entries is required"));
+            }
+
+            int updatedCount = homeworkService.bulkUpdateSubmissions(homeworkId, entries, teacher.getId());
+            return ResponseEntity.ok(successBody(Map.of("updatedCount", updatedCount), "Homework entries submitted"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+        }
+    }
+
     // ── NEW: Award star from homework view ──
 
     @PostMapping("/{homeworkId}/award-star")
@@ -258,6 +280,37 @@ public class HomeworkController {
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
         }
+    }
+
+    @PostMapping("/{homeworkId}/toggle-star")
+    public ResponseEntity<Map<String, Object>> toggleStarFromHomework(
+            @PathVariable String homeworkId,
+            @RequestBody Map<String, Object> body,
+            Authentication auth) {
+        try {
+            if (!(auth.getPrincipal() instanceof AppUser teacher)) {
+                return ResponseEntity.status(401).body(errorBody("Unauthorized"));
+            }
+
+            String learnerId = (String) body.get("learnerId");
+            String classId = (String) body.get("classId");
+            if (learnerId == null || classId == null) {
+                return ResponseEntity.badRequest().body(errorBody("learnerId and classId are required"));
+            }
+
+            boolean awarded = homeworkService.toggleHomeworkStar(homeworkId, learnerId, classId, teacher.getId());
+            return ResponseEntity.ok(successBody(Map.of("awarded", awarded), awarded ? "Star awarded" : "Star removed"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+        }
+    }
+
+    private Map<String, Object> successBody(Object payload) {
+        return Map.of("success", true, "data", payload, "payload", payload);
+    }
+
+    private Map<String, Object> successBody(Object payload, String message) {
+        return Map.of("success", true, "data", payload, "payload", payload, "message", message);
     }
 
     private Map<String, Object> errorBody(String message) {

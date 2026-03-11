@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 
-interface StudentRecognition {
+interface StudentRecognition 
+{
   learnerId: string;
   learnerNumber: string;
   fullName: string;
@@ -75,7 +76,7 @@ const StarsView: React.FC = () => {
   // Load student recognition data when class changes
   useEffect(() => {
     if (!selectedClassId) return;
-    
+
     const loadRecognition = async () => {
       setLoading(true);
       setSelectedStudent(null);
@@ -137,18 +138,18 @@ const StarsView: React.FC = () => {
       };
 
       await api.awardStar(payload);
-      
+
       // Update the UI with new star count
       setStudentRecognition(prevRecognition =>
         prevRecognition.map(student =>
           student.learnerId === selectedStudent.learnerId
             ? {
-                ...student,
-                ...(starCategory === 'ATTENDANCE' && { attendanceStars: student.attendanceStars + 1 }),
-                ...(starCategory === 'HOMEWORK' && { homeworkStars: student.homeworkStars + 1 }),
-                ...(starCategory === 'ASSIGNMENT' && { assignmentStars: student.assignmentStars + 1 }),
-                totalStars: student.totalStars + 1,
-              }
+              ...student,
+              ...(starCategory === 'ATTENDANCE' && { attendanceStars: student.attendanceStars + 1 }),
+              ...(starCategory === 'HOMEWORK' && { homeworkStars: student.homeworkStars + 1 }),
+              ...(starCategory === 'ASSIGNMENT' && { assignmentStars: student.assignmentStars + 1 }),
+              totalStars: student.totalStars + 1,
+            }
             : student
         )
       );
@@ -257,11 +258,10 @@ const StarsView: React.FC = () => {
                 <div
                   key={student.learnerId}
                   onClick={() => setSelectedStudent(student)}
-                  className={`p-4 rounded-lg border-2 transition-all cursor-pointer ${
-                    selectedStudent?.learnerId === student.learnerId
+                  className={`p-4 rounded-lg border-2 transition-all cursor-pointer ${selectedStudent?.learnerId === student.learnerId
                       ? 'border-blue-500 bg-blue-50 shadow-lg'
                       : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-md'
-                  }`}
+                    }`}
                 >
                   {/* Student name */}
                   <div className="mb-3">

@@ -64,15 +64,15 @@ const ParentDashboard: React.FC<ParentDashboardProps> = ({ onViewChange }) => {
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-green-600 to-teal-600 rounded-2xl p-6 md:p-8 text-white">
+      <div className="bg-gradient-to-r from-slate-700 to-blue-700 rounded-2xl p-6 md:p-8 text-white">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">Welcome, {user?.fullName?.split(' ')[0]}!</h1>
-            <p className="text-green-100 mt-2">Stay connected with your child's education journey</p>
+            <p className="text-slate-100 mt-2">Stay connected with your child's education journey</p>
           </div>
           <button
             onClick={() => onViewChange('messages')}
-            className="flex items-center gap-2 px-5 py-3 bg-white text-green-600 font-semibold rounded-xl hover:bg-green-50 transition-all"
+            className="flex items-center gap-2 px-5 py-3 bg-white text-slate-700 font-semibold rounded-xl hover:bg-slate-100 transition-all"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -85,7 +85,7 @@ const ParentDashboard: React.FC<ParentDashboardProps> = ({ onViewChange }) => {
       {/* Child Overview */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <div className="flex items-center gap-4 mb-6">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-2xl font-bold">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-slate-600 to-blue-600 flex items-center justify-center text-white text-2xl font-bold">
             {childProgress.name.charAt(0)}
           </div>
           <div>

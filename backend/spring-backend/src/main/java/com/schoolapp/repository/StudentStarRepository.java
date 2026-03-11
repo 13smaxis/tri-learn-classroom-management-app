@@ -4,10 +4,17 @@ import com.schoolapp.model.StudentStar;
 import com.schoolapp.model.StarCategory;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
+import java.util.Optional;
 
 public interface StudentStarRepository extends JpaRepository<StudentStar, String> {
     List<StudentStar> findByLearnerId(String learnerId);
     List<StudentStar> findByLearnerIdAndCategory(String learnerId, StarCategory category);
     List<StudentStar> findByTeacherIdAndSchoolClassId(String teacherId, String schoolClassId);
     int countByLearnerIdAndCategory(String learnerId, StarCategory category);
+    Optional<StudentStar> findFirstByLearnerIdAndSchoolClassIdAndCategoryAndNote(
+            String learnerId,
+            String schoolClassId,
+            StarCategory category,
+            String note
+    );
 }

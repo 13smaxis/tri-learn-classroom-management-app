@@ -7,6 +7,7 @@ import com.schoolapp.model.Homework;
 import com.schoolapp.model.HomeworkSubmission;
 import com.schoolapp.model.Learner;
 import com.schoolapp.model.SchoolClass;
+import com.schoolapp.model.StudentStar;
 import com.schoolapp.model.StarCategory;
 import com.schoolapp.repository.ClassRepository;
 import com.schoolapp.repository.HomeworkRepository;
@@ -14,6 +15,7 @@ import com.schoolapp.repository.HomeworkSubmissionRepository;
 import com.schoolapp.repository.LearnerRepository;
 import com.schoolapp.repository.StudentStarRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
@@ -22,6 +24,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class HomeworkService {
+
+    private static final String HOMEWORK_STAR_NOTE_PREFIX = "Homework star:";
 
     private final HomeworkRepository homeworkRepository;
     private final ClassRepository classRepository;
@@ -52,10 +56,11 @@ public class HomeworkService {
             throw new RuntimeException("dueDate is required");
         }
 
-        SchoolClass schoolClass = classRepository.findById(request.getClassId())
+        SchoolClass schoolClass = classRepository.findById(Objects.requireNonNull(request.getClassId(), "classId"))
                 .orElseThrow(() -> new RuntimeException("Class not found"));
 
-        if (schoolClass.getTeacher() == null || !schoolClass.getTeacher().getId().equals(teacher.getId())) {
+        if (schoolClass.getTeacher() == null || !schoolClass.getTeacher().getId().equals(teacher.getId())) 
+        {
             throw new RuntimeException("You are not allowed to create homework for this class");
         }
 
@@ -91,7 +96,7 @@ public class HomeworkService {
 
 
     public void deleteHomework(String homeworkId, AppUser teacher) {
-        Homework homework = homeworkRepository.findById(homeworkId)
+        Homework homework = homeworkRepository.findById(Objects.requireNonNull(homeworkId, "homeworkId"))
                 .orElseThrow(() -> new RuntimeException("Homework not found"));
         if (homework.getTeacher() == null || !homework.getTeacher().getId().equals(teacher.getId())) {
             throw new RuntimeException("You are not allowed to delete this homework");
@@ -118,8 +123,9 @@ public class HomeworkService {
 
     // ── Homework Detail (Dashboard) ──
 
-    public HomeworkDetailDTO getHomeworkDetail(String homeworkId) {
-        Homework homework = homeworkRepository.findById(homeworkId)
+    public HomeworkDetailDTO getHomeworkDetail(String homeworkId) 
+    {
+        Homework homework = homeworkRepository.findById(Objects.requireNonNull(homeworkId, "homeworkId"))
                 .orElseThrow(() -> new RuntimeException("Homework not found"));
 
         String classId = homework.getSchoolClass().getId();
@@ -176,8 +182,17 @@ public class HomeworkService {
             int totalStars = starRepository.countByLearnerIdAndCategory(l.getId(), StarCategory.ATTENDANCE)
                     + homeworkStars
                     + starRepository.countByLearnerIdAndCategory(l.getId(), StarCategory.ASSIGNMENT);
+                boolean homeworkStarAwarded = starRepository
+                    .findFirstByLearnerIdAndSchoolClassIdAndCategoryAndNote(
+                        l.getId(),
+                        classId,
+                        StarCategory.HOMEWORK,
+                        buildHomeworkStarNote(homeworkId)
+                    )
+                    .isPresent();
             row.setHomeworkStars(homeworkStars);
             row.setTotalStars(totalStars);
+                row.setHomeworkStarAwarded(homeworkStarAwarded);
             return row;
         }).collect(Collectors.toList());
 
@@ -203,12 +218,13 @@ public class HomeworkService {
     public void captureMark(String homeworkId, String learnerId, Double mark) {
         HomeworkSubmission sub = submissionRepository.findByHomeworkIdAndLearnerId(homeworkId, learnerId)
                 .orElseThrow(() -> new RuntimeException("Submission not found for learner"));
+
+        if (!sub.isSubmitted()) {
+            throw new RuntimeException("Cannot capture mark before learner is marked as submitted");
+        }
+
         sub.setMark(mark);
         sub.setMarkedAt(LocalDateTime.now());
-        if (!sub.isSubmitted()) {
-            sub.setSubmitted(true);
-            sub.setSubmittedAt(LocalDateTime.now());
-        }
         submissionRepository.save(sub);
     }
 
@@ -222,5 +238,127 @@ public class HomeworkService {
             sub.setSubmittedAt(LocalDateTime.now());
         }
         submissionRepository.save(sub);
+    }
+
+    @Transactional
+    public int bulkUpdateSubmissions(String homeworkId, List<?> entries, String teacherId) {
+        Homework homework = homeworkRepository.findById(Objects.requireNonNull(homeworkId, "homeworkId"))
+                .orElseThrow(() -> new RuntimeException("Homework not found"));
+
+        if (homework.getTeacher() == null || !homework.getTeacher().getId().equals(teacherId)) {
+            throw new RuntimeException("You are not allowed to update this homework");
+        }
+
+        List<HomeworkSubmission> updates = new ArrayList<>();
+        for (Object entryObj : entries) {
+            if (!(entryObj instanceof Map<?, ?> entryMap)) {
+                throw new RuntimeException("Invalid entry payload");
+            }
+
+            String learnerId = toStringValue(entryMap.get("learnerId"));
+            Boolean submitted = toBooleanValue(entryMap.get("submitted"));
+            Double mark = toDoubleValue(entryMap.get("mark"));
+
+            if (learnerId == null || learnerId.isBlank() || submitted == null) {
+                throw new RuntimeException("Each entry requires learnerId and submitted");
+            }
+            if (mark != null && (mark < 0 || mark > 100)) {
+                throw new RuntimeException("Mark must be between 0 and 100");
+            }
+            if (!submitted && mark != null) {
+                throw new RuntimeException("Cannot capture mark before learner is marked as submitted");
+            }
+
+            HomeworkSubmission sub = submissionRepository.findByHomeworkIdAndLearnerId(homeworkId, learnerId)
+                    .orElseThrow(() -> new RuntimeException("Submission not found for learner"));
+
+            sub.setSubmitted(submitted);
+            if (submitted && sub.getSubmittedAt() == null) {
+                sub.setSubmittedAt(LocalDateTime.now());
+            }
+
+            sub.setMark(mark);
+            sub.setMarkedAt(mark != null ? LocalDateTime.now() : null);
+            updates.add(sub);
+        }
+
+        submissionRepository.saveAll(updates);
+        return updates.size();
+    }
+
+    public boolean toggleHomeworkStar(String homeworkId, String learnerId, String classId, String teacherId) {
+        Homework homework = homeworkRepository.findById(Objects.requireNonNull(homeworkId, "homeworkId"))
+                .orElseThrow(() -> new RuntimeException("Homework not found"));
+
+        if (homework.getTeacher() == null || !homework.getTeacher().getId().equals(teacherId)) {
+            throw new RuntimeException("You are not allowed to award stars for this homework");
+        }
+
+        if (homework.getSchoolClass() == null || !homework.getSchoolClass().getId().equals(classId)) {
+            throw new RuntimeException("Homework does not belong to the provided class");
+        }
+
+        Learner learner = learnerRepository.findById(Objects.requireNonNull(learnerId, "learnerId"))
+                .orElseThrow(() -> new RuntimeException("Learner not found"));
+
+        String note = buildHomeworkStarNote(homeworkId);
+        Optional<StudentStar> existing = starRepository
+                .findFirstByLearnerIdAndSchoolClassIdAndCategoryAndNote(
+                        learnerId,
+                        classId,
+                        StarCategory.HOMEWORK,
+                        note
+                );
+
+        if (existing.isPresent()) {
+            StudentStar starToDelete = existing.orElseThrow(() -> new RuntimeException("Star not found"));
+            starRepository.delete(Objects.requireNonNull(starToDelete, "starToDelete"));
+            return false;
+        }
+
+        StudentStar star = new StudentStar(learner, homework.getTeacher(), homework.getSchoolClass(), StarCategory.HOMEWORK);
+        star.setStarCount(1);
+        star.setNote(note);
+        starRepository.save(star);
+        return true;
+    }
+
+    private String buildHomeworkStarNote(String homeworkId) {
+        return HOMEWORK_STAR_NOTE_PREFIX + homeworkId;
+    }
+
+    private String toStringValue(Object value) {
+        if (value == null) {
+            return null;
+        }
+        return value.toString();
+    }
+
+    private Boolean toBooleanValue(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Boolean b) {
+            return b;
+        }
+        String str = value.toString();
+        if ("true".equalsIgnoreCase(str)) {
+            return true;
+        }
+        if ("false".equalsIgnoreCase(str)) {
+            return false;
+        }
+        return null;
+    }
+
+    private Double toDoubleValue(Object value) {
+        if (value == null) {
+            return null;
+        }
+        try {
+            return Double.parseDouble(value.toString());
+        } catch (NumberFormatException ex) {
+            throw new RuntimeException("Invalid mark value");
+        }
     }
 }
