@@ -123,17 +123,16 @@ const buildUniqueSixDigitNumbers = (count: number, grade?: string): string[] => 
  * Builds a lock map from saved attendance.
  * Any learner with a non-empty saved status becomes read-only.
  */
-const buildLockedMapFromAttendance = (attendanceForDate: Record<string, 
-                           string> = {}): Record<string, 
-                           boolean> => {                                                                        //-Takes the attendance record for a specific date and creates a map indicating which learners have a saved status, thus should be locked from editing in the UI.
-  return Object.entries(attendanceForDate).reduce<Record<string, 
+const buildLockedMapFromAttendance = (attendanceForDate: Record<string,
+  string> = {}): Record<string,
+    boolean> => {                                                                        //-Takes the attendance record for a specific date and creates a map indicating which learners have a saved status, thus should be locked from editing in the UI.
+  return Object.entries(attendanceForDate).reduce<Record<string,
     boolean>>((acc, [learnerId, status]) => {                                                                   //-Iterate over each learner's attendance status for the date
-    if (status) 
-    {
-      acc[learnerId] = true;                                                                                    //-If status is non-empty, mark this learner as locked (true) in the map, no editing allowed
-    }
-    return acc;                                                                                               //-Return the accumulated lock map, where keys are learner IDs and values indicate if they are locked (true) or not (undefined/false)
-  }, {});
+      if (status) {
+        acc[learnerId] = true;                                                                                    //-If status is non-empty, mark this learner as locked (true) in the map, no editing allowed
+      }
+      return acc;                                                                                               //-Return the accumulated lock map, where keys are learner IDs and values indicate if they are locked (true) or not (undefined/false)
+    }, {});
 };
 
 /**
@@ -181,8 +180,7 @@ const AttendanceView: React.FC = () => {
    */
   const showSuccessOverlay = (message: string) => {
     setSuccessOverlayMessage(message);                                                                          //-Render the success overlay with the provided message.
-    if (successOverlayTimeoutRef.current) 
-    {
+    if (successOverlayTimeoutRef.current) {
       window.clearTimeout(successOverlayTimeoutRef.current);                                                    //-Prevent overlapping timers.
     }
     successOverlayTimeoutRef.current = window.setTimeout(() => {
@@ -192,7 +190,7 @@ const AttendanceView: React.FC = () => {
   };
 
   const getWeekDays = (dateString: string) => {                                                                 //-Helper functions to calculate week and month dates (safe local time parsing)
-    
+
     const [year, month, day] = dateString.split('-').map(Number);                                               //-Parse YYYY-MM-DD safely to avoid timezone issues
     const date = new Date(year, month - 1, day);
     const dayOfWeek = date.getDay();                                                                            //- 0 = Sun, 1 = Mon
@@ -216,7 +214,7 @@ const AttendanceView: React.FC = () => {
   };
 
   const getMonthWeeks = (dateString: string) => {                                                               //-Parse YYYY-MM-DD safely to avoid timezone issues
-    
+
     const [year, month] = dateString.split('-').map(Number);
     const firstOfMonth = new Date(year, month - 1, 1);                                                          //-First day of month (local time)
     const firstDay = firstOfMonth.getDay();                                                                     //- 0=Sun
@@ -343,9 +341,9 @@ const AttendanceView: React.FC = () => {
       return;
 
     if (attendanceByDate[selectedDate])                                                                         //-Check if we already have this date loaded
-    { 
+    {
       setAttendance(attendanceByDate[selectedDate]);                                                            //-If attendance for the selected date is already cached in state, use it directly without making another API call.
-      return;                                                                                                   
+      return;
     }
 
     // Load attendance for the new date from backend
@@ -431,7 +429,7 @@ const AttendanceView: React.FC = () => {
   }, []);
 
   const handleCsvUpload = (event: React.ChangeEvent<HTMLInputElement>) => {                                     //-Legacy handler kept for backward compat – unused now
-    
+
   };
 
   // Direct CSV file pick from the file explorer
@@ -624,7 +622,7 @@ const AttendanceView: React.FC = () => {
     const updatedForDate = { ...currentForDate, ...attendance };
 
     setIsSavingAttendance(true);
-    
+
     api.saveAttendance({                                                                                        //-Save attendance to backend
       classId: selectedClass,
       date: selectedDate,
@@ -763,7 +761,7 @@ const AttendanceView: React.FC = () => {
   })();
 
   return (
-    <div className={`space-y-6 rounded-2xl p-4 sm:p-6 transition-colors duration-300 ${dashboardBgClass}`}>
+    <div className= "space-y-6 rounded-2xl p-4 sm:p-6 transition-colors duration-300">
       <div className="
                         flex flex-col sm:flex-row 
                         sm:items-center sm:justify-between 
@@ -800,7 +798,7 @@ const AttendanceView: React.FC = () => {
                       bg-gradient-to-br from-white via-blue-50/40 to-indigo-50/30 
                       p-5
                     "
-      >                                                                                                       {/* Filters */}
+      >                                                                                                         {/* Filters */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
@@ -897,7 +895,7 @@ const AttendanceView: React.FC = () => {
 
         {/* CSV preview after file picked */}
         {showUploadPanel && csvParsedLearners.length > 0 && (
-          <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50/30 p-4 sm:p-5">
+          <div className="mt-4 rounded-xl border border-blue-200 bg-amber-100 p-4 sm:p-5">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
               <p className="
                               text-xs sm:text-sm font-medium 
@@ -910,7 +908,13 @@ const AttendanceView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowDuplicatesOnly((prev) => !prev)}
-                    className="rounded-full border border-amber-200 px-2.5 py-1 text-[11px] font-medium text-amber-700 hover:bg-amber-50"
+                    className="
+                                rounded-full border border-amber-200 
+                                px-2.5 py-1 text-[11px] 
+                                font-medium 
+                                text-amber-700 
+                                hover:bg-amber-50
+                              "
                   >
                     {showDuplicatesOnly ? 'Show all' : 'Show duplicates'}
                   </button>
@@ -932,9 +936,17 @@ const AttendanceView: React.FC = () => {
               </div>
             </div>
             {csvParsedLearners.some((learner) => learner.isDuplicate) && (
-              <p className="mb-2 text-xs text-amber-700">
+              <div className="
+                                mb-2 px-3 py-2 
+                                rounded-md bg-amber-100 
+                                border border-amber-400 
+                                text-amber-900 text-xs font-semibold 
+                                flex items-center gap-2
+                              "
+              >
+                <span className="text-amber-500 text-base leading-none">⚠️</span>
                 Duplicate names found. Edit or remove them to include; duplicates are skipped on upload.
-              </p>
+              </div>
             )}
             <div className="rounded-lg border border-gray-200 overflow-x-auto">                               {/* Keep natural height so preview expands and pushes sections below down */}
               <table className="w-full text-xs sm:text-sm">
@@ -1075,8 +1087,8 @@ const AttendanceView: React.FC = () => {
               type="button"
               onClick={() => setViewMode(mode as any)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${viewMode === mode
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
                 }`}
             >
               {mode === 'daily' ? 'Daily' : mode === 'weekly' ? 'Weekly' : 'Monthly'}
@@ -1194,27 +1206,27 @@ const AttendanceView: React.FC = () => {
                   // This learner is read-only when true.
                   const isLocked = Boolean(selectedDateLockedMap[learner.id]);
                   return (
-                  <div key={learner.id} className="flex items-center justify-between p-4 hover:bg-gray-50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-medium">
-                        {learner.name.charAt(0)}
+                    <div key={learner.id} className="flex items-center justify-between p-4 hover:bg-gray-50">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-medium">
+                          {learner.name.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">{learner.name}</p>
+                          <p className="text-sm text-gray-500">
+                            #{learner.number}
+                            {isLocked ? <span className="ml-2 text-[11px] font-medium text-blue-600">Saved</span> : null}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium text-gray-900">{learner.name}</p>
-                        <p className="text-sm text-gray-500">
-                          #{learner.number}
-                          {isLocked ? <span className="ml-2 text-[11px] font-medium text-blue-600">Saved</span> : null}
-                        </p>
-                      </div>
-                    </div>
 
-                    <div className="flex gap-2">
-                      {['present', 'absent', 'late', 'excused', 'bunking', 'sick'].map((status) => (
-                        <button
-                          key={status}
-                          onClick={() => handleAttendanceChange(learner.id, status)}
-                          disabled={isLocked}
-                          className={`px-3 py-2 text-sm font-medium rounded-lg transition-all ${attendance[learner.id] === status
+                      <div className="flex gap-2">
+                        {['present', 'absent', 'late', 'excused', 'bunking', 'sick'].map((status) => (
+                          <button
+                            key={status}
+                            onClick={() => handleAttendanceChange(learner.id, status)}
+                            disabled={isLocked}
+                            className={`px-3 py-2 text-sm font-medium rounded-lg transition-all ${attendance[learner.id] === status
                               ? status === 'present' ? 'bg-green-500 text-white' :
                                 status === 'absent' ? 'bg-red-500 text-white' :
                                   status === 'late' ? 'bg-orange-500 text-white' :
@@ -1222,14 +1234,15 @@ const AttendanceView: React.FC = () => {
                                       status === 'sick' ? 'bg-purple-500 text-white' :
                                         'bg-blue-500 text-white'
                               : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            } ${isLocked ? 'cursor-not-allowed opacity-75 hover:bg-inherit' : ''}`}
-                        >
-                          {status.charAt(0).toUpperCase() + status.slice(1)}
-                        </button>
-                      ))}
+                              } ${isLocked ? 'cursor-not-allowed opacity-75 hover:bg-inherit' : ''}`}
+                          >
+                            {status.charAt(0).toUpperCase() + status.slice(1)}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )})}
+                  )
+                })}
               </div>
             </div>
           )}

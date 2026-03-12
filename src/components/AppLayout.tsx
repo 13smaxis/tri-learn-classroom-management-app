@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppContext } from '@/contexts/AppContext';
 
@@ -35,7 +35,11 @@ import ChildProgressView from '@/components/parent/ChildProgressView';
 
 
 const AppLayout: React.FC = () => {
-  const { user, loading, justSignedUp, clearJustSignedUp } = useAuth();
+  const { user, loading, justSignedUp, clearJustSignedUp, sessionExpired, softLogout, reAuthenticate } = useAuth();
+  const [reAuthPhone, setReAuthPhone] = useState('');
+  const [reAuthPassword, setReAuthPassword] = useState('');
+  const [reAuthError, setReAuthError] = useState('');
+  const [reAuthLoading, setReAuthLoading] = useState(false);
   const { forceGlobalRefresh } = useAppContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeView, setActiveView] = useState('dashboard');
@@ -54,14 +58,23 @@ const AppLayout: React.FC = () => {
   const showWelcomeOverlay = !!user && user.role === 'teacher' && justSignedUp;
   const appBgClass = 'bg-gradient-to-br from-blue-100 to-blue-50';
 
+  // Track session-expired → re-auth so we can skip the dashboard reset
+  const wasSessionExpiredRef = useRef(false);
+  useEffect(() => {
+    if (sessionExpired) wasSessionExpiredRef.current = true;
+  }, [sessionExpired]);
 
-  // Reset to hero view after sign-out
+  // Reset to hero view after sign-out, but preserve view on re-auth
   useEffect(() => {
     if (!user) {
       setShowLoginModal(false);
       setShowRegisterModal(false);
       setShowInviteModal(false);
       setActiveView('dashboard');
+      wasSessionExpiredRef.current = false;
+    } else if (wasSessionExpiredRef.current) {
+      // Re-auth: keep the user on their current view
+      wasSessionExpiredRef.current = false;
     } else {
       setActiveView('dashboard');
     }
@@ -89,13 +102,35 @@ const AppLayout: React.FC = () => {
     };
   }, [user]);
 
-  // Listen for auto-logout event and call logout
+  // Listen for auto-logout event and call softLogout (preserves views)
   const { logout } = useAuth();
   useEffect(() => {
-    const handler = () => logout();
+    const handler = () => softLogout();
     window.addEventListener('auto-logout', handler);
     return () => window.removeEventListener('auto-logout', handler);
-  }, [logout]);
+  }, [softLogout]);
+
+  // Listen for 401 API responses (session expired server-side)
+  useEffect(() => {
+    if (!user) return;
+    const handler = () => softLogout();
+    window.addEventListener('session-expired', handler);
+    return () => window.removeEventListener('session-expired', handler);
+  }, [user, softLogout]);
+
+  const handleReAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setReAuthError('');
+    setReAuthLoading(true);
+    const result = await reAuthenticate(reAuthPhone, reAuthPassword);
+    setReAuthLoading(false);
+    if (result.success) {
+      setReAuthPhone('');
+      setReAuthPassword('');
+    } else {
+      setReAuthError(result.error || 'Login failed');
+    }
+  };
 
   // Reset class details when navigating to My Classes
   useEffect(() => {
@@ -272,8 +307,8 @@ const AppLayout: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen ${appBgClass} relative ${showWelcomeOverlay ? 'overflow-hidden' : ''}`}>
-      <div className={`flex h-screen ${showWelcomeOverlay ? 'pointer-events-none blur-sm transition-all' : 'transition-all'}`}>
+    <div className={`min-h-screen ${appBgClass} relative ${showWelcomeOverlay || sessionExpired ? 'overflow-hidden' : ''}`}>
+      <div className={`flex h-screen ${showWelcomeOverlay || sessionExpired ? 'pointer-events-none blur-sm transition-all' : 'transition-all'}`}>
         <Sidebar
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
@@ -309,6 +344,59 @@ const AppLayout: React.FC = () => {
           />
         )}
       </div>
+
+      {/* Session expired re-login overlay — views stay mounted behind */}
+      {sessionExpired && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full mx-4 p-8">
+            <div className="mx-auto w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center mb-4">
+              <svg className="h-7 w-7 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-1 text-center">Session expired</h2>
+            <p className="text-gray-500 text-sm mb-5 text-center">
+              You were inactive for a while. Log in again to continue where you left off.
+            </p>
+            <form onSubmit={handleReAuth} className="space-y-3">
+              <input
+                type="tel"
+                placeholder="Phone number"
+                value={reAuthPhone}
+                onChange={(e) => setReAuthPhone(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+                autoFocus
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={reAuthPassword}
+                onChange={(e) => setReAuthPassword(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+              {reAuthError && (
+                <p className="text-red-600 text-xs text-center">{reAuthError}</p>
+              )}
+              <button
+                type="submit"
+                disabled={reAuthLoading}
+                className="w-full rounded-lg bg-blue-600 px-4 py-2.5 font-semibold text-white text-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all disabled:opacity-60"
+              >
+                {reAuthLoading ? 'Logging in…' : 'Log back in'}
+              </button>
+            </form>
+            <button
+              type="button"
+              onClick={logout}
+              className="w-full mt-3 text-xs text-gray-400 hover:text-gray-600 transition-colors text-center"
+            >
+              Sign out instead
+            </button>
+          </div>
+        </div>
+      )}
 
       {showWelcomeOverlay && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">

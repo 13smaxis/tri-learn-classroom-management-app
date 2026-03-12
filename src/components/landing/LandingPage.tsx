@@ -12,7 +12,7 @@ interface LandingPageProps
   showRegister?: boolean;
   showInvite?: boolean;
   registerRole?: 'teacher' | 'parent' | 'learner';
-  onSwitchToRegister?: (role?: 'parent' | 'learner') => void;
+  onSwitchToRegister?: (role?: 'teacher' | 'parent' | 'learner') => void;
   onSwitchToInvite?: () => void;
   onSwitchToLogin?: () => void;
 }

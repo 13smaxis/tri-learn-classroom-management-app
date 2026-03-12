@@ -23,9 +23,10 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   });
   const text = await res.text();
 
-  // Handle 401 – token expired / missing → clear token so user is prompted to log in again
+  // Handle 401 – token expired / missing → soft-expire so user can re-auth without losing work
   if (res.status === 401) {
     localStorage.removeItem('authToken');
+    window.dispatchEvent(new Event('session-expired'));
     let msg = 'Session expired – please log in again';
     try { const j = JSON.parse(text); msg = j.error?.message || msg; } catch { /* use default */ }
     throw new Error(msg);

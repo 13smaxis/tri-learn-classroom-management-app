@@ -401,3 +401,7 @@ Caused by: org.h2.mvstore.MVStoreException: The file is locked: C:/Users/E949238
 	at org.h2.mvstore.SingleFileStore.open(SingleFileStore.java:81)
 	at org.h2.mvstore.MVStore.<init>(MVStore.java:286)
 	... 130 more
+2026-03-12 08:22:59.778867+02:00 jdbc[13]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "APP_USER" not found; SQL statement:
+select *
+from app_user [42102-224]
