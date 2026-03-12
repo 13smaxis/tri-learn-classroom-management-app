@@ -22,9 +22,12 @@ interface AuthContextType
   user: User | null;
   loading: boolean;
   justSignedUp: boolean;
+  sessionExpired: boolean;
   login: (phone: string, password: string) => Promise<{ success: boolean; error?: string }>;                    //-Returns success status and error message if failed
   register: (data: RegisterData) => Promise<{ success: boolean; error?: string; user?: User }>;                 //-Returns success status, error message if failed, and user data if successful
   logout: () => void;
+  softLogout: () => void;
+  reAuthenticate: (phone: string, password: string) => Promise<{ success: boolean; error?: string }>;
   validateInvite: (code: string) => Promise<{ success: boolean; classInfo?: any; error?: string }>;
   joinClass: (classId: string, role: string, linkedLearnerId?: string) => Promise<{ success: boolean; error?: string }>;
   clearJustSignedUp: () => void;
@@ -60,6 +63,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [justSignedUp, setJustSignedUp] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   // On mount, check for stored token and fetch current user
   useEffect(() => {
@@ -127,6 +131,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.removeItem('authToken');
     setUser(null);
     setJustSignedUp(false);
+    setSessionExpired(false);
+  };
+
+  // Soft logout: remove token but keep user state so views stay mounted
+  const softLogout = () => {
+    localStorage.removeItem('authToken');
+    setSessionExpired(true);
+  };
+
+  // Re-authenticate from session-expired state without resetting app
+  const reAuthenticate = async (phone: string, password: string) => {
+    try {
+      const data = await api.login({ phone, password });
+      if (data.token) {
+        localStorage.setItem('authToken', data.token);
+      }
+      setUser(apiUserToUser(data));
+      setSessionExpired(false);
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Login failed' };
+    }
   };
 
   const validateInvite = async (code: string) => {
@@ -155,9 +181,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         user,
         loading,
         justSignedUp,
+        sessionExpired,
         login,
         register,
         logout,
+        softLogout,
+        reAuthenticate,
         validateInvite,
         joinClass,
         clearJustSignedUp: () => setJustSignedUp(false)

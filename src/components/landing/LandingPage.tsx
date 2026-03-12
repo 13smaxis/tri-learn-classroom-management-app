@@ -12,7 +12,7 @@ interface LandingPageProps
   showRegister?: boolean;
   showInvite?: boolean;
   registerRole?: 'teacher' | 'parent' | 'learner';
-  onSwitchToRegister?: (role?: 'parent' | 'learner') => void;
+  onSwitchToRegister?: (role?: 'teacher' | 'parent' | 'learner') => void;
   onSwitchToInvite?: () => void;
   onSwitchToLogin?: () => void;
 }
@@ -240,36 +240,48 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
   const cardIcon: Record<string, string>   = { blue: 'bg-blue-100 text-blue-600', green: 'bg-green-100 text-green-600', purple: 'bg-purple-100 text-purple-600' };
   const checkColor: Record<string, string> = { blue: 'text-blue-500', green: 'text-green-500', purple: 'text-purple-500' };
 
-  return (
-    <div className="flex flex-col overflow-hidden" style={{ height: '100dvh' }}>
-      <style>{animKeyframes}</style>                                                                            {/* Inject keyframes into the page for the animations */}  
+  const isAuthView = showLogin || showRegister || showInvite;
 
-      {/* ═══════ Top: Hero (70% of viewport) ═══════ */}
-      <section className="
-                            relative overflow-hidden 
-                            bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 
-                            text-white" 
-                style={{ height: '80dvh', minHeight: 0 }}>
-        <div className="relative h-full flex flex-col items-center justify-center px-4">
-          {showLogin ? (
+  if (isAuthView) {
+    return (
+      <div className="w-full min-h-screen bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 text-white">
+        <div className="flex flex-col items-center justify-center min-h-screen px-4 py-8">
+          {showLogin && (
             <LoginView
               onSwitchToRegister={onSwitchToRegister || onOpenRegister}
               onSwitchToInvite={onSwitchToInvite || onOpenInvite}
             />
-          ) : showRegister ? (
+          )}
+          {showRegister && (
             <RegisterView
+              key="register"
               onSwitchToLogin={onSwitchToLogin || onOpenLogin}
               defaultRole={registerRole}
             />
-          ) : showInvite ? (
+          )}
+          {showInvite && (
             <InviteView
               onSwitchToLogin={onSwitchToLogin || onOpenLogin}
               onSwitchToRegister={(role) => onSwitchToRegister ? onSwitchToRegister(role) : onOpenRegister()}
             />
-          ) : (
-            <>
-              
-              <h1 className="text-[clamp(1.25rem,4vw,3rem)] font-bold mb-[1vh] text-center leading-tight">      {/* Heading */}
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col overflow-hidden" style={{ height: '100dvh' }}>
+      <style>{animKeyframes}</style>
+
+        {/* ═══════ Top: Hero (80% of viewport) ═══════ */}
+        <section className="
+                            relative overflow-hidden 
+                            bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 
+                            text-white" 
+                style={{ height: '80dvh', minHeight: 0 }}>
+          <div className="relative h-full flex flex-col items-center justify-center px-4">
+              <h1 className="text-[clamp(1.25rem,4vw,3rem)] font-bold mb-[1vh] text-center leading-tight">
                 Classroom Management Made Simple
               </h1>
               <p className="
@@ -277,12 +289,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
                               text-blue-100 max-w-2xl mx-auto mb-[2vh] 
                               text-center
                             "
-              >                                                                                                 {/* Subheading */}
+              >
                 Connect teachers, parents and learners on one powerful platform.
               </p>
 
-              
-              <div className="relative w-full max-w-3xl" style={{ height: 'clamp(6rem, 20vh, 11rem)' }}>        {/* Bouncing feature bubbles */}
+              <div className="relative w-full max-w-3xl" style={{ height: 'clamp(6rem, 20vh, 11rem)' }}>
                 {features.map((feature, idx) => (
                   <div
                     key={idx}
@@ -313,15 +324,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
               </div>
             ))}
           </div>
-            </>
-          )}
-        </div>
+          </div>
 
-        {/* Gradient fade into bottom area */}
-        <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent" />
-      </section>
+          {/* Gradient fade into bottom area */}
+          <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent" />
+        </section>
 
-      {/* ═══════ Bottom: Animated sliding content (30% of viewport) ═══════ */}
+      {/* ═══════ Bottom: Animated sliding content (20% of viewport) ═══════ */}
       <section className="bg-white flex items-center justify-center px-4 py-1" style={{ height: '20dvh', minHeight: 0, flexShrink: 0 }}>
         <div
           key={slideIdx}

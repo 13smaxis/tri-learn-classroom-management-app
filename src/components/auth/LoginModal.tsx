@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface LoginViewProps {
-  onSwitchToRegister: () => void;
+  onSwitchToRegister: (role?: 'teacher' | 'parent' | 'learner') => void;
   onSwitchToInvite: () => void;
 }
 
@@ -205,10 +205,10 @@ const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onSwitchToInv
 
         {/* Conditional Actions Based on Role */}
         <div className="space-y-3">
-          {selectedRole === 'teacher' && (
+          {selectedRole && (
             <button
               type="button"
-              onClick={onSwitchToRegister}
+              onClick={() => onSwitchToRegister(selectedRole)}
               className="w-full rounded-lg border border-blue-300/50 px-4 py-3 font-medium text-white hover:bg-white/10 transition-all"
             >
               Create New Account
