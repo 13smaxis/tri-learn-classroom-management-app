@@ -88,13 +88,27 @@ If you want to understand the changes:
 3. **api.ts** - Look for the `request()` function and 401 handling
 4. **HomeworkView.tsx** - Look for the error display logic (line ~625)
 
-## Database Check (if needed)
+## Database Check (Supabase)
 
-If users are not found, check the H2 console:
-1. Navigate to `http://localhost:3000/api/h2-console`
-2. JDBC URL: `jdbc:h2:file:./data/schooldb`
-3. Username: `sa` (no password)
-4. Query: `SELECT * FROM app_users;`
+If users are not found or you need to verify database connectivity:
+
+### Check Supabase Connection
+1. Go to [https://app.supabase.com](https://app.supabase.com)
+2. Select your project
+3. Navigate to **SQL Editor** to query tables
+4. Query: `SELECT * FROM auth.users;` (for Supabase Auth users)
+
+### Verify Backend Connection
+1. Ensure environment variables are set correctly:
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `SPRING_DATASOURCE_URL` (for Spring backend)
+2. Check backend logs for connection errors
+
+### Test API Connection
+```bash
+curl http://localhost:3000/api/health
+```
 
 ## Additional Resources
 

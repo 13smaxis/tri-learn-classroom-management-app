@@ -1,10 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 
+// Initialize Supabase client with environment variables
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Initialize database client
-const supabaseUrl = 'https://rklwwzrxsevzdvzjgaxb.databasepad.com';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjhkZDdiZGU3LTY3YjItNDJiOS04NjVjLTI1ZjdkNDc0NDlmMCJ9.eyJwcm9qZWN0SWQiOiJya2x3d3pyeHNldnpkdnpqZ2F4YiIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzY5NzAwMzc3LCJleHAiOjIwODUwNjAzNzcsImlzcyI6ImZhbW91cy5kYXRhYmFzZXBhZCIsImF1ZCI6ImZhbW91cy5jbGllbnRzIn0.XiFFdpt3QqwqK3iFHa_ReHzkt2_lOORfbtpL_2aHu9g';
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error(
+    'Missing Supabase environment variables. Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set.'
+  );
+}
+
 const supabase = createClient(supabaseUrl, supabaseKey);
-
 
 export { supabase };

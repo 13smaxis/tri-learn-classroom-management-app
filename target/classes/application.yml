@@ -5,27 +5,25 @@ server:
 
 spring:
   datasource:
-    url: jdbc:h2:file:./data/schooldb;DB_CLOSE_ON_EXIT=FALSE;AUTO_RECONNECT=TRUE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password: 
+    # Supabase PostgreSQL Configuration
+    # Set SPRING_DATASOURCE_URL and SPRING_DATASOURCE_PASSWORD environment variables
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
+    driver-class-name: org.postgresql.Driver
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 20000
   jpa:
-    database-platform: org.hibernate.dialect.H2Dialect
+    database-platform: org.hibernate.dialect.PostgreSQL10Dialect
     hibernate:
       ddl-auto: update
     defer-datasource-initialization: true
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         "[format_sql]": true
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-
-  sql:
-    init:
-      mode: always
 
 logging:
   level:
@@ -33,5 +31,5 @@ logging:
 
 app:
   jwt:
-    secret: "change-this-secret-key"
+    secret: ${JWT_SECRET:change-this-secret-key}
     expiration-seconds: 86400
