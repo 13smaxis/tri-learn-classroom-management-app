@@ -1,1 +1,0 @@
-ALTER TABLE IF EXISTS attendance_records ALTER COLUMN status VARCHAR(20);
