@@ -53,27 +53,10 @@ npm run dev
 
 The app will be available at `http://localhost:5173` (or the port shown in terminal).
 
-### Backend Setup - Node.js Auth Service
-
-```bash
-cd backend/services/auth-service
-
-# Install dependencies
-npm install
-
-# Set environment variables
-export SUPABASE_URL=https://your-project.supabase.co
-export SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-export JWT_SECRET=your-jwt-secret
-
-# Start the service
-npm start
-```
-
 ### Backend Setup - Spring Boot
 
 ```bash
-cd backend/spring-backend
+cd backend
 
 # Set environment variables
 export SPRING_DATASOURCE_URL=postgresql://user:password@host:port/database
@@ -180,42 +163,24 @@ tri-learn-classroom-management-app/
 │       └── NotFound.tsx           # 404 page
 │
 ├── 📁 backend/ - Backend Services
+│   ├── data/                      # Local backend data files
 │   ├── package.json               # Backend workspace config
+│   ├── pom.xml                    # Maven dependencies
 │   ├── tsconfig.json              # TypeScript config
-│   │
-│   ├── services/                  # Microservices
-│   │   └── auth-service/
-│   │       ├── package.json
-│   │       ├── tsconfig.json
-│   │       └── src/
-│   │           ├── index.ts       # Express app & routes
-│   │           └── service.ts     # Auth business logic
-│   │
-│   ├── shared/                    # Shared backend modules
-│   │   ├── middleware/
-│   │   │   └── index.ts           # CORS, auth middleware
-│   │   ├── models/
-│   │   │   └── index.ts           # TypeScript interfaces
-│   │   └── utils/
-│   │       └── index.ts           # Helpers
-│   │
-│   └── spring-backend/            # Spring Boot backend
-│       ├── pom.xml                # Maven dependencies
-│       ├── src/
-│       │   ├── main/
-│       │   │   ├── java/          # Java source code
-│       │   │   │   └── com/schoolapp/
-│       │   │   │       ├── controller/
-│       │   │   │       ├── service/
-│       │   │   │       ├── model/
-│       │   │   │       ├── dto/
-│       │   │   │       ├── security/
-│       │   │   │       └── config/
-│       │   │   └── resources/
-│       │   │       ├── application.yml   # Spring config
-│       │   │       └── schema.sql       # Database schema
-│       │   └── test/               # Unit tests
-│       └── target/                # Build output
+│   ├── src/
+│   │   ├── main/
+│   │   │   ├── java/              # Java source code
+│   │   │   │   └── com/schoolapp/
+│   │   │   │       ├── controller/
+│   │   │   │       ├── service/
+│   │   │   │       ├── model/
+│   │   │   │       ├── dto/
+│   │   │   │       ├── security/
+│   │   │   │       └── config/
+│   │   │   └── resources/
+│   │   │       ├── application.yml   # Spring config
+│   │   │       └── schema.sql       # Database schema
+│   └── target/                    # Build output
 │
 ├── 📁 infra/ - Infrastructure
 │   └── terraform/
@@ -270,7 +235,7 @@ TriLearn uses **Supabase PostgreSQL**. Key tables include:
 - `messages` - Messaging system
 - `notifications` - Push notifications
 
-For complete schema, see `backend/spring-backend/src/main/resources/schema.sql`.
+For complete schema, see `backend/src/main/resources/schema.sql`.
 
 ### Environment Variables
 
@@ -281,15 +246,6 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 VITE_API_BASE_URL=http://localhost:3000
 ```
 
-#### Backend (Node.js Auth Service)
-```
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-JWT_SECRET=your-jwt-secret
-PORT=3000
-NODE_ENV=development
-```
-
 #### Backend (Spring Boot)
 ```
 SPRING_DATASOURCE_URL=postgresql://host:port/database
@@ -297,7 +253,6 @@ SPRING_DATASOURCE_USERNAME=postgres
 SPRING_DATASOURCE_PASSWORD=password
 JWT_SECRET=your-jwt-secret
 ```
-
 ### Available Scripts
 
 **Frontend**
@@ -308,16 +263,9 @@ npm run preview   # Preview production build
 npm run lint      # Run ESLint
 ```
 
-**Auth Service**
+**Backend**
 ```bash
-cd backend/services/auth-service
-npm install
-npm start         # Start Express server
-```
-
-**Spring Backend**
-```bash
-cd backend/spring-backend
+cd backend
 mvn spring-boot:run   # Start Spring Boot
 mvn clean package     # Build JAR
 ```
