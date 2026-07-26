@@ -1,7 +1,7 @@
 import express from 'express';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
-import { corsMiddleware } from './src/middleware/cors.js';
+import { corsMiddleware } from './middleware/cors.js';
 import { logger } from './utils/logger.js';
 import authRoutes from './routes/auth.js';
 import teacherRoutes from './routes/teacher.js';
