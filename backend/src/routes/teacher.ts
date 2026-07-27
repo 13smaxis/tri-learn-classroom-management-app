@@ -1,5 +1,5 @@
-import { Router, Request, Response } from 'express';
-import { authMiddleware, requireRole } from '../middleware/auth.js';
+import { Router, Response } from 'express';
+import { authMiddleware, requireRole, type AuthenticatedRequest } from '../middleware/auth.js';
 import * as supabaseService from '../services/supabase.js';
 import { logger } from '../utils/logger.js';
 import { v4 as uuidv4 } from 'uuid';
@@ -14,16 +14,16 @@ router.use(requireRole('teacher'));
  * GET /teacher/classes
  * Get all classes for authenticated teacher
  */
-router.get('/classes', async (req: Request, res: Response) => {
+router.get('/classes', async (req: AuthenticatedRequest, res: Response) => {
   try {
     logger.info(`Fetching classes for teacher ${req.userId}`);
 
     const classes = await supabaseService.getTeacherClasses(req.userId!);
 
-    res.json({ data: classes, total: classes.length });
+    return res.json({ data: classes, total: classes.length });
   } catch (error) {
     logger.error('Error fetching classes', error);
-    res.status(500).json({ error: 'Server error', message: 'Failed to fetch classes' });
+    return res.status(500).json({ error: 'Server error', message: 'Failed to fetch classes' });
   }
 });
 
@@ -31,7 +31,7 @@ router.get('/classes', async (req: Request, res: Response) => {
  * GET /teacher/classes/:classId
  * Get specific class details
  */
-router.get('/classes/:classId', async (req: Request, res: Response) => {
+router.get('/classes/:classId', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const classId = req.params.classId;
     logger.info(`Fetching class ${classId}`);
@@ -49,10 +49,10 @@ router.get('/classes/:classId', async (req: Request, res: Response) => {
 
     const members = await supabaseService.getClassMembers(classId);
 
-    res.json({ class: classData, members, memberCount: members.length });
+    return res.json({ class: classData, members, memberCount: members.length });
   } catch (error) {
     logger.error('Error fetching class', error);
-    res.status(500).json({ error: 'Server error', message: 'Failed to fetch class' });
+    return res.status(500).json({ error: 'Server error', message: 'Failed to fetch class' });
   }
 });
 
@@ -60,7 +60,7 @@ router.get('/classes/:classId', async (req: Request, res: Response) => {
  * POST /teacher/classes
  * Create new class
  */
-router.post('/classes', async (req: Request, res: Response) => {
+router.post('/classes', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { name, grade, description, room_number } = req.body;
 
@@ -85,10 +85,10 @@ router.post('/classes', async (req: Request, res: Response) => {
 
     const created = await supabaseService.createClass(classData);
 
-    res.status(201).json(created);
+    return res.status(201).json(created);
   } catch (error) {
     logger.error('Error creating class', error);
-    res.status(500).json({ error: 'Server error', message: 'Failed to create class' });
+    return res.status(500).json({ error: 'Server error', message: 'Failed to create class' });
   }
 });
 
@@ -96,7 +96,7 @@ router.post('/classes', async (req: Request, res: Response) => {
  * PUT /teacher/classes/:classId
  * Update class details
  */
-router.put('/classes/:classId', async (req: Request, res: Response) => {
+router.put('/classes/:classId', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const classId = req.params.classId;
     const { name, grade, description, room_number } = req.body;
@@ -119,10 +119,10 @@ router.put('/classes/:classId', async (req: Request, res: Response) => {
 
     const updated = await supabaseService.updateClass(classId, updateData);
 
-    res.json(updated);
+    return res.json(updated);
   } catch (error) {
     logger.error('Error updating class', error);
-    res.status(500).json({ error: 'Server error', message: 'Failed to update class' });
+    return res.status(500).json({ error: 'Server error', message: 'Failed to update class' });
   }
 });
 
@@ -130,7 +130,7 @@ router.put('/classes/:classId', async (req: Request, res: Response) => {
  * POST /teacher/marks
  * Record marks for a learner
  */
-router.post('/marks', async (req: Request, res: Response) => {
+router.post('/marks', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { learner_id, class_id, subject, mark, total_mark, feedback } = req.body;
 
@@ -167,10 +167,10 @@ router.post('/marks', async (req: Request, res: Response) => {
 
     const created = await supabaseService.recordMarks(marksData);
 
-    res.status(201).json(created);
+    return res.status(201).json(created);
   } catch (error) {
     logger.error('Error recording marks', error);
-    res.status(500).json({ error: 'Server error', message: 'Failed to record marks' });
+    return res.status(500).json({ error: 'Server error', message: 'Failed to record marks' });
   }
 });
 
@@ -178,7 +178,7 @@ router.post('/marks', async (req: Request, res: Response) => {
  * POST /teacher/attendance
  * Record attendance
  */
-router.post('/attendance', async (req: Request, res: Response) => {
+router.post('/attendance', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { learner_id, class_id, date, status, remarks } = req.body;
 
@@ -216,10 +216,10 @@ router.post('/attendance', async (req: Request, res: Response) => {
 
     const created = await supabaseService.recordAttendance(attendanceData);
 
-    res.status(201).json(created);
+    return res.status(201).json(created);
   } catch (error) {
     logger.error('Error recording attendance', error);
-    res.status(500).json({ error: 'Server error', message: 'Failed to record attendance' });
+    return res.status(500).json({ error: 'Server error', message: 'Failed to record attendance' });
   }
 });
 
@@ -227,7 +227,7 @@ router.post('/attendance', async (req: Request, res: Response) => {
  * GET /teacher/classes/:classId/marks
  * Get all marks for a class
  */
-router.get('/classes/:classId/marks', async (req: Request, res: Response) => {
+router.get('/classes/:classId/marks', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const classId = req.params.classId;
 
@@ -250,10 +250,10 @@ router.get('/classes/:classId/marks', async (req: Request, res: Response) => {
       return res.status(500).json({ error: 'Server error', message: 'Failed to fetch marks' });
     }
 
-    res.json({ data: data || [], total: data?.length || 0 });
+    return res.json({ data: data || [], total: data?.length || 0 });
   } catch (error) {
     logger.error('Error fetching marks', error);
-    res.status(500).json({ error: 'Server error', message: 'Failed to fetch marks' });
+    return res.status(500).json({ error: 'Server error', message: 'Failed to fetch marks' });
   }
 });
 

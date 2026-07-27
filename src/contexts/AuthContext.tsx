@@ -1,206 +1,191 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { api, UserResponse } from '@/lib/api';
-import { AlignVerticalJustifyEnd } from 'lucide-react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { authService } from '../services/authService';
 
-export interface User {
+interface User {
   id: string;
-  title?: string;
-  email?: string;
-  fullName: string;
+  email: string;
+  firstName: string;
+  lastName: string;
   role: 'teacher' | 'parent' | 'learner';
-  avatarUrl?: string;
-  teacherInviteCode?: string;
-  teacherGrade?: string;
+  schoolId?: string;
 }
 
-/**
- * AuthContext provides authentication state and functions to the app.
- * It manages the current user, loading state, and provides methods for login, registration, logout, and invite validation.
- */
-interface AuthContextType 
-{
+interface AuthContextType {
+  // State
   user: User | null;
+  token: string | null;
+  isLoading: boolean;
   loading: boolean;
+  isAuthenticated: boolean;
+  error: string | null;
   justSignedUp: boolean;
   sessionExpired: boolean;
-  login: (phone: string, password: string) => Promise<{ success: boolean; error?: string }>;                    //-Returns success status and error message if failed
-  register: (data: RegisterData) => Promise<{ success: boolean; error?: string; user?: User }>;                 //-Returns success status, error message if failed, and user data if successful
+
+  // Actions
+  signup: (email: string, password: string, firstName: string, lastName: string, role: string, inviteCode: string) => Promise<void>;
+  signin: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  softLogout: () => void;
-  reAuthenticate: (phone: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  validateInvite: (code: string) => Promise<{ success: boolean; classInfo?: any; error?: string }>;
-  joinClass: (classId: string, role: string, linkedLearnerId?: string) => Promise<{ success: boolean; error?: string }>;
+  clearError: () => void;
   clearJustSignedUp: () => void;
+  softLogout: () => void;
+  reAuthenticate: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
 }
 
-interface RegisterData {
-  teacherGrade?: string;
-  title?: string;
-  email?: string;
-  password: string;
-  fullName: string;
-  role: 'teacher' | 'parent' | 'learner';
-  phone?: string;
-  schoolInviteCode?: string;
-}
+const defaultAuthContext: AuthContextType = {
+  user: null,
+  token: null,
+  isLoading: false,
+  loading: false,
+  isAuthenticated: false,
+  error: null,
+  justSignedUp: false,
+  sessionExpired: false,
+  signup: async () => {},
+  signin: async () => {},
+  logout: () => {},
+  clearError: () => {},
+  clearJustSignedUp: () => {},
+  softLogout: () => {},
+  reAuthenticate: async () => ({ success: false }),
+};
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType>(defaultAuthContext);
 
-function apiUserToUser(u: UserResponse): User {
-  return {
-    id: u.userId,
-    title: u.title,
-    email: u.email,
-    fullName: u.fullName,
-    role: u.role as 'teacher' | 'parent' | 'learner',
-    avatarUrl: u.avatarUrl,
-    teacherInviteCode: u.teacherInviteCode,
-    teacherGrade: u.teacherGrade,
-  };
-}
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
+  return context;
+};
 
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [justSignedUp, setJustSignedUp] = useState(false);
   const [sessionExpired, setSessionExpired] = useState(false);
 
-  // On mount, check for stored token and fetch current user
+  // Load auth from localStorage on mount
   useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      api.me()
-        .then((data) => {
-          setUser(apiUserToUser(data));
-        })
-        .catch(() => {
-          localStorage.removeItem('authToken');
-          setUser(null);
-        })
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
+    const auth = authService.getCurrentUser();
+    if (auth?.token) {
+      setToken(auth.token);
+      if (auth.user) {
+        setUser(auth.user);
+      }
     }
   }, []);
 
-  const login = async (phone: string, password: string) => {
-    try {
-      const data = await api.login({ phone, password });
-      if (data.token) {
-        localStorage.setItem('authToken', data.token);
-      }
-      setUser(apiUserToUser(data));
-      return { success: true };
-    } catch (err: any) {
-      return { success: false, error: err?.message || 'Login failed' };
-    }
-  };
+  const signup = useCallback(
+    async (
+      email: string,
+      password: string,
+      firstName: string,
+      lastName: string,
+      role: string,
+      inviteCode: string
+    ) => {
+      try {
+        setIsLoading(true);
+        setError(null);
 
-  const register = async (registerData: RegisterData) => {
+        const response = await authService.signup({
+          email,
+          password,
+          firstName,
+          lastName,
+          role: role as 'teacher' | 'parent' | 'learner',
+          inviteCode,
+        });
+
+        setToken(response.token);
+        setUser(response.user);
+        setJustSignedUp(true);
+        authService.saveUser(response.user);
+      } catch (err: any) {
+        const message = err.message || 'Signup failed';
+        setError(message);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
+  const signin = useCallback(async (email: string, password: string) => {
     try {
-      const data = await api.register({
-        fullName: registerData.fullName,
-        email: registerData.email || '',
-        password: registerData.password,
-        role: registerData.role,
-        title: registerData.title,
-        phone: registerData.phone,
-        teacherGrade: registerData.teacherGrade,
-        schoolInviteCode: registerData.schoolInviteCode,
+      setIsLoading(true);
+      setError(null);
+
+      const response = await authService.signin({
+        email,
+        password,
       });
 
-      if (data.token) {
-        localStorage.setItem('authToken', data.token);
-      }
-
-      const userData = apiUserToUser(data);
-      setUser(userData);
-
-      if (registerData.role === 'teacher') {
-        setJustSignedUp(true);
-      }
-
-      return { success: true, user: userData };
+      setToken(response.token);
+      setUser(response.user);
+      setJustSignedUp(false);
+      authService.saveUser(response.user);
     } catch (err: any) {
-      return { success: false, error: err?.message || 'Registration failed' };
+      const message = err.message || 'Login failed';
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, []);
 
-  const logout = () => {
-    api.logout().catch(() => {}); // best-effort server logout
-    localStorage.removeItem('authToken');
+  const logout = useCallback(() => {
     setUser(null);
+    setToken(null);
+    setError(null);
     setJustSignedUp(false);
-    setSessionExpired(false);
-  };
+    authService.logout();
+  }, []);
 
-  // Soft logout: remove token but keep user state so views stay mounted
-  const softLogout = () => {
-    localStorage.removeItem('authToken');
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  const clearJustSignedUp = useCallback(() => {
+    setJustSignedUp(false);
+  }, []);
+
+  const softLogout = useCallback(() => {
     setSessionExpired(true);
-  };
+    logout();
+  }, [logout]);
 
-  // Re-authenticate from session-expired state without resetting app
-  const reAuthenticate = async (phone: string, password: string) => {
+  const reAuthenticate = useCallback(async (email: string, password: string) => {
     try {
-      const data = await api.login({ phone, password });
-      if (data.token) {
-        localStorage.setItem('authToken', data.token);
-      }
-      setUser(apiUserToUser(data));
+      await signin(email, password);
       setSessionExpired(false);
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err?.message || 'Login failed' };
     }
+  }, [signin]);
+
+  const value: AuthContextType = {
+    user,
+    token,
+    isLoading,
+    loading: isLoading,
+    isAuthenticated: !!token && !!user,
+    error,
+    justSignedUp,
+    sessionExpired,
+    signup,
+    signin,
+    logout,
+    clearError,
+    clearJustSignedUp,
+    softLogout,
+    reAuthenticate,
   };
 
-  const validateInvite = async (code: string) => {
-    try {
-      const data = await api.validateInviteCode(code);
-      return { success: true, classInfo: data };
-    } catch (err: any) {
-      return { success: false, error: err?.message || 'Invalid invite code' };
-    }
-  };
-
-  const joinClass = async (classId: string, _role: string, linkedLearnerId?: string) => {
-    if (!user) return { success: false, error: 'Not logged in' };
-
-    try {
-      await api.joinClass(classId, linkedLearnerId);
-      return { success: true };
-    } catch (err: any) {
-      return { success: false, error: err?.message || 'Failed to join class' };
-    }
-  };
-
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        justSignedUp,
-        sessionExpired,
-        login,
-        register,
-        logout,
-        softLogout,
-        reAuthenticate,
-        validateInvite,
-        joinClass,
-        clearJustSignedUp: () => setJustSignedUp(false)
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

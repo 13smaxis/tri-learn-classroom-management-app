@@ -30,21 +30,26 @@ npm run dev
 
 ## Project Structure
 
-```
-src/
-├── index.ts                 # Main server entry point
-├── types/
-│   └── index.ts            # TypeScript interfaces
-├── middleware/
-│   ├── auth.ts             # JWT verification + tenant context
-│   └── cors.ts             # CORS configuration
-├── services/
-│   └── supabase.ts         # Supabase client wrapper
-├── routes/
-│   ├── auth.ts             # Signup/login endpoints
-│   └── teacher.ts          # Teacher CRUD endpoints
-└── utils/
-    └── logger.ts           # Logging utility
+```text
+backend/
+├── src/
+│   ├── middleware/
+│   │   ├── auth.ts         # JWT verification and tenant context
+│   │   └── cors.ts         # CORS configuration
+│   ├── routes/
+│   │   ├── auth.ts         # Login, signup, and health endpoints
+│   │   └── teacher.ts      # Teacher-focused CRUD and reporting routes
+│   ├── services/
+│   │   └── supabase.ts     # Supabase client wrapper and data access helpers
+│   ├── utils/
+│   │   └── logger.ts       # Centralized logging helper
+│   ├── server.ts           # Express app bootstrap
+│   └── types/
+│       └── index.ts        # Shared TypeScript interfaces
+├── .env.example            # Example environment configuration
+├── index.ts                # Backend entrypoint used by runtime scripts
+├── package.json            # Backend scripts and dependencies
+└── tsconfig.json           # TypeScript configuration
 ```
 
 ## Environment Variables

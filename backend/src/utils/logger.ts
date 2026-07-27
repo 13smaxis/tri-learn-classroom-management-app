@@ -12,25 +12,25 @@ const currentLevel = (process.env.LOG_LEVEL as LogLevel) || 'info';
 class Logger {
   private level = LOG_LEVELS[currentLevel];
 
-  debug(message: string, data?: any) {
+  debug(message: string, data?: unknown) {
     if (this.level <= LOG_LEVELS.debug) {
       console.log(`[DEBUG] ${message}`, data ? JSON.stringify(data) : '');
     }
   }
 
-  info(message: string, data?: any) {
+  info(message: string, data?: unknown) {
     if (this.level <= LOG_LEVELS.info) {
       console.log(`[INFO] ${message}`, data ? JSON.stringify(data) : '');
     }
   }
 
-  warn(message: string, data?: any) {
+  warn(message: string, data?: unknown) {
     if (this.level <= LOG_LEVELS.warn) {
       console.warn(`[WARN] ${message}`, data ? JSON.stringify(data) : '');
     }
   }
 
-  error(message: string, error?: any) {
+  error(message: string, error?: unknown) {
     if (this.level <= LOG_LEVELS.error) {
       if (error instanceof Error) {
         console.error(`[ERROR] ${message}:`, error.message);

@@ -37,7 +37,7 @@ export async function getUserProfile(userId: string) {
 /**
  * Create user profile
  */
-export async function createUserProfile(userId: string, data: any) {
+export async function createUserProfile(userId: string, data: Record<string, unknown>) {
   try {
     const { data: profile, error } = await supabase
       .from('profiles')
@@ -106,7 +106,7 @@ export async function getClass(classId: string) {
 /**
  * Create class
  */
-export async function createClass(classData: any) {
+export async function createClass(classData: Record<string, unknown>) {
   try {
     const { data, error } = await supabase
       .from('classes')
@@ -129,7 +129,7 @@ export async function createClass(classData: any) {
 /**
  * Update class
  */
-export async function updateClass(classId: string, data: any) {
+export async function updateClass(classId: string, data: Record<string, unknown>) {
   try {
     const { data: updated, error } = await supabase
       .from('classes')
@@ -175,7 +175,7 @@ export async function getClassMembers(classId: string) {
 /**
  * Record marks
  */
-export async function recordMarks(marksData: any) {
+export async function recordMarks(marksData: Record<string, unknown>) {
   try {
     const { data, error } = await supabase
       .from('marks')
@@ -198,7 +198,7 @@ export async function recordMarks(marksData: any) {
 /**
  * Record attendance
  */
-export async function recordAttendance(attendanceData: any) {
+export async function recordAttendance(attendanceData: Record<string, unknown>) {
   try {
     const { data, error } = await supabase
       .from('attendance')
