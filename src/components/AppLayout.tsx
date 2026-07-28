@@ -5,9 +5,6 @@ import { useAppContext } from '@/contexts/AppContext';
 // Layout components
 import Sidebar from '@/components/layout/Sidebar';
 
-// Auth modals
-// InviteModal replaced by inline InviteView in LandingPage
-
 // Landing page
 import LandingPage from '@/components/landing/LandingPage';
 
@@ -72,11 +69,16 @@ const AppLayout: React.FC = () => {
       setShowInviteModal(false);
       setActiveView('dashboard');
       wasSessionExpiredRef.current = false;
-    } else if (wasSessionExpiredRef.current) {
-      // Re-auth: keep the user on their current view
-      wasSessionExpiredRef.current = false;
     } else {
-      setActiveView('dashboard');
+      setShowLoginModal(false);
+      setShowRegisterModal(false);
+      setShowInviteModal(false);
+      if (wasSessionExpiredRef.current) {
+        // Re-auth: keep the user on their current view
+        wasSessionExpiredRef.current = false;
+      } else {
+        setActiveView('dashboard');
+      }
     }
   }, [user]);
 
@@ -186,18 +188,30 @@ const AppLayout: React.FC = () => {
           onGoHome={goHome}
         />
         
-        <main className="flex-1 overflow-auto h-screen">
+        <main className="flex-1 h-screen overflow-hidden">
           <LandingPage
-            onOpenLogin={() => { setShowRegisterModal(false); setShowInviteModal(false); setShowLoginModal(true); }}
-            onOpenRegister={() => { setShowLoginModal(false); setShowInviteModal(false); setRegisterRole(undefined); setShowRegisterModal(true); }}
-            onOpenInvite={() => { setShowLoginModal(false); setShowRegisterModal(false); setShowInviteModal(true); }}
             showLogin={showLoginModal}
             showRegister={showRegisterModal}
             showInvite={showInviteModal}
             registerRole={registerRole}
-            onSwitchToRegister={(role) => {
+            onOpenLogin={() => {
+              setShowRegisterModal(false);
+              setShowInviteModal(false);
+              setShowLoginModal(true);
+            }}
+            onOpenRegister={() => {
               setShowLoginModal(false);
               setShowInviteModal(false);
+              setRegisterRole(undefined);
+              setShowRegisterModal(true);
+            }}
+            onOpenInvite={() => {
+              setShowLoginModal(false);
+              setShowRegisterModal(false);
+              setShowInviteModal(true);
+            }}
+            onSwitchToRegister={(role) => {
+              setShowLoginModal(false);
               setRegisterRole(role || undefined);
               setShowRegisterModal(true);
             }}

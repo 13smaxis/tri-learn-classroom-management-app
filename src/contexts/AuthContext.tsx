@@ -24,6 +24,8 @@ interface AuthContextType {
   // Actions
   signup: (email: string, password: string, firstName: string, lastName: string, role: string, inviteCode: string) => Promise<void>;
   signin: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, firstName: string, lastName: string, role: string, inviteCode: string) => Promise<{ success: boolean; user?: User; error?: string }>;
+  login: (email: string, password: string) => Promise<{ success: boolean; user?: User; error?: string }>;
   logout: () => void;
   clearError: () => void;
   clearJustSignedUp: () => void;
@@ -42,6 +44,8 @@ const defaultAuthContext: AuthContextType = {
   sessionExpired: false,
   signup: async () => {},
   signin: async () => {},
+  register: async () => ({ success: false }),
+  login: async () => ({ success: false }),
   logout: () => {},
   clearError: () => {},
   clearJustSignedUp: () => {},
@@ -104,6 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(response.user);
         setJustSignedUp(true);
         authService.saveUser(response.user);
+        return response;
       } catch (err: any) {
         const message = err.message || 'Signup failed';
         setError(message);
@@ -114,6 +119,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     },
     []
   );
+
+  const register = useCallback(async (
+    email: string,
+    password: string,
+    firstName: string,
+    lastName: string,
+    role: string,
+    inviteCode: string
+  ) => {
+    try {
+      const response = await signup(email, password, firstName, lastName, role, inviteCode);
+      return { success: true, user: response.user };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Signup failed' };
+    }
+  }, [signup]);
 
   const signin = useCallback(async (email: string, password: string) => {
     try {
@@ -129,6 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(response.user);
       setJustSignedUp(false);
       authService.saveUser(response.user);
+      return response;
     } catch (err: any) {
       const message = err.message || 'Login failed';
       setError(message);
@@ -137,6 +159,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false);
     }
   }, []);
+
+  const login = useCallback(async (email: string, password: string) => {
+    try {
+      const response = await signin(email, password);
+      return { success: true, user: response.user };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Login failed' };
+    }
+  }, [signin]);
 
   const logout = useCallback(() => {
     setUser(null);
@@ -180,6 +211,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sessionExpired,
     signup,
     signin,
+    register,
+    login,
     logout,
     clearError,
     clearJustSignedUp,

@@ -220,7 +220,7 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, defaultRol
           </div>
         </div>
       ) : step === 'invite' ? (
-        /* â”€â”€ Invite code gate for parent/learner â”€â”€ */
+        /* ÔöÇÔöÇ Invite code gate for parent/learner ÔöÇÔöÇ */
         <div className="space-y-4">
           <div className="flex items-center gap-2 mb-2">
             {!defaultRole && (
@@ -331,7 +331,7 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, defaultRol
               <svg className="w-4 h-4 text-green-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>Joining <span className="text-white font-medium">{classInfo.name}</span> â€” {classInfo.grade} â€” {classInfo.teacherName}</span>
+              <span>Joining <span className="text-white font-medium">{classInfo.name}</span> ÔÇö {classInfo.grade} ÔÇö {classInfo.teacherName}</span>
             </div>
           )}
 

@@ -30,12 +30,12 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
       <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/30 backdrop-blur-xl"
         onClick={onClose}
       />
-      <div className={`relative w-full ${sizeClasses[size]} mx-4 max-h-[90vh] overflow-auto rounded-2xl bg-white shadow-2xl no-scrollbar`}>
+      <div className={`relative w-full ${sizeClasses[size]} mx-auto max-h-[calc(100vh-4rem)] overflow-auto rounded-[2rem] bg-white/95 shadow-[0_30px_80px_rgba(15,23,42,0.25)] no-scrollbar`}>
         {title && (
           <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-4">
             <h2 className="text-xl font-semibold text-gray-900">{title}</h2>

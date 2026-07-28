@@ -7,8 +7,10 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Main app shell */}
+        <Route path="/" element={<AppLayout />} />
+
         {/* Public Routes */}
-        <Route path="/" element={<LandingPage onOpenLogin={() => {}} onOpenRegister={() => {}} onOpenInvite={() => {}} />} />
         <Route path="/signup" element={<LandingPage onOpenLogin={() => {}} onOpenRegister={() => {}} onOpenInvite={() => {}} />} />
         <Route path="/signin" element={<LandingPage onOpenLogin={() => {}} onOpenRegister={() => {}} onOpenInvite={() => {}} />} />
 
