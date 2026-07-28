@@ -22,15 +22,25 @@ root/
 │   │   ├── routes/
 │   │   ├── services/
 │   │   ├── utils/
+│   │   ├── index.ts
 │   │   ├── server.ts
 │   │   └── types/
 │   ├── index.ts
 │   ├── package.json
 │   └── tsconfig.json
+├── data/
+├── docs/
+├── infra/
+│   └── terraform/
+├── public/
+├── restore_check/
 ├── src/
 │   ├── components/
 │   │   ├── auth/
 │   │   ├── dashboard/
+│   │   │   ├──LearnerDashboard.tsx
+│   │   │   ├──ParentDashboard.tsx
+│   │   │   ├──TeacherDashboard.tsx
 │   │   ├── landing/
 │   │   ├── layout/
 │   │   ├── learner/
@@ -42,12 +52,21 @@ root/
 │   ├── hooks/
 │   ├── lib/
 │   ├── pages/
+│   ├── services/
 │   ├── App.tsx
-│   ├── main.tsx
-│   └── index.css
-├── public/
-├── docs/
-└── infra/
+│   ├── index.css
+│   └── main.tsx
+├── components.json
+├── eslint.config.js
+├── index.html
+├── package.json
+├── postcss.config.js
+├── tailwind.config.ts
+├── tsconfig.json
+├── tsconfig.app.json
+├── tsconfig.node.json
+├── vite.config.ts
+└── VERIFICATION_CHECKLIST.md
 ```
 
 ## Environment variables

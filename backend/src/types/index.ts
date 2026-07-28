@@ -20,6 +20,9 @@ export interface SignupRequest {
   lastName: string;
   role: 'teacher' | 'parent' | 'learner';
   inviteCode: string;
+  title?: string;
+  phone?: string;
+  teacherGrade?: string;
 }
 
 export interface AuthRequest {

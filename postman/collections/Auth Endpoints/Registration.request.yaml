@@ -1,0 +1,25 @@
+$kind: http-request
+url: http://localhost:3000/api/auth/signup
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \    \"phone\": \"0627680710\",\r
+
+    \    \"email\": \"smith@example.com\",\r
+
+    \    \"password\": \"test1234\",\r
+
+    \    \"firstName\": \"Smith\",\r
+
+    \    \"lastName\": \"Mbele\",\r
+
+    \    \"role\": \"teacher\",\r
+
+    \    \"inviteCode\": \"JAN022830\",\r
+
+    \    \"title\": \"Mr\"\r
+
+    \  }"
+order: 1785236094646

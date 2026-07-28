@@ -5,10 +5,13 @@ export interface SignupRequest {
   lastName: string;
   role: 'teacher' | 'parent' | 'learner';
   inviteCode: string;
+  title?: string;
+  phone?: string;
+  teacherGrade?: string;
 }
 
 export interface SigninRequest {
-  email: string;
+  credential: string;
   password: string;
 }
 
@@ -87,6 +90,9 @@ class AuthService {
         lastName: data.lastName,
         role: data.role,
         inviteCode: data.inviteCode,
+        title: data.title,
+        phone: data.phone,
+        teacherGrade: data.teacherGrade,
       }),
     });
 
@@ -98,10 +104,13 @@ class AuthService {
   }
 
   async signin(data: SigninRequest): Promise<AuthResponse> {
-    const response = await this.request<AuthResponse>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+  const response = await this.request<AuthResponse>('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({
+      credential: data.credential,  // ✅ Now sends correct field
+      password: data.password,
+    }),
+  });
 
     if (response.token) {
       this.setStorageItem('authToken', response.token);
@@ -158,4 +167,3 @@ class AuthService {
 }
 
 export const authService = new AuthService();
-export type { SignupRequest, SigninRequest, AuthResponse, SchoolData };

@@ -1,10 +1,48 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { supabase } from '../services/supabase.js';
 import { logger } from '../utils/logger.js';
 import type { SignupRequest, AuthRequest, AuthResponse, UserInfo } from '../types/index.js';
 
 const router = Router();
+
+export interface AuthenticatedRequest extends Request {
+  userId?: string;
+  schoolId?: string;
+  role?: UserInfo['role'];
+}
+
+export function authMiddleware(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+  if (!token) {
+    res.status(401).json({ error: 'Unauthorized', message: 'Missing auth token' });
+    return;
+  }
+
+  try {
+    const secret = process.env.JWT_SECRET || 'development-secret';
+    const decoded = jwt.verify(token, secret) as { userId?: string; schoolId?: string; role?: UserInfo['role'] };
+    req.userId = decoded.userId;
+    req.schoolId = decoded.schoolId;
+    req.role = decoded.role;
+    next();
+  } catch (error) {
+    logger.warn('Invalid auth token', error);
+    res.status(401).json({ error: 'Unauthorized', message: 'Invalid auth token' });
+  }
+}
+
+export function requireRole(role: UserInfo['role']) {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+    if (req.role !== role) {
+      res.status(403).json({ error: 'Forbidden', message: `Role ${role} required` });
+      return;
+    }
+    next();
+  };
+}
 
 export function createToken(
   userId: string,
@@ -20,7 +58,7 @@ export function createToken(
  * GET /auth/validate-invite/:code
  * Validate school invite code and get school info
  */
-router.get('/validate-invite/:code', async (req: Request, res: Response) => {
+router.get('/validate-invite/:code', async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const { code } = req.params;
 
@@ -69,9 +107,9 @@ router.get('/validate-invite/:code', async (req: Request, res: Response) => {
  * POST /auth/signup
  * Register new user
  */
-router.post('/signup', async (req: Request, res: Response) => {
+router.post('/signup', async (req: Request, res: Response): Promise<Response | void> => {
   try {
-    const { email, password, firstName, lastName, role, inviteCode } = req.body as SignupRequest;
+    const { email, password, firstName, lastName, role, inviteCode, title, phone, teacherGrade } = req.body as SignupRequest;
 
     if (!email || !password || !firstName || !lastName || !role || !inviteCode) {
       return res.status(400).json({
@@ -139,6 +177,28 @@ router.post('/signup', async (req: Request, res: Response) => {
       });
     }
 
+    const roleTable = role === 'teacher' ? 'teachers' : role === 'parent' ? 'parents' : 'learners';
+    const roleRecordPayload = {
+      id: userId,
+      school_id: schoolId,
+      email,
+      first_name: firstName,
+      last_name: lastName,
+      title: title || null,
+      phone: phone || null,
+      ...(role === 'teacher' && teacherGrade ? { teacher_grade: teacherGrade } : {}),
+    };
+
+    const { error: roleRecordError } = await supabase.from(roleTable).insert([roleRecordPayload]);
+
+    if (roleRecordError) {
+      logger.error(`Failed to create ${role} record`, roleRecordError);
+      return res.status(400).json({
+        error: 'Signup failed',
+        message: `Failed to create ${role} record`,
+      });
+    }
+
     const token = createToken(userId, schoolId, role, email);
 
     const userInfo: UserInfo = {
@@ -164,7 +224,7 @@ router.post('/signup', async (req: Request, res: Response) => {
  * POST /auth/login
  * Login with email and password
  */
-router.post('/login', async (req: Request, res: Response) => {
+router.post('/login', async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const { email, password } = req.body as AuthRequest;
 
@@ -230,7 +290,7 @@ router.post('/login', async (req: Request, res: Response) => {
 /**
  * POST /auth/reset-password
  */
-router.post('/reset-password', async (req: Request, res: Response) => {
+router.post('/reset-password', async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const { email } = req.body;
 
@@ -255,8 +315,8 @@ router.post('/reset-password', async (req: Request, res: Response) => {
 /**
  * GET /auth/health
  */
-router.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+router.get('/health', (_req: Request, res: Response): Response => {
+  return res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 export default router;

@@ -85,7 +85,7 @@ const AppLayout: React.FC = () => {
   // Auto logout after 2 minutes of inactivity
   useEffect(() => {
     if (!user) return;
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setTimeout>;
     const resetTimer = () => {
       clearTimeout(timer);
       timer = setTimeout(() => {
@@ -230,6 +230,8 @@ const AppLayout: React.FC = () => {
       </div>
     );
   }
+
+  const welcomeDisplayName = (user?.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'there').split(' ')[0];
 
   // Render the appropriate dashboard based on user role
   const renderContent = () => {
@@ -421,7 +423,7 @@ const AppLayout: React.FC = () => {
               </svg>
             </div>
             <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-              Congratulations, {user.title ? `${user.title} ` : ''}{user.fullName.split(' ')[0]}!
+              Congratulations, {user.title ? `${user.title} ` : ''}{welcomeDisplayName}!
             </h2>
             <p className="text-gray-600 mb-6">
               You're all set! Your classroom is ready — everything you need is right here.

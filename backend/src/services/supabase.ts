@@ -1,5 +1,13 @@
+import path from 'node:path';
+import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import { logger } from '../utils/logger.js';
+
+const repoRoot = path.resolve(process.cwd(), '..');
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+dotenv.config({ path: path.resolve(repoRoot, '.env') });
+dotenv.config({ path: path.resolve(repoRoot, '.env.local') });
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

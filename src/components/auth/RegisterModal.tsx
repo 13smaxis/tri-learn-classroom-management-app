@@ -30,7 +30,7 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, defaultRol
     fullName: '',
     phone: '',
     role: initialRole,
-    schoolInviteCode: initialRole === 'teacher' ? 'JAN021234' : ''
+    schoolInviteCode: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -52,7 +52,7 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, defaultRol
       ...formData,
       role,
       teacherGrade: role === 'teacher' ? (formData.teacherGrade || '10') : '',
-      schoolInviteCode: role === 'teacher' ? formData.schoolInviteCode || 'JAN021234' : ''
+      schoolInviteCode: ''
     });
     // Teachers go straight to form; parents/learners must enter invite code first
     if (role === 'teacher') {
@@ -83,6 +83,10 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, defaultRol
   };
 
   const handleInviteContinue = () => {
+    setFormData({
+      ...formData,
+      schoolInviteCode: inviteCode.trim().toUpperCase(),
+    });
     setStep('form');
   };
 
@@ -100,17 +104,37 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, defaultRol
       return;
     }
 
+    const normalizedInviteCode = (formData.role === 'teacher' ? formData.schoolInviteCode : inviteCode).trim().toUpperCase();
+
+    if (!normalizedInviteCode) {
+      setError('Please provide a valid invite code');
+      setLoading(false);
+      return;
+    }
+
+    const fullName = formData.fullName.trim();
+    const nameParts = fullName.split(/\s+/).filter(Boolean);
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    if (!firstName || !lastName) {
+      setError('Please enter both first and last name');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
 
     const result = await register({
-      title: formData.title || undefined,
-      teacherGrade: formData.role === 'teacher' ? formData.teacherGrade || '10' : undefined,
-      email: formData.email || undefined,
+      email: formData.email.trim(),
       password: formData.password,
-      fullName: formData.fullName,
+      firstName,
+      lastName,
       role: formData.role,
-      phone: formData.phone || undefined,
-      schoolInviteCode: formData.schoolInviteCode || undefined
+      inviteCode: normalizedInviteCode,
+      title: formData.title.trim() || undefined,
+      phone: formData.phone.trim() || undefined,
+      teacherGrade: formData.role === 'teacher' ? formData.teacherGrade || '10' : undefined,
     });
 
     if (result.success) {
@@ -126,7 +150,7 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, defaultRol
         fullName: '',
         phone: '',
         role: 'teacher',
-        schoolInviteCode: 'JAN021234'
+        schoolInviteCode: ''
       });
       setInviteCode('');
       setClassInfo(null);
@@ -348,8 +372,8 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, defaultRol
             </div>
 
             <div>
-              <label className={labelClass}>Email Address (optional)</label>
-              <input type="email" name="email" value={formData.email} onChange={handleChange} className={inputClass} placeholder="you@example.com" />
+              <label className={labelClass}>Email Address *</label>
+              <input type="email" name="email" value={formData.email} onChange={handleChange} className={inputClass} placeholder="you@example.com" required />
             </div>
 
             <div>
@@ -362,7 +386,7 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, defaultRol
                 <label className={labelClass}>School Invite Code *</label>
                 <input type="text" name="schoolInviteCode" value={formData.schoolInviteCode} onChange={handleChange} className={`${inputClass} font-mono tracking-widest`} placeholder="e.g. JAN021234" maxLength={9} required disabled={!formData.role || loading} />
                 <p className="mt-0.5 text-xs text-blue-200">
-                  Demo format: first 3 letters of school + district + unique code
+                  Use the invite code issued by your school
                 </p>
               </div>
             )}

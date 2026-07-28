@@ -3,8 +3,7 @@ import LoginView from '@/components/auth/LoginModal';
 import RegisterView from '@/components/auth/RegisterModal';
 import InviteView from '@/components/auth/InviteView';
 
-interface LandingPageProps 
-{
+interface LandingPageProps {
   onOpenLogin: () => void;
   onOpenRegister: () => void;
   onOpenInvite: () => void;
@@ -102,7 +101,7 @@ const slides: Slide[] = [
 ];
 
 const SLIDE_DURATION = 7000; // ms each slide is visible
-const TRANSITION_MS  = 600;  // fade transition duration
+const TRANSITION_MS = 600;  // fade transition duration
 
 const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, onOpenInvite, showLogin, showRegister, showInvite, registerRole, onSwitchToRegister, onSwitchToInvite, onSwitchToLogin }) => {
   const [mounted, setMounted] = useState(false);
@@ -132,11 +131,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
     {
       icon: (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 
-                   002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" 
+          <path strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 
+                   002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
           />
         </svg>
       ),
@@ -148,11 +147,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
     {
       icon: (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 
-                   01.293.707V19a2 2 0 01-2 2z" 
+          <path strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 
+                   01.293.707V19a2 2 0 01-2 2z"
           />
         </svg>
       ),
@@ -164,12 +163,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
     {
       icon: (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 
+          <path strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 
                    012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 
-                   2 0 01-2-2z" 
+                   2 0 01-2-2z"
           />
         </svg>
       ),
@@ -181,11 +180,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
     {
       icon: (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 
-                   20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" 
+          <path strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 
+                   20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
           />
         </svg>
       ),
@@ -197,10 +196,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
     {
       icon: (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+          <path strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
         </svg>
       ),
       title: 'Progress',
@@ -211,10 +210,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
     {
       icon: (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          <path strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
         </svg>
       ),
       title: 'PWA Ready',
@@ -237,7 +236,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
 
   /* ──── colour helpers for role cards ──── */
   const cardBorder: Record<string, string> = { blue: 'border-blue-300', green: 'border-green-300', purple: 'border-purple-300' };
-  const cardIcon: Record<string, string>   = { blue: 'bg-blue-100 text-blue-600', green: 'bg-green-100 text-green-600', purple: 'bg-purple-100 text-purple-600' };
+  const cardIcon: Record<string, string> = { blue: 'bg-blue-100 text-blue-600', green: 'bg-green-100 text-green-600', purple: 'bg-purple-100 text-purple-600' };
   const checkColor: Record<string, string> = { blue: 'text-blue-500', green: 'text-green-500', purple: 'text-purple-500' };
 
   const isAuthView = showLogin || showRegister || showInvite;
@@ -274,29 +273,29 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
     <div className="flex flex-col overflow-hidden" style={{ height: '100dvh' }}>
       <style>{animKeyframes}</style>
 
-        {/* ═══════ Top: Hero (80% of viewport) ═══════ */}
-        <section className="
+      {/* ═══════ Top: Hero (80% of viewport) ═══════ */}
+      <section className="
                             relative overflow-hidden 
                             bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 
-                            text-white" 
-                style={{ height: '80dvh', minHeight: 0 }}>
-          <div className="relative h-full flex flex-col items-center justify-center px-4">
-              <h1 className="text-[clamp(1.25rem,4vw,3rem)] font-bold mb-[1vh] text-center leading-tight">
-                Classroom Management Made Simple
-              </h1>
-              <p className="
+                            text-white"
+        style={{ height: '80dvh', minHeight: 0 }}>
+        <div className="relative h-full flex flex-col items-center justify-center px-4">
+          <h1 className="text-[clamp(1.25rem,4vw,3rem)] font-bold mb-[1vh] text-center leading-tight">
+            Classroom Management Made Simple
+          </h1>
+          <p className="
                               text-[clamp(0.75rem,2vw,1.125rem)] 
                               text-blue-100 max-w-2xl mx-auto mb-[2vh] 
                               text-center
                             "
-              >
-                Connect teachers, parents and learners on one powerful platform.
-              </p>
+          >
+            Connect teachers, parents and learners on one powerful platform.
+          </p>
 
-              <div className="relative w-full max-w-3xl" style={{ height: 'clamp(6rem, 20vh, 11rem)' }}>
-                {features.map((feature, idx) => (
-                  <div
-                    key={idx}
+          <div className="relative w-full max-w-3xl" style={{ height: 'clamp(6rem, 20vh, 11rem)' }}>
+            {features.map((feature, idx) => (
+              <div
+                key={idx}
                 className="absolute"
                 style={{
                   animation: mounted
@@ -324,11 +323,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
               </div>
             ))}
           </div>
-          </div>
+        </div>
 
-          {/* Gradient fade into bottom area */}
-          <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent" />
-        </section>
+        {/* Gradient fade into bottom area */}
+        <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent" />
+      </section>
 
       {/* ═══════ Bottom: Animated sliding content (20% of viewport) ═══════ */}
       <section className="bg-white flex items-center justify-center px-4 py-1" style={{ height: '20dvh', minHeight: 0, flexShrink: 0 }}>
@@ -385,8 +384,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
               </div>
             );
           })()}
-
-
         </div>
       </section>
     </div>

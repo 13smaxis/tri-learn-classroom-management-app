@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { authService } from '../services/authService';
+import { authService, type SignupRequest, type AuthResponse } from '../services/authService';
 
 interface User {
   id: string;
@@ -8,6 +8,8 @@ interface User {
   lastName: string;
   role: 'teacher' | 'parent' | 'learner';
   schoolId?: string;
+  title?: string;
+  fullName?: string;
 }
 
 interface AuthContextType {
@@ -22,9 +24,9 @@ interface AuthContextType {
   sessionExpired: boolean;
 
   // Actions
-  signup: (email: string, password: string, firstName: string, lastName: string, role: string, inviteCode: string) => Promise<void>;
-  signin: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, firstName: string, lastName: string, role: string, inviteCode: string) => Promise<{ success: boolean; user?: User; error?: string }>;
+  signup: (payload: SignupRequest) => Promise<AuthResponse>;
+  signin: (email: string, password: string) => Promise<AuthResponse>;
+  register: (payload: SignupRequest) => Promise<{ success: boolean; user?: User; error?: string }>;
   login: (email: string, password: string) => Promise<{ success: boolean; user?: User; error?: string }>;
   logout: () => void;
   clearError: () => void;
@@ -42,8 +44,26 @@ const defaultAuthContext: AuthContextType = {
   error: null,
   justSignedUp: false,
   sessionExpired: false,
-  signup: async () => {},
-  signin: async () => {},
+  signup: async () => ({
+    token: '',
+    user: {
+      id: '',
+      email: '',
+      firstName: '',
+      lastName: '',
+      role: 'learner',
+    },
+  }),
+  signin: async () => ({
+    token: '',
+    user: {
+      id: '',
+      email: '',
+      firstName: '',
+      lastName: '',
+      role: 'learner',
+    },
+  }),
   register: async () => ({ success: false }),
   login: async () => ({ success: false }),
   logout: () => {},
@@ -83,26 +103,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signup = useCallback(
-    async (
-      email: string,
-      password: string,
-      firstName: string,
-      lastName: string,
-      role: string,
-      inviteCode: string
-    ) => {
+    async (payload: SignupRequest) => {
       try {
         setIsLoading(true);
         setError(null);
 
-        const response = await authService.signup({
-          email,
-          password,
-          firstName,
-          lastName,
-          role: role as 'teacher' | 'parent' | 'learner',
-          inviteCode,
-        });
+        const response = await authService.signup(payload);
 
         setToken(response.token);
         setUser(response.user);
@@ -120,16 +126,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     []
   );
 
-  const register = useCallback(async (
-    email: string,
-    password: string,
-    firstName: string,
-    lastName: string,
-    role: string,
-    inviteCode: string
-  ) => {
+  const register = useCallback(async (payload: SignupRequest) => {
     try {
-      const response = await signup(email, password, firstName, lastName, role, inviteCode);
+      const response = await signup(payload);
       return { success: true, user: response.user };
     } catch (err: any) {
       return { success: false, error: err?.message || 'Signup failed' };
@@ -142,7 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError(null);
 
       const response = await authService.signin({
-        email,
+        credential: email,
         password,
       });
 
