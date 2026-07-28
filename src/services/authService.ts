@@ -22,6 +22,8 @@ export interface AuthUser {
   lastName: string;
   role: 'teacher' | 'parent' | 'learner';
   schoolId?: string;
+  fullName?: string;
+  title?: string;
 }
 
 export interface AuthResponse {

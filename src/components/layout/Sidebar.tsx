@@ -55,6 +55,14 @@ const Sidebar: React.FC<SidebarProps> = ({
     learner: 'bg-purple-100 text-purple-700',
   };
 
+  const userDisplayName = user?.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'User';
+  const userInitials = userDisplayName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('') || 'U';
+
   /**
    * Define all possible menu items with their associated roles. 
    * The sidebar will filter these based on the logged-in user's role, ensuring that users only see navigation options relevant to them. 
@@ -444,10 +452,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                                     text-white text-sm font-semibold flex-shrink-0
                                   "
                   >
-                    {user.fullName.charAt(0).toUpperCase()}
+                    {userInitials}
                   </div>
                   <div className="min-w-0 text-left flex-1">
-                    <p className="text-sm font-medium text-gray-900 truncate">{user.fullName}</p>
+                    <p className="text-sm font-medium text-gray-900 truncate">{userDisplayName}</p>
                     <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium capitalize ${roleColors[user.role]}`}>
                       {user.role}
                     </span>
@@ -466,8 +474,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                     `}
                   >
                     <div className="px-4 py-2 border-b border-gray-100">
-                      <p className="text-sm font-medium text-gray-900">{user.fullName}</p>
-                      <p className="text-xs text-gray-500">{user.email}</p>
+                      <p className="text-sm font-medium text-gray-900">{userDisplayName}</p>
+                      <p className="text-xs text-gray-500">{user.email || 'No email provided'}</p>
                     </div>
                     <button className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3">
                       <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">

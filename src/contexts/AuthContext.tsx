@@ -75,6 +75,29 @@ const defaultAuthContext: AuthContextType = {
 
 const AuthContext = createContext<AuthContextType>(defaultAuthContext);
 
+const normalizeUser = (user?: Partial<User> | null): User | null => {
+  if (!user) return null;
+
+  const firstName = user.firstName?.trim() ?? '';
+  const lastName = user.lastName?.trim() ?? '';
+  const fullName =
+    user.fullName?.trim() ||
+    [firstName, lastName].filter(Boolean).join(' ').trim() ||
+    user.email?.trim() ||
+    '';
+
+  return {
+    id: user.id ?? '',
+    email: user.email ?? '',
+    firstName,
+    lastName,
+    role: user.role ?? 'learner',
+    schoolId: user.schoolId,
+    title: user.title,
+    fullName: fullName || undefined,
+  };
+};
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -97,7 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (auth?.token) {
       setToken(auth.token);
       if (auth.user) {
-        setUser(auth.user);
+        setUser(normalizeUser(auth.user));
       }
     }
   }, []);
@@ -110,10 +133,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const response = await authService.signup(payload);
 
+        const normalizedUser = normalizeUser(response.user);
         setToken(response.token);
-        setUser(response.user);
+        setUser(normalizedUser);
         setJustSignedUp(true);
-        authService.saveUser(response.user);
+        if (normalizedUser) {
+          authService.saveUser(normalizedUser);
+        }
         return response;
       } catch (err: any) {
         const message = err.message || 'Signup failed';
@@ -145,10 +171,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         password,
       });
 
+      const normalizedUser = normalizeUser(response.user);
       setToken(response.token);
-      setUser(response.user);
+      setUser(normalizedUser);
       setJustSignedUp(false);
-      authService.saveUser(response.user);
+      if (normalizedUser) {
+        authService.saveUser(normalizedUser);
+      }
       return response;
     } catch (err: any) {
       const message = err.message || 'Login failed';
