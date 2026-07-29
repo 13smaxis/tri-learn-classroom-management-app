@@ -10,15 +10,27 @@ const router = Router();
 router.use(authMiddleware);
 router.use(requireRole('teacher'));
 
+async function resolveTeacherId(req: AuthenticatedRequest) {
+  if (!req.userId) {
+    return null;
+  }
+  return await supabaseService.getTeacherIdByUserId(req.userId);
+}
+
 /**
  * GET /teacher/classes
  * Get all classes for authenticated teacher
  */
 router.get('/classes', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    logger.info(`Fetching classes for teacher ${req.userId}`);
+    const teacherId = await resolveTeacherId(req);
+    if (!teacherId) {
+      return res.status(403).json({ error: 'Forbidden', message: 'Teacher profile not found' });
+    }
 
-    const classes = await supabaseService.getTeacherClasses(req.userId!);
+    logger.info(`Fetching classes for teacher ${teacherId}`);
+
+    const classes = await supabaseService.getTeacherClasses(teacherId);
 
     return res.json({ data: classes, total: classes.length });
   } catch (error) {
@@ -36,6 +48,11 @@ router.get('/classes/:classId', async (req: AuthenticatedRequest, res: Response)
     const classId = req.params.classId;
     logger.info(`Fetching class ${classId}`);
 
+    const teacherId = await resolveTeacherId(req);
+    if (!teacherId) {
+      return res.status(403).json({ error: 'Forbidden', message: 'Teacher profile not found' });
+    }
+
     const classData = await supabaseService.getClass(classId);
 
     if (!classData) {
@@ -43,7 +60,7 @@ router.get('/classes/:classId', async (req: AuthenticatedRequest, res: Response)
     }
 
     // Verify teacher owns this class
-    if (classData.teacher_id !== req.userId) {
+    if (classData.teacher_id !== teacherId) {
       return res.status(403).json({ error: 'Forbidden', message: 'You do not own this class' });
     }
 
@@ -61,6 +78,56 @@ router.get('/classes/:classId', async (req: AuthenticatedRequest, res: Response)
  * Create new class
  */
 router.post('/classes', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const {
+      name,
+      grade,
+      description,
+      room_number,
+      roomNumber,
+      subject,
+      academic_year,
+      academicYear,
+      max_students,
+      maxStudents,
+    } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ error: 'Bad request', message: 'Class name is required' });
+    }
+
+    const teacherId = await resolveTeacherId(req);
+    if (!teacherId) {
+      return res.status(403).json({ error: 'Forbidden', message: 'Teacher profile not found' });
+    }
+
+    logger.info(`Creating class "${name}" for teacher ${teacherId}`);
+
+    const classData = {
+      id: uuidv4(),
+      teacher_id: teacherId,
+      school_id: req.schoolId || null,
+      name,
+      grade: grade || null,
+      description: description || null,
+      room_number: room_number || roomNumber || null,
+      subject: subject || null,
+      academic_year: academic_year || academicYear || null,
+      max_students: max_students ?? maxStudents ?? null,
+      invite_code: generateInviteCode(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const created = await supabaseService.createClass(classData);
+    return res.status(201).json(created);
+  } catch (error) {
+    logger.error('Error creating class', error);
+    return res.status(500).json({ error: 'Server error', message: 'Failed to create class' });
+  }
+});
+
+/*router.post('/classes', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { name, grade, description, room_number } = req.body;
 
@@ -90,7 +157,7 @@ router.post('/classes', async (req: AuthenticatedRequest, res: Response) => {
     logger.error('Error creating class', error);
     return res.status(500).json({ error: 'Server error', message: 'Failed to create class' });
   }
-});
+});*/
 
 /**
  * PUT /teacher/classes/:classId
@@ -103,9 +170,14 @@ router.put('/classes/:classId', async (req: AuthenticatedRequest, res: Response)
 
     logger.info(`Updating class ${classId}`);
 
+    const teacherId = await resolveTeacherId(req);
+    if (!teacherId) {
+      return res.status(403).json({ error: 'Forbidden', message: 'Teacher profile not found' });
+    }
+
     // Verify teacher owns this class
     const classData = await supabaseService.getClass(classId);
-    if (!classData || classData.teacher_id !== req.userId) {
+    if (!classData || classData.teacher_id !== teacherId) {
       return res.status(403).json({ error: 'Forbidden', message: 'You do not own this class' });
     }
 
@@ -141,9 +213,14 @@ router.post('/marks', async (req: AuthenticatedRequest, res: Response) => {
       });
     }
 
+    const teacherId = await resolveTeacherId(req);
+    if (!teacherId) {
+      return res.status(403).json({ error: 'Forbidden', message: 'Teacher profile not found' });
+    }
+
     // Verify teacher owns the class
     const classData = await supabaseService.getClass(class_id);
-    if (!classData || classData.teacher_id !== req.userId) {
+    if (!classData || classData.teacher_id !== teacherId) {
       return res.status(403).json({ error: 'Forbidden', message: 'You do not own this class' });
     }
 
@@ -195,9 +272,14 @@ router.post('/attendance', async (req: AuthenticatedRequest, res: Response) => {
         .json({ error: 'Bad request', message: 'Invalid status. Must be: present, absent, late, or excused' });
     }
 
+    const teacherId = await resolveTeacherId(req);
+    if (!teacherId) {
+      return res.status(403).json({ error: 'Forbidden', message: 'Teacher profile not found' });
+    }
+
     // Verify teacher owns the class
     const classData = await supabaseService.getClass(class_id);
-    if (!classData || classData.teacher_id !== req.userId) {
+    if (!classData || classData.teacher_id !== teacherId) {
       return res.status(403).json({ error: 'Forbidden', message: 'You do not own this class' });
     }
 
@@ -231,9 +313,14 @@ router.get('/classes/:classId/marks', async (req: AuthenticatedRequest, res: Res
   try {
     const classId = req.params.classId;
 
+    const teacherId = await resolveTeacherId(req);
+    if (!teacherId) {
+      return res.status(403).json({ error: 'Forbidden', message: 'Teacher profile not found' });
+    }
+
     // Verify teacher owns the class
     const classData = await supabaseService.getClass(classId);
-    if (!classData || classData.teacher_id !== req.userId) {
+    if (!classData || classData.teacher_id !== teacherId) {
       return res.status(403).json({ error: 'Forbidden', message: 'You do not own this class' });
     }
 

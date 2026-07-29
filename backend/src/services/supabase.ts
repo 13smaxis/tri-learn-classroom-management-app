@@ -112,9 +112,33 @@ export async function getClass(classId: string) {
 }
 
 /**
+ * Get teacher record ID by auth user ID
+ */
+export async function getTeacherIdByUserId(userId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('teachers')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
+
+    if (error) {
+      logger.error('Failed to get teacher id by user id', error);
+      return null;
+    }
+
+    return data?.id ?? null;
+  } catch (error) {
+    logger.error('Error fetching teacher id', error);
+    return null;
+  }
+}
+
+/**
  * Create class
  */
-export async function createClass(classData: Record<string, unknown>) {
+export async function createClass(classData: Record<string, unknown>) 
+{
   try {
     const { data, error } = await supabase
       .from('classes')

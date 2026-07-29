@@ -45,7 +45,7 @@ router.get('/validate-invite/:code', async (req: Request, res: Response): Promis
   }
 });
 
-router.post('/signup', async (req: Request, res: Response) => {
+router.post('/signup', async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const { phone, email, password, firstName, lastName, role, inviteCode, title } = req.body;
 

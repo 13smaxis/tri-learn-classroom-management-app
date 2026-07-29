@@ -8,9 +8,7 @@ body:
 
     \  \"credential\": \"smith.mbele@axis.co.za\",\r
 
-    \  \"password\": \"test1234\",\r
-
-    \  \"role\": \"teacher\"\r
+    \  \"password\": \"test1234\"\r
 
     }"
 order: 974154818862020

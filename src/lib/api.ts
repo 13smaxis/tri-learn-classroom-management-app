@@ -214,8 +214,19 @@ export const api = {
     request<void>('/auth/logout', { method: 'POST' }),
 
   // Classes
-  createClass: (data: { name: string; grade: string; subject: string; academicYear?: string }) =>
-    request<any>('/class/create', { method: 'POST', body: JSON.stringify(data) }),
+  createClass: (data: { name: string; grade: string; subject: string; academicYear?: string; description?: string; roomNumber?: string; maxStudents?: number }) =>
+    request<any>('/teacher/classes', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: data.name,
+        grade: data.grade,
+        subject: data.subject,
+        academic_year: data.academicYear ?? null,
+        description: data.description ?? null,
+        room_number: data.roomNumber ?? null,
+        max_students: data.maxStudents ?? null,
+      }),
+    }),
 
   getMyClasses: () =>
     request<any[]>('/class/my-classes'),

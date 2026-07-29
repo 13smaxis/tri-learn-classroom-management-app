@@ -1,5 +1,6 @@
 $kind: http-request
-url: http://localhost:3000/api/auth/signup
+name: Registration
+url: http://localhost:5173/api/auth/signup
 method: POST
 body:
   type: json
