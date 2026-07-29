@@ -45,10 +45,168 @@ router.get('/validate-invite/:code', async (req: Request, res: Response): Promis
   }
 });
 
+router.post('/signup', async (req: Request, res: Response) => {
+  try {
+    const { phone, email, password, firstName, lastName, role, inviteCode, title } = req.body;
+
+    // Validate required fields
+    if (!phone || !email || !password || !firstName || !lastName || !role || !inviteCode) {
+      return res.status(400).json({
+        error: 'Bad request',
+        message: 'Missing required: phone, email, password, firstName, lastName, role, inviteCode',
+      });
+    }
+
+    if (!['teacher', 'parent', 'learner'].includes(role)) {
+      return res.status(400).json({ error: 'Bad request', message: 'Invalid role' });
+    }
+
+    logger.info(`Signup: ${phone} - ${email} - role: ${role}`);
+
+    // Validate invite code
+    const { data: school, error: schoolError } = await supabase
+      .from('schools')
+      .select('id, name')
+      .eq('invite_code', inviteCode.toUpperCase())
+      .single();
+
+    if (schoolError || !school) {
+      logger.warn(`Invalid invite code: ${inviteCode}`);
+      return res.status(400).json({ error: 'Bad request', message: 'Invalid school invite code' });
+    }
+
+    const schoolId = school.id;
+
+    // Check if phone already exists
+    const { data: existingPhone } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('phone', phone)
+      .maybeSingle();
+
+    if (existingPhone) {
+      logger.warn(`Phone already registered: ${phone}`);
+      return res.status(400).json({ 
+        error: 'Bad request', 
+        message: 'Phone number already registered' 
+      });
+    }
+
+    // Check if email already exists
+    const { data: existingEmail } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (existingEmail) {
+      logger.warn(`Email already registered: ${email}`);
+      return res.status(400).json({ 
+        error: 'Bad request', 
+        message: 'Email already registered' 
+      });
+    }
+
+    // Create auth user with PROVIDED email (NOT generated!)
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,  // ← USE THE EMAIL FROM FRONTEND
+      password,
+    });
+
+    if (authError || !authData.user) {
+      logger.error('Auth signup failed', authError);
+      return res.status(400).json({ 
+        error: 'Signup failed', 
+        message: authError?.message || 'Unknown error' 
+      });
+    }
+
+    const userId = authData.user.id;
+    logger.info(`Auth user created: ${userId}`);
+
+    // Create profile
+    const { error: profileError } = await supabase.from('profiles').insert([
+      {
+        id: userId,
+        phone,
+        email,
+        first_name: firstName,
+        last_name: lastName,
+        role,
+        school_id: schoolId,
+      },
+    ]);
+
+    if (profileError) {
+      logger.error('Profile creation failed', profileError);
+      return res.status(400).json({ error: 'Signup failed', message: 'Failed to create profile' });
+    }
+
+    // Create role-specific record
+    try {
+      if (role === 'teacher') {
+        await supabase.from('teachers').insert([
+          {
+            id: uuidv4(),
+            user_id: userId,
+            first_name: firstName,
+            last_name: lastName,
+            phone,
+            title: title || null,
+            school_id: schoolId,
+          },
+        ]);
+      } else if (role === 'parent') {
+        await supabase.from('parents').insert([
+          {
+            id: uuidv4(),
+            user_id: userId,
+            first_name: firstName,
+            last_name: lastName,
+            phone,
+            school_id: schoolId,
+          },
+        ]);
+      } else if (role === 'learner') {
+        await supabase.from('learners').insert([
+          {
+            id: uuidv4(),
+            user_id: userId,
+            first_name: firstName,
+            last_name: lastName,
+            phone,
+            school_id: schoolId,
+          },
+        ]);
+      }
+    } catch (err) {
+      logger.warn('Role record creation non-critical error', err);
+    }
+
+    // Create token
+    const token = createToken(userId, schoolId, role, phone);
+
+    const userInfo: UserInfo = {
+      id: userId,
+      email: phone,
+      firstName,
+      lastName,
+      role: role as any,
+      schoolId,
+    };
+
+    logger.info(`Signup successful: ${userId}`);
+    res.status(201).json({ token, user: userInfo });
+  } catch (error) {
+    logger.error('Signup error', error);
+    res.status(500).json({ error: 'Server error', message: 'Internal server error' });
+  }
+});
+
 /**
  * POST /auth/signup
  * Phone + Password signup
- */
+ *
 router.post('/signup', async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const { phone, password, firstName, lastName, role, inviteCode, title, email } = req.body as {
@@ -195,7 +353,7 @@ router.post('/signup', async (req: Request, res: Response): Promise<Response | v
     logger.error('Signup error', error);
     res.status(500).json({ error: 'Server error', message: 'Internal server error' });
   }
-});
+});*/
 
 /**
  * POST /auth/login
