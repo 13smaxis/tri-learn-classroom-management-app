@@ -103,6 +103,8 @@ router.post('/classes', async (req: AuthenticatedRequest, res: Response) => {
 
     logger.info(`Creating class "${name}" for teacher ${teacherId}`);
 
+    const inviteCode = generateInviteCode();
+
     const classData = {
       id: uuidv4(),
       teacher_id: teacherId,
@@ -114,50 +116,35 @@ router.post('/classes', async (req: AuthenticatedRequest, res: Response) => {
       subject: subject || null,
       academic_year: academic_year || academicYear || null,
       max_students: max_students ?? maxStudents ?? null,
-      invite_code: generateInviteCode(),
+      invite_code: inviteCode,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
     const created = await supabaseService.createClass(classData);
-    return res.status(201).json(created);
+
+    logger.info('Class created successfully', {
+      teacherId,
+      classId: classData.id,
+      className: name,
+      grade: grade || null,
+      subject: subject || null,
+      inviteCode,
+    });
+
+    return res.status(201).json({
+      success: true,
+      data: {
+        ...created,
+        inviteToken: created?.invite_code || created?.inviteToken || null,
+      },
+    });
   } catch (error) {
     logger.error('Error creating class', error);
     return res.status(500).json({ error: 'Server error', message: 'Failed to create class' });
   }
 });
 
-/*router.post('/classes', async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const { name, grade, description, room_number } = req.body;
-
-    if (!name) {
-      return res.status(400).json({ error: 'Bad request', message: 'Class name is required' });
-    }
-
-    logger.info(`Creating class "${name}" for teacher ${req.userId}`);
-
-    const classData = {
-      id: uuidv4(),
-      teacher_id: req.userId,
-      school_id: req.schoolId,
-      name,
-      grade: grade || null,
-      description: description || null,
-      room_number: room_number || null,
-      invite_code: generateInviteCode(),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    const created = await supabaseService.createClass(classData);
-
-    return res.status(201).json(created);
-  } catch (error) {
-    logger.error('Error creating class', error);
-    return res.status(500).json({ error: 'Server error', message: 'Failed to create class' });
-  }
-});*/
 
 /**
  * PUT /teacher/classes/:classId

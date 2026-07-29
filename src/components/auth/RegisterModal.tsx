@@ -1,438 +1,277 @@
-import React, { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { api } from '@/lib/api';
+import React, { useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import { authService, type SchoolData } from '../../services/authService';
 
-interface RegisterViewProps {
-  onSwitchToLogin: () => void;
+interface RegisterModalProps {
+  onSwitchToLogin?: () => void;
   defaultRole?: 'teacher' | 'parent' | 'learner';
-  onRegisterSuccess?: (role: 'teacher' | 'parent' | 'learner') => void;
+  onClose?: () => void;
 }
 
-interface ClassInfo {
-  classId: string;
-  name: string;
-  grade: string;
-  subject: string;
-  teacherName: string;
-}
+export const SignupForm: React.FC<RegisterModalProps> = ({ onSwitchToLogin, defaultRole, onClose }) => {
+  const navigate = useNavigate();
+  const { signup, isLoading, error, clearError } = useAuth();
 
-const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin, defaultRole, onRegisterSuccess }) => {
-  const { register } = useAuth();
-  // Steps: 1=role select, 1.5='invite' (invite code for parent/learner), 2=form
-  const [step, setStep] = useState<'role' | 'invite' | 'form'>(defaultRole ? (defaultRole === 'teacher' ? 'form' : 'invite') : 'role');
-  const initialRole = (defaultRole || 'teacher') as 'teacher' | 'parent' | 'learner';
-  const [formData, setFormData] = useState({
-    title: '',
-    teacherGrade: '10',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    fullName: '',
-    phone: '',
-    role: initialRole,
-    schoolInviteCode: ''
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  // Invite code gate state
+  // Form state
   const [inviteCode, setInviteCode] = useState('');
-  const [inviteLoading, setInviteLoading] = useState(false);
-  const [inviteError, setInviteError] = useState('');
-  const [classInfo, setClassInfo] = useState<ClassInfo | null>(null);
+  const [schoolInfo, setSchoolInfo] = useState<SchoolData | null>(null);
+  const [validatingCode, setValidatingCode] = useState(false);
+  const [codeError, setCodeError] = useState<string | null>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [role, setRole] = useState<'teacher' | 'parent' | 'learner'>(defaultRole ?? 'teacher');
 
-  const handleRoleSelect = (role: 'teacher' | 'parent' | 'learner') => {
-    setFormData({
-      ...formData,
-      role,
-      teacherGrade: role === 'teacher' ? (formData.teacherGrade || '10') : '',
-      schoolInviteCode: ''
-    });
-    // Teachers go straight to form; parents/learners must enter invite code first
-    if (role === 'teacher') {
-      setStep('form');
-    } else {
-      setInviteCode('');
-      setInviteError('');
-      setClassInfo(null);
-      setStep('invite');
-    }
-  };
+  const [formError, setFormError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const handleValidateInvite = async () => {
+  useEffect(() => {
+    setRole(defaultRole ?? 'teacher');
+  }, [defaultRole]);
+
+  // Validate invite code
+  const handleValidateCode = useCallback(async () => {
     if (!inviteCode.trim()) {
-      setInviteError('Please enter an invite code');
+      setCodeError('Please enter an invite code');
       return;
     }
-    setInviteLoading(true);
-    setInviteError('');
+
     try {
-      const data = await api.validateInviteCode(inviteCode.trim().toUpperCase());
-      setClassInfo(data);
+      setValidatingCode(true);
+      setCodeError(null);
+      const school = await authService.validateInviteCode(inviteCode);
+      setSchoolInfo(school);
     } catch (err: any) {
-      setInviteError(err?.message || 'Invalid invite code');
-      setClassInfo(null);
+      setCodeError(err.message || 'Invalid invite code');
+      setSchoolInfo(null);
+    } finally {
+      setValidatingCode(false);
     }
-    setInviteLoading(false);
-  };
+  }, [inviteCode]);
 
-  const handleInviteContinue = () => {
-    setFormData({
-      ...formData,
-      schoolInviteCode: inviteCode.trim().toUpperCase(),
-    });
-    setStep('form');
-  };
-
+  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setFormError(null);
+    clearError();
 
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+    // Validation
+    if (!schoolInfo) {
+      setFormError('Please validate your invite code first');
       return;
     }
 
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (!email || !password || !firstName || !lastName) {
+      setFormError('Please fill in all fields');
       return;
     }
 
-    const normalizedInviteCode = (formData.role === 'teacher' ? formData.schoolInviteCode : inviteCode).trim().toUpperCase();
-
-    if (!normalizedInviteCode) {
-      setError('Please provide a valid invite code');
-      setLoading(false);
+    if (password.length < 8) {
+      setFormError('Password must be at least 8 characters');
       return;
     }
 
-    const fullName = formData.fullName.trim();
-    const nameParts = fullName.split(/\s+/).filter(Boolean);
-    const firstName = nameParts[0] || '';
-    const lastName = nameParts.slice(1).join(' ') || '';
-
-    if (!firstName || !lastName) {
-      setError('Please enter both first and last name');
-      setLoading(false);
+    if (password !== confirmPassword) {
+      setFormError('Passwords do not match');
       return;
     }
 
-    setLoading(true);
-
-    const result = await register({
-      email: formData.email.trim(),
-      password: formData.password,
-      firstName,
-      lastName,
-      role: formData.role,
-      inviteCode: normalizedInviteCode,
-      title: formData.title.trim() || undefined,
-      phone: formData.phone.trim() || undefined,
-      teacherGrade: formData.role === 'teacher' ? formData.teacherGrade || '10' : undefined,
-    });
-
-    if (result.success) {
-      if (onRegisterSuccess) {
-        onRegisterSuccess(formData.role as 'teacher' | 'parent' | 'learner');
-      }
-      setFormData({
-        title: '',
-        teacherGrade: '10',
-        email: '',
-        password: '',
-        confirmPassword: '',
-        fullName: '',
-        phone: '',
-        role: 'teacher',
-        schoolInviteCode: ''
-      });
-      setInviteCode('');
-      setClassInfo(null);
-      setStep('role');
-    } else {
-      setError(result.error || 'Registration failed');
+    if (!['teacher', 'parent', 'learner'].includes(role)) {
+      setFormError('Please select a valid role');
+      return;
     }
 
-    setLoading(false);
+    try {
+      await signup(email, password, firstName, lastName, role, inviteCode);
+      onClose?.();
+      navigate('/dashboard');
+    } catch (err: any) {
+      setFormError(err.message || 'Signup failed');
+    }
   };
-
-  const inputClass = "w-full rounded-lg border border-white/30 bg-white text-gray-900 px-4 py-2.5 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300/40 transition-all placeholder:text-gray-400";
-  const labelClass = "block text-sm font-medium text-blue-100 mb-1.5";
-
-  const roleOptions = [
-    {
-      role: 'teacher' as const,
-      title: 'Teacher',
-      description: 'Create and manage classes',
-      color: 'blue'
-    },
-    {
-      role: 'parent' as const,
-      title: 'Parent',
-      description: "Monitor your child's progress",
-      color: 'green'
-    },
-    {
-      role: 'learner' as const,
-      title: 'Learner',
-      description: 'Access assignments & grades',
-      color: 'purple'
-    }
-  ];
-
-  const colorClasses: Record<string, string> = {
-    blue: 'border-blue-300/50 bg-blue-500/20 hover:bg-blue-500/30 text-white',
-    green: 'border-green-300/50 bg-green-500/20 hover:bg-green-500/30 text-white',
-    purple: 'border-purple-300/50 bg-purple-500/20 hover:bg-purple-500/30 text-white'
-  };
-
-  const EyeToggle = ({ show, onToggle }: { show: boolean; onToggle: () => void }) => (
-    <button
-      type="button"
-      onClick={onToggle}
-      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
-      tabIndex={-1}
-    >
-      {show ? (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-        </svg>
-      ) : (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-        </svg>
-      )}
-    </button>
-  );
 
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-6 border border-white/20 rounded-2xl p-8 bg-white/5 backdrop-blur-sm">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-white">Create Account</h1>
-        <p className="text-sm text-blue-100 mt-1">Join the platform</p>
-      </div>
+    <div className="w-full max-w-md">
+      <div className="bg-white rounded-lg shadow-md p-8">
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">Create Account</h2>
 
-      {step === 'role' && !defaultRole ? (
-        <div className="space-y-3">
-          <p className="text-blue-100 text-sm">Select your role to get started</p>
-          
-          {roleOptions.map((option) => (
+        {/* Invite Code Section */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            School Invite Code *
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={inviteCode}
+              onChange={(e) => {
+                setInviteCode(e.target.value.toUpperCase());
+                setSchoolInfo(null);
+                setCodeError(null);
+              }}
+              placeholder="e.g., LIN120001"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={validatingCode}
+            />
             <button
-              key={option.role}
-              onClick={() => handleRoleSelect(option.role)}
-              className={`w-full rounded-xl border-2 p-4 text-left transition-all ${colorClasses[option.color]}`}
+              type="button"
+              onClick={handleValidateCode}
+              disabled={validatingCode || !inviteCode}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
             >
-              <h3 className="font-semibold text-white">{option.title}</h3>
-              <p className="text-sm text-blue-100 mt-0.5">{option.description}</p>
-            </button>
-          ))}
-
-          <div className="pt-2 text-center">
-            <button
-              onClick={onSwitchToLogin}
-              className="text-sm text-blue-200 hover:text-white transition-colors"
-            >
-              Already have an account? Sign in
+              {validatingCode ? 'Validating...' : 'Validate'}
             </button>
           </div>
+          {codeError && <p className="mt-2 text-sm text-red-600">{codeError}</p>}
+          {schoolInfo && (
+            <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-sm text-green-800">
+                <strong>✓ School:</strong> {schoolInfo.name}
+              </p>
+              {schoolInfo.location && (
+                <p className="text-sm text-green-700 mt-1">
+                  <strong>Location:</strong> {schoolInfo.location}
+                </p>
+              )}
+            </div>
+          )}
         </div>
-      ) : step === 'invite' ? (
-        /* ── Invite code gate for parent/learner ── */
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 mb-2">
-            {!defaultRole && (
-              <button type="button" onClick={() => { setStep('role'); setClassInfo(null); setInviteError(''); }} className="text-blue-200 hover:text-white">
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-            )}
-            <span className="text-sm font-medium text-blue-100">
-              Joining as <span className="text-white capitalize font-semibold">{formData.role}</span>
-            </span>
-          </div>
 
-          <div>
-            <label className={labelClass}>Teacher's Class Invite Code *</label>
-            <p className="text-xs text-blue-200 mb-2">Ask your teacher for the 8-character class invite code</p>
-            <div className="flex gap-2">
+        {/* Error Messages */}
+        {(formError || error) && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-700">{formError || error}</p>
+          </div>
+        )}
+
+        {/* Signup Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Name Fields */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                First Name *
+              </label>
               <input
                 type="text"
-                value={inviteCode}
-                onChange={(e) => { setInviteCode(e.target.value.toUpperCase()); setInviteError(''); setClassInfo(null); }}
-                className={`${inputClass} font-mono tracking-widest flex-1`}
-                placeholder="e.g. A3F2B1C4"
-                maxLength={8}
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="John"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={!schoolInfo || isLoading}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Last Name *
+              </label>
+              <input
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Doe"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={!schoolInfo || isLoading}
+              />
+            </div>
+          </div>
+
+          {/* Email */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email Address *
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="john@example.com"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={!schoolInfo || isLoading}
+            />
+          </div>
+
+          {/* Role */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Role *
+            </label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value as any)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={!schoolInfo || isLoading}
+            >
+              <option value="teacher">Teacher</option>
+              <option value="parent">Parent</option>
+              <option value="learner">Learner</option>
+            </select>
+          </div>
+
+          {/* Password */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Password *
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={!schoolInfo || isLoading}
               />
               <button
                 type="button"
-                onClick={handleValidateInvite}
-                disabled={inviteLoading || !inviteCode.trim()}
-                className="rounded-lg bg-blue-600 px-4 py-2.5 font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all whitespace-nowrap"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-2.5 text-gray-600 hover:text-gray-900"
               >
-                {inviteLoading ? (
-                  <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                ) : 'Verify'}
+                {showPassword ? '🙈' : '👁️'}
               </button>
             </div>
+            <p className="mt-1 text-xs text-gray-500">Minimum 8 characters</p>
           </div>
 
-          {inviteError && (
-            <div className="rounded-lg bg-red-500/20 border border-red-300/30 p-3 text-sm text-red-100">
-              {inviteError}
-            </div>
-          )}
-
-          {classInfo && (
-            <div className="rounded-xl border border-green-300/40 bg-green-500/15 p-4 space-y-2">
-              <div className="flex items-center gap-2 text-green-200">
-                <svg className="w-5 h-5 text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="font-semibold text-green-100">Valid Invite Code</span>
-              </div>
-              <div className="text-sm text-blue-100 space-y-1">
-                <p><span className="text-blue-200">Class:</span> <span className="text-white font-medium">{classInfo.name}</span></p>
-                <p><span className="text-blue-200">Grade:</span> <span className="text-white font-medium">{classInfo.grade}</span></p>
-                {classInfo.subject && <p><span className="text-blue-200">Subject:</span> <span className="text-white font-medium">{classInfo.subject}</span></p>}
-                <p><span className="text-blue-200">Teacher:</span> <span className="text-white font-medium">{classInfo.teacherName}</span></p>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleInviteContinue}
-                className="w-full mt-3 rounded-lg bg-green-600 px-4 py-2.5 font-semibold text-white hover:bg-green-700 transition-all"
-              >
-                Continue to Registration
-              </button>
-            </div>
-          )}
-
-          <div className="text-center">
-            <button type="button" onClick={onSwitchToLogin} className="text-sm text-blue-200 hover:text-white transition-colors">
-              Already have an account? Sign in
-            </button>
-          </div>
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="rounded-lg bg-red-500/20 border border-red-300/30 p-3 text-sm text-red-100">
-              {error}
-            </div>
-          )}
-
-          <div className="flex items-center gap-2 mb-2">
-            {!defaultRole && (
-              <button
-                type="button"
-                onClick={() => formData.role === 'teacher' ? setStep('role') : setStep('invite')}
-                className="text-blue-200 hover:text-white"
-              >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-            )}
-            <span className="text-sm font-medium text-blue-100">
-              Registering as <span className="text-white capitalize font-semibold">{formData.role}</span>
-            </span>
+          {/* Confirm Password */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Confirm Password *
+            </label>
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={!schoolInfo || isLoading}
+            />
           </div>
 
-          {/* Show class info for parent/learner */}
-          {classInfo && formData.role !== 'teacher' && (
-            <div className="rounded-lg border border-green-300/30 bg-green-500/10 p-3 text-xs text-blue-100 flex items-center gap-2">
-              <svg className="w-4 h-4 text-green-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>Joining <span className="text-white font-medium">{classInfo.name}</span> — {classInfo.grade} — {classInfo.teacherName}</span>
-            </div>
-          )}
-
-          {/* Two-column grid for fields on wider screens */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelClass}>Title (optional)</label>
-              <input type="text" name="title" value={formData.title} onChange={handleChange} className={inputClass} placeholder="e.g. Mr, Ms, Dr" />
-            </div>
-
-            <div>
-              <label className={labelClass}>Full Name *</label>
-              <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} className={inputClass} placeholder="Enter your full name" required />
-            </div>
-
-            <div>
-              <label className={labelClass}>Email Address *</label>
-              <input type="email" name="email" value={formData.email} onChange={handleChange} className={inputClass} placeholder="you@example.com" required />
-            </div>
-
-            <div>
-              <label className={labelClass}>Phone Number *</label>
-              <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className={inputClass} placeholder="0821234567" required />
-            </div>
-
-            {formData.role === 'teacher' && (
-              <div>
-                <label className={labelClass}>School Invite Code *</label>
-                <input type="text" name="schoolInviteCode" value={formData.schoolInviteCode} onChange={handleChange} className={`${inputClass} font-mono tracking-widest`} placeholder="e.g. JAN021234" maxLength={9} required disabled={!formData.role || loading} />
-                <p className="mt-0.5 text-xs text-blue-200">
-                  Use the invite code issued by your school
-                </p>
-              </div>
-            )}
-
-            <div>
-              <label className={labelClass}>Password *</label>
-              <div className="relative">
-                <input type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange} className={`${inputClass} pr-12`} placeholder="At least 6 characters" required disabled={!formData.role || loading} />
-                <EyeToggle show={showPassword} onToggle={() => setShowPassword(!showPassword)} />
-              </div>
-            </div>
-
-            <div>
-              <label className={labelClass}>Confirm Password *</label>
-              <div className="relative">
-                <input type={showConfirm ? 'text' : 'password'} name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} className={`${inputClass} pr-12`} placeholder="Confirm your password" required disabled={!formData.role || loading} />
-                <EyeToggle show={showConfirm} onToggle={() => setShowConfirm(!showConfirm)} />
-              </div>
-            </div>
-          </div>
-
+          {/* Submit Button */}
           <button
             type="submit"
-            disabled={loading || !formData.role}
-            className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-lg"
+            disabled={!schoolInfo || isLoading}
+            className="w-full py-2 px-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition-colors mt-6"
           >
-            {loading ? (
-              <span className="flex items-center justify-center">
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                Creating account...
-              </span>
-            ) : 'Create Account'}
+            {isLoading ? 'Creating Account...' : 'Sign Up'}
           </button>
-
-          <div className="text-center">
-            <button type="button" onClick={onSwitchToLogin} className="text-sm text-blue-200 hover:text-white transition-colors">
-              Already have an account? Sign in
-            </button>
-          </div>
         </form>
-      )}
+
+        {/* Sign In Link */}
+        <p className="mt-4 text-center text-gray-600">
+          Already have an account?{' '}
+          <button type="button" onClick={onSwitchToLogin} className="text-blue-600 hover:text-blue-700 font-medium">
+            Sign In
+          </button>
+        </p>
+      </div>
     </div>
   );
 };
 
-export default RegisterView;
+export default SignupForm;

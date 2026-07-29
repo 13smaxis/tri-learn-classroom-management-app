@@ -5,6 +5,9 @@ import { useAppContext } from '@/contexts/AppContext';
 // Layout components
 import Sidebar from '@/components/layout/Sidebar';
 
+// Auth modals
+// InviteModal replaced by inline InviteView in LandingPage
+
 // Landing page
 import LandingPage from '@/components/landing/LandingPage';
 
@@ -69,23 +72,18 @@ const AppLayout: React.FC = () => {
       setShowInviteModal(false);
       setActiveView('dashboard');
       wasSessionExpiredRef.current = false;
+    } else if (wasSessionExpiredRef.current) {
+      // Re-auth: keep the user on their current view
+      wasSessionExpiredRef.current = false;
     } else {
-      setShowLoginModal(false);
-      setShowRegisterModal(false);
-      setShowInviteModal(false);
-      if (wasSessionExpiredRef.current) {
-        // Re-auth: keep the user on their current view
-        wasSessionExpiredRef.current = false;
-      } else {
-        setActiveView('dashboard');
-      }
+      setActiveView('dashboard');
     }
   }, [user]);
 
   // Auto logout after 2 minutes of inactivity
   useEffect(() => {
     if (!user) return;
-    let timer: ReturnType<typeof setTimeout>;
+    let timer: NodeJS.Timeout;
     const resetTimer = () => {
       clearTimeout(timer);
       timer = setTimeout(() => {
@@ -188,30 +186,19 @@ const AppLayout: React.FC = () => {
           onGoHome={goHome}
         />
         
-        <main className="flex-1 h-screen overflow-hidden">
+        <main className="flex-1 overflow-auto h-screen">
           <LandingPage
+            onOpenLogin={() => { setShowRegisterModal(false); setShowInviteModal(false); setShowLoginModal(true); }}
+            onOpenRegister={() => { setShowLoginModal(false); setShowInviteModal(false); setRegisterRole(undefined); setShowRegisterModal(true); }}
+            onOpenInvite={() => { setShowLoginModal(false); setShowRegisterModal(false); setShowInviteModal(true); }}
+            onClose={goHome}
             showLogin={showLoginModal}
             showRegister={showRegisterModal}
             showInvite={showInviteModal}
             registerRole={registerRole}
-            onOpenLogin={() => {
-              setShowRegisterModal(false);
-              setShowInviteModal(false);
-              setShowLoginModal(true);
-            }}
-            onOpenRegister={() => {
-              setShowLoginModal(false);
-              setShowInviteModal(false);
-              setRegisterRole(undefined);
-              setShowRegisterModal(true);
-            }}
-            onOpenInvite={() => {
-              setShowLoginModal(false);
-              setShowRegisterModal(false);
-              setShowInviteModal(true);
-            }}
             onSwitchToRegister={(role) => {
               setShowLoginModal(false);
+              setShowInviteModal(false);
               setRegisterRole(role || undefined);
               setShowRegisterModal(true);
             }}
@@ -230,8 +217,6 @@ const AppLayout: React.FC = () => {
       </div>
     );
   }
-
-  const welcomeDisplayName = (user?.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'there').split(' ')[0];
 
   // Render the appropriate dashboard based on user role
   const renderContent = () => {
@@ -423,7 +408,7 @@ const AppLayout: React.FC = () => {
               </svg>
             </div>
             <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-              Congratulations, {user.title ? `${user.title} ` : ''}{welcomeDisplayName}!
+              Congratulations, {user.title ? `${user.title} ` : ''}{user.fullName.split(' ')[0]}!
             </h2>
             <p className="text-gray-600 mb-6">
               You're all set! Your classroom is ready — everything you need is right here.

@@ -44,10 +44,16 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   } catch {
     throw new Error(`Invalid JSON response (status ${res.status}): ${text.substring(0, 200)}`);
   }
-  if (!res.ok || !json.success) {
+  if (!res.ok) {
     throw new Error(json.error?.message || json.message || `Request failed (${res.status})`);
   }
-  return json.data as T;
+  if (json && typeof json === 'object' && 'success' in json && json.success === false) {
+    throw new Error(json.error?.message || json.message || `Request failed (${res.status})`);
+  }
+  if (json && typeof json === 'object' && 'data' in json) {
+    return json.data as T;
+  }
+  return json as T;
 }
 
 // ── INTERFACES ──
@@ -229,7 +235,7 @@ export const api = {
     }),
 
   getMyClasses: () =>
-    request<any[]>('/class/my-classes'),
+    request<any[]>('/teacher/classes'),
 
   getClass: (classId: string) =>
     request<any>(`/class/${classId}`),
