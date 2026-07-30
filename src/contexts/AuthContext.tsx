@@ -136,6 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const normalizedUser = normalizeUser(response.user);
         setToken(response.token);
         setUser(normalizedUser);
+        setSessionExpired(false);
         setJustSignedUp(true);
         if (normalizedUser) {
           authService.saveUser(normalizedUser);
@@ -174,6 +175,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const normalizedUser = normalizeUser(response.user);
       setToken(response.token);
       setUser(normalizedUser);
+      setSessionExpired(false);
       setJustSignedUp(false);
       if (normalizedUser) {
         authService.saveUser(normalizedUser);
@@ -202,6 +204,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(null);
     setError(null);
     setJustSignedUp(false);
+    setSessionExpired(false);
     authService.logout();
   }, []);
 
@@ -215,8 +218,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const softLogout = useCallback(() => {
     setSessionExpired(true);
-    logout();
-  }, [logout]);
+    setUser(null);
+    setToken(null);
+    setError(null);
+    setJustSignedUp(false);
+    authService.logout();
+  }, []);
 
   const reAuthenticate = useCallback(async (email: string, password: string) => {
     try {
