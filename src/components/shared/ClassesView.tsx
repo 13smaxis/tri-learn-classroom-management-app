@@ -21,7 +21,7 @@ const ClassesView: React.FC<ClassesViewProps> = ({ classesVersion, onSelectClass
     }
   }, [user, classesVersion]);
 
-  const fetchClasses = async (showInitialLoader = false) => {
+  const fetchClasses = async (showInitialLoader = false, retry = true) => {
     if (!user) return;
     if (showInitialLoader) {
       setLoading(true);
@@ -33,7 +33,11 @@ const ClassesView: React.FC<ClassesViewProps> = ({ classesVersion, onSelectClass
       setClasses(data || []);
     } catch (err) {
       console.error('Failed to fetch classes:', err);
-      if (showInitialLoader) {
+      if (retry && showInitialLoader) {
+        console.info('Retrying initial class fetch...');
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        await fetchClasses(false, false);
+      } else if (showInitialLoader) {
         setClasses([]);
       }
     } finally {

@@ -63,7 +63,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
     }
   };
 
-  const fetchClasses = async () => {
+  const fetchClasses = async (retry = true) => {
     if (!user) return;
     try {
       const data = await api.getMyClasses();
@@ -97,6 +97,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
       setTotalLearners(Object.values(nextClassCounts).reduce((sum, item) => sum + item.learners, 0));
     } catch (err) {
       console.error('Failed to fetch classes:', err);
+      if (retry) {
+        console.info('Retrying initial class fetch...');
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        return fetchClasses(false);
+      }
       setClasses([]);
       setTotalLearners(0);
       setClassCounts({});

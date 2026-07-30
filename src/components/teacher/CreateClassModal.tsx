@@ -52,7 +52,6 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({ isOpen, onClose, on
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [createdClass, setCreatedClass] = useState<any>(null);
-  const [showSuccessSummary, setShowSuccessSummary] = useState(false);
   const [uploadingStu, setUploadingStu] = useState(false);
   const [stuProgress, setStuProgress] = useState(0);
   const [stuUploadSuccess, setStuUploadSuccess] = useState(false);
@@ -99,8 +98,8 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({ isOpen, onClose, on
       };
 
       setCreatedClass(newClass);
-      setShowSuccessSummary(true);
       setStep(3);
+      onClassCreated(newClass);
     } catch (err: any) {
       console.error('Full error:', err);
       setError(err.message || 'An error occurred while creating the class');
@@ -113,23 +112,9 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({ isOpen, onClose, on
     navigator.clipboard.writeText(text);
   };
 
-  const handleConfirmClassCreated = async () => {
-    if (!createdClass) return;
-
-    try {
-      await api.getMyClasses();
-    } catch (err) {
-      console.warn('Failed to refresh teacher classes after class creation:', err);
-    }
-
-    setShowSuccessSummary(false);
-    setStep(4);
-    onClassCreated(createdClass);
-  };
-
   /*
-   * Responsible for handling the student upload process after the class has been created. 
-   *It manages the upload state, progress, and success/failure feedback to the user.
+   * Responsible for handling the student upload process after the class has been created.
+   * It manages the upload state, progress, and success/failure feedback to the user.
    */
   const handleStudentsReady = async (learners: ParsedLearner[]) => {
     if (!createdClass) return;
@@ -167,7 +152,6 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({ isOpen, onClose, on
     onClose();
     setStep(1);
     setCreatedClass(null);
-    setShowSuccessSummary(false);
     setUploadingStu(false);
     setStuProgress(0);
     setStuUploadSuccess(false);
@@ -315,39 +299,6 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({ isOpen, onClose, on
             </button>
           </div>
         </div>
-      )}
-
-      {showSuccessSummary && createdClass && (
-        <Modal isOpen={showSuccessSummary} onClose={() => setShowSuccessSummary(false)} title="Class Created" size="md">
-          <div className="space-y-4">
-            <div className="rounded-xl border border-green-200 bg-green-50 p-4">
-              <p className="text-sm font-semibold text-green-700">Your class is ready</p>
-              <p className="mt-2 text-sm text-green-800">
-                <strong>{formData.className}</strong> was created successfully for {formData.grade} • {formData.subject}.
-              </p>
-            </div>
-
-            <div className="rounded-lg bg-slate-50 p-4 text-sm text-slate-700">
-              <p className="font-medium">Summary</p>
-              <ul className="mt-2 space-y-1">
-                <li>• Grade: {formData.grade || 'Not provided'}</li>
-                <li>• Subject: {formData.subject || 'Not provided'}</li>
-                <li>• Academic year: {formData.academicYear || 'Not provided'}</li>
-                <li>• Invite code: {createdClass?.inviteToken || 'Available shortly'}</li>
-              </ul>
-            </div>
-
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={handleConfirmClassCreated}
-                className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-all"
-              >
-                OK
-              </button>
-            </div>
-          </div>
-        </Modal>
       )}
 
       {step === 3 && createdClass && (

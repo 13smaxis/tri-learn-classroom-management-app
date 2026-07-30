@@ -13,9 +13,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
   const { isAuthenticated, user } = useAuth();
 
-  // Not authenticated - redirect to signin
+  // Not authenticated - redirect to landing page
   if (!isAuthenticated) {
-    return <Navigate to="/signin" replace />;
+    return <Navigate to="/" replace />;
   }
 
   // Check role if required

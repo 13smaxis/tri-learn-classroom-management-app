@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import LoginView from '@/components/auth/LoginModal';
+import React, { useEffect, useState } from 'react';import { useLocation, useNavigate } from 'react-router-dom';import LoginView from '@/components/auth/LoginModal';
 import RegisterView from '@/components/auth/RegisterModal';
 import InviteView from '@/components/auth/InviteView';
 
@@ -106,6 +105,8 @@ const SLIDE_DURATION = 7000; // ms each slide is visible
 const TRANSITION_MS  = 600;  // fade transition duration
 
 const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, onOpenInvite, onClose, showLogin, showRegister, showInvite, registerRole, onSwitchToRegister, onSwitchToInvite, onSwitchToLogin }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [mounted, setMounted] = useState(false);
   const [slideIdx, setSlideIdx] = useState(0);
   const [phase, setPhase] = useState<'in' | 'out'>('in');
@@ -241,43 +242,96 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
   const cardIcon: Record<string, string>   = { blue: 'bg-blue-100 text-blue-600', green: 'bg-green-100 text-green-600', purple: 'bg-purple-100 text-purple-600' };
   const checkColor: Record<string, string> = { blue: 'text-blue-500', green: 'text-green-500', purple: 'text-purple-500' };
 
-  const isAuthView = showLogin || showRegister || showInvite;
+  const routeAuthView = location.pathname === '/signin' || location.pathname === '/signup';
+  const isAuthView = routeAuthView || showLogin || showRegister || showInvite;
+  const showLoginView = showLogin || location.pathname === '/signin';
+  const showRegisterView = showRegister || location.pathname === '/signup';
+  const showInviteView = showInvite;
+
+  const authTitle = showLoginView
+    ? 'Sign In'
+    : showRegisterView
+      ? 'Sign Up'
+      : 'Join with Invite Code';
+  const authSubtitle = showLoginView
+    ? 'Access your account and continue to your classroom.'
+    : showRegisterView
+      ? 'Create your teacher, parent or learner account.'
+      : 'Use an invite code to join your school or class.';
+
+  const handleClose = onClose ?? (() => {
+    if (routeAuthView) navigate('/');
+  });
+
+  const handleSwitchToRegister = onSwitchToRegister || (() => navigate('/signup'));
+  const handleSwitchToLogin = onSwitchToLogin || (() => navigate('/signin'));
+  const handleSwitchToInvite = onSwitchToInvite || onOpenInvite;
 
   return (
-    <div className="flex flex-col overflow-hidden" style={{ height: '100dvh' }}>
+    <div className="flex flex-col overflow-hidden min-h-screen bg-slate-50">
       <style>{animKeyframes}</style>
 
-      {isAuthView && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-8">
-          <div className="absolute inset-0" onClick={onClose} />
-          <div className="relative w-full max-w-md">
-            {showLogin && (
-              <LoginView
-                onSwitchToRegister={onSwitchToRegister || onOpenRegister}
-                onSwitchToInvite={onSwitchToInvite || onOpenInvite}
-                onClose={onClose}
-              />
-            )}
-            {showRegister && (
-              <RegisterView
-                key="register"
-                onSwitchToLogin={onSwitchToLogin || onOpenLogin}
-                defaultRole={registerRole}
-                onClose={onClose}
-              />
-            )}
-            {showInvite && (
-              <InviteView
-                onSwitchToLogin={onSwitchToLogin || onOpenLogin}
-                onSwitchToRegister={(role) => onSwitchToRegister ? onSwitchToRegister(role) : onOpenRegister()}
-              />
-            )}
+      {isAuthView ? (
+        <main className="flex-1 overflow-auto py-12 px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto w-full max-w-4xl">
+            <div className="rounded-[2rem] overflow-hidden shadow-2xl ring-1 ring-black/5 bg-white">
+              <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-700 px-6 py-8 sm:px-10 sm:py-10">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
+                      {authTitle}
+                    </h1>
+                    <p className="mt-3 max-w-2xl text-sm sm:text-base text-blue-100">
+                      {authSubtitle}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="inline-flex items-center rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-white/20"
+                  >
+                    Back
+                  </button>
+                </div>
+              </div>
+              <div className="p-6 sm:p-8">
+                {showLoginView && (
+                  <LoginView
+                    onSwitchToRegister={handleSwitchToRegister}
+                    onSwitchToInvite={handleSwitchToInvite}
+                    onClose={handleClose}
+                  />
+                )}
+                {showRegisterView && (
+                  <RegisterView
+                    key="register"
+                    onSwitchToLogin={handleSwitchToLogin}
+                    defaultRole={registerRole}
+                    onClose={handleClose}
+                  />
+                )}
+                {showInviteView && (
+                  <InviteView
+                    onSwitchToLogin={handleSwitchToLogin}
+                    onSwitchToRegister={(role) => {
+                      if (onSwitchToRegister) {
+                        onSwitchToRegister(role);
+                      } else if (routeAuthView) {
+                        navigate('/signup');
+                      } else {
+                        onOpenRegister();
+                      }
+                    }}
+                  />
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      )}
-
-        {/* ═══════ Top: Hero (80% of viewport) ═══════ */}
-        <section className="
+        </main>
+      ) : (
+        <>
+          {/* ═══════ Top: Hero (80% of viewport) ═══════ */}
+          <section className="
                             relative overflow-hidden 
                             bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 
                             text-white" 
@@ -391,6 +445,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenRegister, 
 
         </div>
       </section>
+        </>
+      )}
     </div>
   );
 };
