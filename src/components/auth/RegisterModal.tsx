@@ -12,6 +12,7 @@ interface RegisterModalProps {
 type SignupFormData = {
   inviteCode: string;
   email: string;
+  phone: string;
   password: string;
   confirmPassword: string;
   firstName: string;
@@ -27,6 +28,7 @@ export const SignupForm: React.FC<RegisterModalProps> = ({ onSwitchToLogin, defa
   const [formData, setFormData] = useState<SignupFormData>({
     inviteCode: '',
     email: '',
+    phone: '',
     password: '',
     confirmPassword: '',
     firstName: '',
@@ -76,7 +78,7 @@ export const SignupForm: React.FC<RegisterModalProps> = ({ onSwitchToLogin, defa
       return;
     }
 
-    if (!formData.email || !formData.password || !formData.firstName || !formData.lastName) {
+    if (!formData.email || !formData.phone || !formData.password || !formData.firstName || !formData.lastName) {
       setFormError('Please fill in all fields');
       return;
     }
@@ -99,6 +101,7 @@ export const SignupForm: React.FC<RegisterModalProps> = ({ onSwitchToLogin, defa
     try {
       await signup({
         email: formData.email,
+        phone: formData.phone,
         password: formData.password,
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -200,6 +203,20 @@ export const SignupForm: React.FC<RegisterModalProps> = ({ onSwitchToLogin, defa
                 value={formData.email}
                 onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
                 placeholder="john@example.com"
+                className="w-full px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                disabled={!schoolInfo || isLoading}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Phone Number *
+              </label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
+                placeholder="082 123 4567"
                 className="w-full px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 disabled={!schoolInfo || isLoading}
               />
