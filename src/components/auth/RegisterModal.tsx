@@ -9,33 +9,44 @@ interface RegisterModalProps {
   onClose?: () => void;
 }
 
+type SignupFormData = {
+  inviteCode: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  firstName: string;
+  lastName: string;
+  role: 'teacher' | 'parent' | 'learner';
+};
+
 export const SignupForm: React.FC<RegisterModalProps> = ({ onSwitchToLogin, defaultRole, onClose }) => {
   const navigate = useNavigate();
   const { signup, isLoading, error, clearError } = useAuth();
 
   // Form state
-  const [inviteCode, setInviteCode] = useState('');
+  const [formData, setFormData] = useState<SignupFormData>({
+    inviteCode: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    firstName: '',
+    lastName: '',
+    role: defaultRole ?? 'teacher',
+  });
   const [schoolInfo, setSchoolInfo] = useState<SchoolData | null>(null);
   const [validatingCode, setValidatingCode] = useState(false);
   const [codeError, setCodeError] = useState<string | null>(null);
-
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [role, setRole] = useState<'teacher' | 'parent' | 'learner'>(defaultRole ?? 'teacher');
 
   const [formError, setFormError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    setRole(defaultRole ?? 'teacher');
+    setFormData((prev) => ({ ...prev, role: defaultRole ?? 'teacher' }));
   }, [defaultRole]);
 
   // Validate invite code
   const handleValidateCode = useCallback(async () => {
-    if (!inviteCode.trim()) {
+    if (!formData.inviteCode.trim()) {
       setCodeError('Please enter an invite code');
       return;
     }
@@ -43,7 +54,7 @@ export const SignupForm: React.FC<RegisterModalProps> = ({ onSwitchToLogin, defa
     try {
       setValidatingCode(true);
       setCodeError(null);
-      const school = await authService.validateInviteCode(inviteCode);
+      const school = await authService.validateInviteCode(formData.inviteCode);
       setSchoolInfo(school);
     } catch (err: any) {
       setCodeError(err.message || 'Invalid invite code');
@@ -51,7 +62,7 @@ export const SignupForm: React.FC<RegisterModalProps> = ({ onSwitchToLogin, defa
     } finally {
       setValidatingCode(false);
     }
-  }, [inviteCode]);
+  }, [formData.inviteCode]);
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
@@ -65,34 +76,34 @@ export const SignupForm: React.FC<RegisterModalProps> = ({ onSwitchToLogin, defa
       return;
     }
 
-    if (!email || !password || !firstName || !lastName) {
+    if (!formData.email || !formData.password || !formData.firstName || !formData.lastName) {
       setFormError('Please fill in all fields');
       return;
     }
 
-    if (password.length < 8) {
+    if (formData.password.length < 8) {
       setFormError('Password must be at least 8 characters');
       return;
     }
 
-    if (password !== confirmPassword) {
+    if (formData.password !== formData.confirmPassword) {
       setFormError('Passwords do not match');
       return;
     }
 
-    if (!['teacher', 'parent', 'learner'].includes(role)) {
+    if (!['teacher', 'parent', 'learner'].includes(formData.role)) {
       setFormError('Please select a valid role');
       return;
     }
 
     try {
       await signup({
-        email,
-        password,
-        firstName,
-        lastName,
-        role,
-        inviteCode,
+        email: formData.email,
+        password: formData.password,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        role: formData.role,
+        inviteCode: formData.inviteCode,
       });
       onClose?.();
       navigate('/dashboard');
@@ -114,9 +125,9 @@ export const SignupForm: React.FC<RegisterModalProps> = ({ onSwitchToLogin, defa
           <div className="flex gap-2">
             <input
               type="text"
-              value={inviteCode}
+              value={formData.inviteCode}
               onChange={(e) => {
-                setInviteCode(e.target.value.toUpperCase());
+                setFormData((prev) => ({ ...prev, inviteCode: e.target.value.toUpperCase() }));
                 setSchoolInfo(null);
                 setCodeError(null);
               }}
@@ -127,7 +138,7 @@ export const SignupForm: React.FC<RegisterModalProps> = ({ onSwitchToLogin, defa
             <button
               type="button"
               onClick={handleValidateCode}
-              disabled={validatingCode || !inviteCode}
+              disabled={validatingCode || !formData.inviteCode}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
             >
               {validatingCode ? 'Validating...' : 'Validate'}
@@ -159,8 +170,8 @@ export const SignupForm: React.FC<RegisterModalProps> = ({ onSwitchToLogin, defa
               </label>
               <input
                 type="text"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
+                value={formData.firstName}
+                onChange={(e) => setFormData((prev) => ({ ...prev, firstName: e.target.value }))}
                 placeholder="John"
                 className="w-full px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 disabled={!schoolInfo || isLoading}
@@ -172,8 +183,8 @@ export const SignupForm: React.FC<RegisterModalProps> = ({ onSwitchToLogin, defa
               </label>
               <input
                 type="text"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
+                value={formData.lastName}
+                onChange={(e) => setFormData((prev) => ({ ...prev, lastName: e.target.value }))}
                 placeholder="Doe"
                 className="w-full px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 disabled={!schoolInfo || isLoading}
@@ -186,8 +197,8 @@ export const SignupForm: React.FC<RegisterModalProps> = ({ onSwitchToLogin, defa
               </label>
               <input
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={formData.email}
+                onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
                 placeholder="john@example.com"
                 className="w-full px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 disabled={!schoolInfo || isLoading}
@@ -199,8 +210,8 @@ export const SignupForm: React.FC<RegisterModalProps> = ({ onSwitchToLogin, defa
                 Role *
               </label>
               <select
-                value={role}
-                onChange={(e) => setRole(e.target.value as any)}
+                value={formData.role}
+                onChange={(e) => setFormData((prev) => ({ ...prev, role: e.target.value as 'teacher' | 'parent' | 'learner' }))}
                 className="w-full px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 disabled={!schoolInfo || isLoading}
               >
@@ -217,8 +228,8 @@ export const SignupForm: React.FC<RegisterModalProps> = ({ onSwitchToLogin, defa
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  value={formData.password}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
                   placeholder="••••••••"
                   className="w-full px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   disabled={!schoolInfo || isLoading}
@@ -240,8 +251,8 @@ export const SignupForm: React.FC<RegisterModalProps> = ({ onSwitchToLogin, defa
               </label>
               <input
                 type={showPassword ? 'text' : 'password'}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                value={formData.confirmPassword}
+                onChange={(e) => setFormData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
                 placeholder="••••••••"
                 className="w-full px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 disabled={!schoolInfo || isLoading}
