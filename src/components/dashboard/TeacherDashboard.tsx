@@ -4,11 +4,16 @@ import { useAppContext } from '@/contexts/AppContext';
 import { api } from '@/lib/api';
 import StatsCard from '@/components/ui/StatsCard';
 import CreateClassModal from '@/components/teacher/CreateClassModal';
+// Drag-and-drop support
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import DndFix from '@/components/ui/DndFix';
 
 interface TeacherDashboardProps {
   onViewChange: (view: string) => void;
   classesVersion?: number;
 }
+
+const CLASS_SELECTION_STORAGE_KEY = 'triLearn:selectedClassId';
 
 const quickActions = [
   { label: 'Create Class', icon: '🏫', view: 'create-class', color: 'bg-fuchsia-700' },
@@ -125,6 +130,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
     setNewTaskTitle('');
     setNewTaskDueDate('');
     fetchTasks();
+  };
+
+  const handleClassAction = (classId: string, view: string) => {
+    try {
+      localStorage.setItem(CLASS_SELECTION_STORAGE_KEY, classId);
+    } catch {
+      // ignore storage failures and continue navigation
+    }
+    setOpenClassMenuId(null);
+    onViewChange(view);
   };
 
   /**

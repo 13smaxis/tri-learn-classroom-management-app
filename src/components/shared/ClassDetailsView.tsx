@@ -156,7 +156,7 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass }) =>
   const className = detailClass.name || detailClass.title || 'N/A';
   const classGrade = detailClass.grade || 'N/A';
   const classSubject = detailClass.subject || 'N/A';
-  const academicYear = detailClass.academic_year || 'N/A';
+  const academicYear = detailClass.academicYear || detailClass.academic_year || 'N/A';
   const teacherName =
     detailClass.teacherName ||
     detailClass.teacher_name ||
