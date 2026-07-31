@@ -16,6 +16,7 @@ interface TeacherDashboardProps {
 const CLASS_SELECTION_STORAGE_KEY = 'triLearn:selectedClassId';
 
 const quickActions = [
+  { label: 'Create Class', icon: '🏫', view: 'create-class', color: 'bg-fuchsia-700' },
   { label: 'Take Attendance', icon: '📋', view: 'attendance', color: 'bg-blue-700' },
   { label: 'Add Homework', icon: '📚', view: 'homework', color: 'bg-emerald-700' },
   { label: 'Create Assignment', icon: '📝', view: 'assignments', color: 'bg-slate-700' },
@@ -266,7 +267,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
           {quickActionsState.map((action) => (
             <button
               key={action.view}
-              onClick={() => onViewChange(action.view)}
+              onClick={() => {
+                if (action.view === 'create-class') {
+                  setShowCreateModal(true);
+                  return;
+                }
+                onViewChange(action.view);
+              }}
               className="flex flex-col items-center gap-2 p-4 bg-white rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all min-w-0"
             >
               <div className={`w-12 h-12 rounded-xl ${action.color} flex items-center justify-center text-2xl`}>
