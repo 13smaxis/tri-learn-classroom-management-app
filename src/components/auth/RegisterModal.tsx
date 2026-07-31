@@ -86,7 +86,14 @@ export const SignupForm: React.FC<RegisterModalProps> = ({ onSwitchToLogin, defa
     }
 
     try {
-      await signup(email, password, firstName, lastName, role, inviteCode);
+      await signup({
+        email,
+        password,
+        firstName,
+        lastName,
+        role,
+        inviteCode,
+      });
       onClose?.();
       navigate('/dashboard');
     } catch (err: any) {
@@ -132,11 +139,6 @@ export const SignupForm: React.FC<RegisterModalProps> = ({ onSwitchToLogin, defa
               <p className="text-sm text-green-800">
                 <strong>✓ School:</strong> {schoolInfo.name}
               </p>
-              {schoolInfo.location && (
-                <p className="text-sm text-green-700 mt-1">
-                  <strong>Location:</strong> {schoolInfo.location}
-                </p>
-              )}
             </div>
           )}
         </div>

@@ -38,7 +38,6 @@ interface SchoolData {
   name: string;
   invite_code: string;
   district_number?: number;
-  location?: string;
 }
 
 class AuthService {

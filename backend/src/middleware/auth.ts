@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { supabase } from '../services/supabase.js';
 import { logger } from '../utils/logger.js';
+import { normalizeInviteCode, inviteCodesMatch } from '../utils/inviteCode.js';
 import type { SignupRequest, AuthRequest, AuthResponse, UserInfo } from '../types/index.js';
 
 const router = Router();
@@ -71,13 +72,24 @@ router.get('/validate-invite/:code', async (req: Request, res: Response): Promis
 
     logger.info(`Validating invite code: ${code}`);
 
-    const { data: school, error } = await supabase
+    const normalizedInviteCode = normalizeInviteCode(code);
+    const { data: schools, error } = await supabase
       .from('schools')
-      .select('id, name, invite_code, district_number, location')
-      .eq('invite_code', code.toUpperCase())
-      .single();
+      .select('id, name, invite_code, district_number');
 
-    if (error || !school) {
+    if (error) {
+      logger.error('Failed to query schools for invite validation', error);
+      return res.status(500).json({
+        error: 'Server error',
+        message: 'Failed to validate invite code',
+      });
+    }
+
+    const school = (schools ?? []).find((candidate: { invite_code?: string | null }) =>
+      inviteCodesMatch(normalizedInviteCode, candidate.invite_code ?? '')
+    );
+
+    if (!school) {
       logger.warn(`Invalid invite code: ${code}`);
       return res.status(404).json({
         error: 'Not found',
@@ -92,7 +104,6 @@ router.get('/validate-invite/:code', async (req: Request, res: Response): Promis
       name: school.name,
       invite_code: school.invite_code,
       district_number: school.district_number,
-      location: school.location,
     });
   } catch (error) {
     logger.error('Error validating invite code', error);
@@ -125,13 +136,24 @@ router.post('/signup', async (req: Request, res: Response): Promise<Response | v
     logger.info(`Signup attempt for ${email} with role ${role}`);
 
     // Validate invite code
-    const { data: school, error: schoolError } = await supabase
+    const normalizedInviteCode = normalizeInviteCode(inviteCode);
+    const { data: schools, error: schoolError } = await supabase
       .from('schools')
-      .select('id, name')
-      .eq('invite_code', inviteCode.toUpperCase())
-      .single();
+      .select('id, name, invite_code');
 
-    if (schoolError || !school) {
+    if (schoolError) {
+      logger.error('Failed to query schools during signup', schoolError);
+      return res.status(500).json({
+        error: 'Server error',
+        message: 'Failed to validate invite code',
+      });
+    }
+
+    const school = (schools ?? []).find((candidate: { invite_code?: string | null }) =>
+      inviteCodesMatch(normalizedInviteCode, candidate.invite_code ?? '')
+    );
+
+    if (!school) {
       logger.warn(`Invalid invite code during signup: ${inviteCode}`);
       return res.status(400).json({
         error: 'Bad request',
