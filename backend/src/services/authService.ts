@@ -97,12 +97,16 @@ class AuthService {
         inviteCode: data.inviteCode,
       });
 
-      // Store token
-      if (response.data.token) {
+      /*
+       * Checks if the response contains a token and stores it in localStorage for future authenticated requests.
+       * This is important for maintaining user sessions and allowing the user to stay logged in across page reloads.
+       */
+      if (response.data.token) 
+      {
         this.setStorageItem('authToken', response.data.token);
       }
-
       return response.data;
+      
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Signup failed';
       throw new Error(message);

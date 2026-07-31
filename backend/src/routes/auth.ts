@@ -10,6 +10,7 @@ const router = Router();
 
 /**
  * GET /auth/validate-invite/:code
+ * Validate invite code and return school info
  */
 router.get('/validate-invite/:code', async (req: Request, res: Response): Promise<Response | void> => {
   try {
@@ -55,9 +56,8 @@ router.get('/validate-invite/:code', async (req: Request, res: Response): Promis
 
 router.post('/signup', async (req: Request, res: Response): Promise<Response | void> => {
   try {
-    const { phone, email, password, firstName, lastName, role, inviteCode, title } = req.body;
+    const { phone, email, password, firstName, lastName, role, inviteCode, teacherGrade } = req.body;
 
-    // Validate required fields
     if (!phone || !email || !password || !firstName || !lastName || !role || !inviteCode) {
       return res.status(400).json({
         error: 'Bad request',
@@ -71,7 +71,6 @@ router.post('/signup', async (req: Request, res: Response): Promise<Response | v
 
     logger.info(`Signup: ${phone} - ${email} - role: ${role}`);
 
-    // Validate invite code
     const normalizedInviteCode = normalizeInviteCode(inviteCode);
     const { data: schools, error: schoolError } = await supabase
       .from('schools')
@@ -168,10 +167,20 @@ router.post('/signup', async (req: Request, res: Response): Promise<Response | v
             first_name: firstName,
             last_name: lastName,
             phone,
-            title: title || null,
             school_id: schoolId,
+            grade_taught: teacherGrade || null,
+            subject_specialization: null,
+            employment_number: null,
+            bio: null,
+            department: null,
+            subjects: null,
+            avatar_url: null,
+            emergency_contact: null,
+            qualifications: null,
+            availability_calendar: null,
           },
         ]);
+        logger.info(`Created teacher record for user ${userId} in school ${schoolId}`);
       } else if (role === 'parent') {
         await supabase.from('parents').insert([
           {
@@ -196,7 +205,8 @@ router.post('/signup', async (req: Request, res: Response): Promise<Response | v
         ]);
       }
     } catch (err) {
-      logger.warn('Role record creation non-critical error', err);
+      logger.error('Role record creation failed', err);
+      return res.status(500).json({ error: 'Signup failed', message: 'Failed to create role-specific record' });
     }
 
     // Create token
