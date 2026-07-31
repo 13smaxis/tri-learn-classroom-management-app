@@ -12,23 +12,36 @@ export const SigninForm: React.FC<LoginModalProps> = ({ onSwitchToRegister, onSw
   const navigate = useNavigate();
   const { signin, isLoading, error, clearError } = useAuth();
 
-  const [email, setEmail] = useState('');
+  const [credential, setCredential] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const isValidEmail = (value: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  };
+
+  const isValidPhone = (value: string) => {
+    return /^0\d{9}$/.test(value);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
     clearError();
 
-    if (!email || !password) {
+    if (!credential || !password) {
       setFormError('Please fill in all fields');
       return;
     }
 
+    if (!isValidEmail(credential) && !isValidPhone(credential)) {
+      setFormError('Enter a valid email address or phone number starting with 0 and containing 10 digits.');
+      return;
+    }
+
     try {
-      await signin(email, password);
+      await signin(credential, password);
       onClose?.();
       navigate('/dashboard');
     } catch (err: any) {
@@ -52,16 +65,16 @@ export const SigninForm: React.FC<LoginModalProps> = ({ onSwitchToRegister, onSw
 
             {/* Sign In Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Email */}
+              {/* Email or Phone */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email Address
+                  Email address or phone number
                 </label>
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="john@example.com"
+                  type="text"
+                  value={credential}
+                  onChange={(e) => setCredential(e.target.value)}
+                  placeholder="john@example.com or 0123456789"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   disabled={isLoading}
                 />

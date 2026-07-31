@@ -80,18 +80,22 @@ const AppLayout: React.FC = () => {
     }
   }, [user]);
 
-  // Auto logout after 2 minutes of inactivity
+  /*
+   * Auto-logout after X minutes of inactivity
+   * This is a client-side measure to reduce the risk of leaving a session open on a shared device.
+   * The server will also expire sessions after 30 minutes of inactivity, so this is just an extra layer.
+   */
   useEffect(() => {
     if (!user) return;
-    let timer: NodeJS.Timeout;
+    let timer: number;
     const resetTimer = () => {
       clearTimeout(timer);
-      timer = setTimeout(() => {
+      timer = window.setTimeout(() => {
         if (user) {
           // Call logout from context
           window.dispatchEvent(new Event('auto-logout'));
         }
-      }, 2 * 60 * 1000); // 2 minutes
+      }, 5 * 60 * 1000);                                                                                                          //- 5 minutes
     };
     const events = ['mousemove', 'keydown', 'mousedown', 'touchstart'];
     events.forEach(e => window.addEventListener(e, resetTimer));
@@ -136,20 +140,6 @@ const AppLayout: React.FC = () => {
   useEffect(() => {
     if (activeView === 'classes') {
       setSelectedClass(null);
-    }
-  }, [activeView]);
-
-  useEffect(() => {
-    // On view change to 'classes', load selected class from localStorage
-    if (activeView === 'classes') {
-      const storedClassId = localStorage.getItem('triLearn:selectedClassId');
-      if (storedClassId) {
-        // Only set ID, let ClassesView handle full object
-        setSelectedClass((prev) => {
-          if (prev && prev.id === storedClassId) return prev;
-          return { id: storedClassId };
-        });
-      }
     }
   }, [activeView]);
 
@@ -411,14 +401,14 @@ const AppLayout: React.FC = () => {
               Congratulations, {user.title ? `${user.title} ` : ''}{user.fullName.split(' ')[0]}!
             </h2>
             <p className="text-gray-600 mb-6">
-              You're all set! Your classroom is ready — everything you need is right here.
+              You're all set! Your workspace is ready — everything you need is right here.
             </p>
             <button
               type="button"
               onClick={clearJustSignedUp}
               className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all"
             >
-              Enter your classroom
+              Enter your Workspace
             </button>
           </div>
         </div>

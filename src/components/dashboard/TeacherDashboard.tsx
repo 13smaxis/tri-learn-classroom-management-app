@@ -4,16 +4,11 @@ import { useAppContext } from '@/contexts/AppContext';
 import { api } from '@/lib/api';
 import StatsCard from '@/components/ui/StatsCard';
 import CreateClassModal from '@/components/teacher/CreateClassModal';
-// Drag-and-drop support
-import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import DndFix from '@/components/ui/DndFix';
 
 interface TeacherDashboardProps {
   onViewChange: (view: string) => void;
   classesVersion?: number;
 }
-
-const CLASS_SELECTION_STORAGE_KEY = 'triLearn:selectedClassId';
 
 const quickActions = [
   { label: 'Create Class', icon: '🏫', view: 'create-class', color: 'bg-fuchsia-700' },
@@ -130,16 +125,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
     setNewTaskTitle('');
     setNewTaskDueDate('');
     fetchTasks();
-  };
-
-  const handleClassAction = (classId: string, view: string) => {
-    try {
-      localStorage.setItem(CLASS_SELECTION_STORAGE_KEY, classId);
-    } catch {
-      // ignore storage failures and continue navigation
-    }
-    setOpenClassMenuId(null);
-    onViewChange(view);
   };
 
   /**
@@ -287,14 +272,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
 
       {/* My Classes */}
       <div>
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4">
           <h2 className="text-lg font-semibold text-gray-900">My Classes</h2>
-          <button
-            onClick={() => onViewChange('classes')}
-            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-          >
-            View All
-          </button>
         </div>
         {/* Draggable class cards grid */}
         <DragDropContext onDragEnd={handleDragEnd}>
@@ -335,8 +314,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
                           ref={dragProvided.innerRef}
                           {...dragProvided.draggableProps}
                           {...dragProvided.dragHandleProps}
-                          className={`relative rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all cursor-pointer ${gradients[idx % gradients.length]} text-white ${dragSnapshot.isDragging ? 'ring-2 ring-blue-400' : ''}`}
-                          onClick={() => onViewChange('classes')}
+                          className={`relative rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all ${gradients[idx % gradients.length]} text-white ${dragSnapshot.isDragging ? 'ring-2 ring-blue-400' : ''}`}
                         >
                           <div className="flex items-start justify-between mb-3">
                             <div>
@@ -387,25 +365,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onViewChange, class
                           </div>
 
                           <div className="mt-4 pt-4 border-t border-gray-100 flex gap-2">
-                            {/* View Class button navigates to My Classes and opens selected class in main viewport */}
-                            <button
-                              className="
-                                  flex-1 py-2 text-sm font-medium 
-                                  bg-white bg-opacity-20 
-                                  rounded-lg hover:bg-opacity-30 
-                                  transition-all 
-                                  text-white
-                                "
-                              onClick={() => {
-                                // Save selected class to AppLayout state via localStorage
-                                localStorage.setItem(CLASS_SELECTION_STORAGE_KEY, cls.id);
-                                // Switch to 'classes' view
-                                onViewChange('classes');
-                                // Note: AppLayout should read CLASS_SELECTION_STORAGE_KEY and set selectedClass
-                              }}
-                            >
-                              View Class
-                            </button>
                             <button
                               onClick={(event) => {
                                 event.stopPropagation();

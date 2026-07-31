@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ClassDetailsViewProps {
   selectedClass: any;
 }
 
 const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass }) => {
+  const { user } = useAuth();
   const [classDetails, setClassDetails] = useState<any>(null);
   const [learners, setLearners] = useState<{ id: string; name: string; number: string }[]>([]);
   const [attendanceTrend, setAttendanceTrend] = useState<{ date: string; presentPct: number; total: number }[]>([]);
@@ -142,12 +144,27 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass }) =>
   if (!selectedClass) {
     return (
       <div className="p-6 h-full flex flex-col items-center justify-center gap-4 text-gray-500">
-        <p>Select a class to view details.</p>
+        <p>Please select class to view it's merits</p>
       </div>
     );
   }
 
-  const detailClass = classDetails || selectedClass;
+  const detailClass = {
+    ...(selectedClass || {}),
+    ...(classDetails || {}),
+  } as any;
+  const className = detailClass.name || detailClass.title || 'N/A';
+  const classGrade = detailClass.grade || 'N/A';
+  const classSubject = detailClass.subject || 'N/A';
+  const academicYear = detailClass.academic_year || 'N/A';
+  const teacherName =
+    detailClass.teacherName ||
+    detailClass.teacher_name ||
+    detailClass.teacherNameDisplay ||
+    user?.fullName ||
+    `${user?.firstName || 'Teacher'} ${user?.lastName || ''}`.trim() ||
+    'N/A';
+  const inviteCode = detailClass.inviteToken || detailClass.invite_code || detailClass.inviteCode || 'N/A';
 
   // Calculate attendance rate and pass rate
   const totalAttendanceRecords = Object.values(attendanceBreakdown).reduce((a, b) => a + b, 0);
@@ -205,18 +222,18 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass }) =>
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <div>
             <p className="text-sm uppercase tracking-[0.2em] text-slate-300">Class Overview</p>
-            <h2 className="text-3xl font-semibold mt-2">{detailClass.name}</h2>
+            <h2 className="text-3xl font-semibold mt-2">{className}</h2>
             <div className="mt-3 flex flex-wrap gap-2 text-xs">
-              <span className="px-3 py-1 rounded-full bg-white/10">{detailClass.grade || 'N/A'}</span>
-              <span className="px-3 py-1 rounded-full bg-white/10">{detailClass.subject || 'N/A'}</span>
-              <span className="px-3 py-1 rounded-full bg-white/10">{detailClass.academicYear || 'N/A'}</span>
+              <span className="px-3 py-1 rounded-full bg-white/10">{classGrade}</span>
+              <span className="px-3 py-1 rounded-full bg-white/10">{classSubject}</span>
+              <span className="px-3 py-1 rounded-full bg-white/10">{academicYear}</span>
             </div>
-            <p className="mt-3 text-sm text-slate-300">Teacher: {detailClass.teacherName || 'N/A'}</p>
+            <p className="mt-3 text-sm text-slate-300">Teacher: {teacherName}</p>
           </div>
           <div className="flex items-center gap-3">
             <div className="rounded-xl bg-white/10 px-4 py-3">
               <p className="text-[10px] uppercase tracking-widest text-slate-300">Invite Code</p>
-              <p className="text-lg font-mono tracking-widest">{detailClass.inviteToken || 'N/A'}</p>
+              <p className="text-lg font-mono tracking-widest">{inviteCode}</p>
             </div>
           </div>
         </div>

@@ -238,13 +238,13 @@ export const api = {
     request<any[]>('/teacher/classes'),
 
   getClass: (classId: string) =>
-    request<any>(`/class/${classId}`),
+    request<any>(`/teacher/classes/${classId}`).then((response) => response?.class || response),
 
   getClassStudents: (classId: string) =>
-    request<any[]>(`/class/${classId}/students`),
+    request<any>(`/teacher/classes/${classId}`).then((response) => response?.members || []),
 
   getClassPerformanceSummary: (classId: string) =>
-    request<any>(`/class/${classId}/performance-summary`),
+    request<any>(`/teacher/classes/${classId}/performance-summary`),
 
   validateInviteCode: (code: string) =>
     request<{ classId: string; name: string; grade: string; subject: string; teacherName: string }>(`/class/validate-invite?code=${encodeURIComponent(code)}`),
