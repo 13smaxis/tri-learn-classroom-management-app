@@ -34,9 +34,13 @@ class Logger {
     if (this.level <= LOG_LEVELS.error) {
       if (error instanceof Error) {
         console.error(`[ERROR] ${message}:`, error.message);
-        console.error(error.stack);
+        if (error.stack) {
+          console.error(error.stack);
+        }
+      } else if (error && typeof error === 'object') {
+        console.error(`[ERROR] ${message}`, JSON.stringify(error, null, 2));
       } else {
-        console.error(`[ERROR] ${message}`, error ? JSON.stringify(error) : '');
+        console.error(`[ERROR] ${message}`, error ? String(error) : '');
       }
     }
   }

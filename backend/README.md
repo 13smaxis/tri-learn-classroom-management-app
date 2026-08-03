@@ -33,23 +33,29 @@ npm run dev
 ```text
 backend/
 ├── src/
+│   ├── index.ts            # App bootstrap and route registration
+│   ├── server.ts           # Express server setup
 │   ├── middleware/
-│   │   ├── auth.ts         # JWT verification and tenant context
+│   │   ├── auth.ts         # JWT auth middleware
 │   │   └── cors.ts         # CORS configuration
 │   ├── routes/
-│   │   ├── auth.ts         # Login, signup, and health endpoints
-│   │   └── teacher.ts      # Teacher-focused CRUD and reporting routes
+│   │   ├── auth.ts         # Authentication endpoints
+│   │   └── teacher.ts      # Teacher routes and class management
 │   ├── services/
-│   │   └── supabase.ts     # Supabase client wrapper and data access helpers
-│   ├── utils/
-│   │   └── logger.ts       # Centralized logging helper
-│   ├── server.ts           # Express app bootstrap
-│   └── types/
-│       └── index.ts        # Shared TypeScript interfaces
+│   │   ├── authService.ts  # Auth/business logic helpers
+│   │   └── supabase.ts     # Supabase client and data access helpers
+│   ├── types/
+│   │   └── index.ts        # Shared TypeScript interfaces
+│   └── utils/
+│       ├── inviteCode.ts  # Invite code generation helpers
+│       ├── inviteCode.test.ts # Unit tests for invite codes
+│       └── logger.ts       # Centralized logging helper
 ├── .env.example            # Example environment configuration
-├── index.ts                # Backend entrypoint used by runtime scripts
+├── .env                    # Local environment overrides (not committed)
+├── index.ts                # Runtime entrypoint
 ├── package.json            # Backend scripts and dependencies
-└── tsconfig.json           # TypeScript configuration
+├── tsconfig.json           # TypeScript configuration
+└── README.md               # Backend documentation
 ```
 
 ## Environment Variables

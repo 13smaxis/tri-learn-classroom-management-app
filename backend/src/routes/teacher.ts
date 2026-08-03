@@ -74,6 +74,145 @@ router.get('/classes/:classId', async (req: AuthenticatedRequest, res: Response)
 });
 
 /**
+ * GET /teacher/classes/:classId/members
+ * List learners in a class
+ */
+router.get('/classes/:classId/members', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const classId = req.params.classId;
+    const teacherId = await resolveTeacherId(req);
+    if (!teacherId) {
+      return res.status(403).json({ error: 'Forbidden', message: 'Teacher profile not found' });
+    }
+
+    const classData = await supabaseService.getClass(classId);
+    if (!classData) {
+      return res.status(404).json({ error: 'Not found', message: 'Class not found' });
+    }
+
+    if (classData.teacher_id !== teacherId) {
+      return res.status(403).json({ error: 'Forbidden', message: 'You do not own this class' });
+    }
+
+    const members = await supabaseService.getClassMembers(classId);
+    return res.json({ data: members, total: members.length });
+  } catch (error) {
+    logger.error('Error fetching class members', error);
+    return res.status(500).json({ error: 'Server error', message: 'Failed to fetch class members' });
+  }
+});
+
+/**
+ * POST /teacher/classes/:classId/members
+ * Add learner to class
+ */
+router.post('/classes/:classId/members', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const classId = req.params.classId;
+    const { learner_id, learnerId, status } = req.body;
+    const targetLearnerId = learner_id ?? learnerId;
+
+    if (!targetLearnerId) {
+      return res.status(400).json({ error: 'Bad request', message: 'learner_id is required' });
+    }
+
+    const teacherId = await resolveTeacherId(req);
+    if (!teacherId) {
+      return res.status(403).json({ error: 'Forbidden', message: 'Teacher profile not found' });
+    }
+
+    const classData = await supabaseService.getClass(classId);
+    if (!classData) {
+      return res.status(404).json({ error: 'Not found', message: 'Class not found' });
+    }
+
+    if (classData.teacher_id !== teacherId) {
+      return res.status(403).json({ error: 'Forbidden', message: 'You do not own this class' });
+    }
+
+    const member = await supabaseService.addClassMember(classId, targetLearnerId, status ?? 'active');
+    return res.status(201).json({ data: member });
+  } catch (error: any) {
+    logger.error('Error adding learner to class', error);
+    return res.status(400).json({
+      error: 'Bad request',
+      message: error?.message || 'Failed to add learner to class',
+    });
+  }
+});
+
+/**
+ * PATCH /teacher/classes/:classId/members/:learnerId/status
+ * Update learner's membership status
+ */
+router.patch('/classes/:classId/members/:learnerId/status', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { classId, learnerId } = req.params;
+    const { status } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ error: 'Bad request', message: 'status is required' });
+    }
+
+    const teacherId = await resolveTeacherId(req);
+    if (!teacherId) {
+      return res.status(403).json({ error: 'Forbidden', message: 'Teacher profile not found' });
+    }
+
+    const classData = await supabaseService.getClass(classId);
+    if (!classData) {
+      return res.status(404).json({ error: 'Not found', message: 'Class not found' });
+    }
+
+    if (classData.teacher_id !== teacherId) {
+      return res.status(403).json({ error: 'Forbidden', message: 'You do not own this class' });
+    }
+
+    const member = await supabaseService.updateClassMemberStatus(classId, learnerId, status);
+    return res.json({ data: member });
+  } catch (error: any) {
+    logger.error('Error updating class member status', error);
+    return res.status(400).json({
+      error: 'Bad request',
+      message: error?.message || 'Failed to update class member status',
+    });
+  }
+});
+
+/**
+ * DELETE /teacher/classes/:classId/members/:learnerId
+ * Remove learner from class
+ */
+router.delete('/classes/:classId/members/:learnerId', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { classId, learnerId } = req.params;
+
+    const teacherId = await resolveTeacherId(req);
+    if (!teacherId) {
+      return res.status(403).json({ error: 'Forbidden', message: 'Teacher profile not found' });
+    }
+
+    const classData = await supabaseService.getClass(classId);
+    if (!classData) {
+      return res.status(404).json({ error: 'Not found', message: 'Class not found' });
+    }
+
+    if (classData.teacher_id !== teacherId) {
+      return res.status(403).json({ error: 'Forbidden', message: 'You do not own this class' });
+    }
+
+    await supabaseService.removeClassMember(classId, learnerId);
+    return res.json({ success: true, message: 'Learner removed from class' });
+  } catch (error: any) {
+    logger.error('Error removing learner from class', error);
+    return res.status(400).json({
+      error: 'Bad request',
+      message: error?.message || 'Failed to remove learner from class',
+    });
+  }
+});
+
+/**
  * POST /teacher/classes
  * Create new class
  */

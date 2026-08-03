@@ -1,0 +1,8 @@
+name: SERVICE_ROLE_KEY
+values:
+  - key: supabase_service_role_api_key_0e6l
+    secret: true
+  - key: bearer_token_03gr
+    secret: true
+  - key: json_web_token_0e6l
+    secret: true
