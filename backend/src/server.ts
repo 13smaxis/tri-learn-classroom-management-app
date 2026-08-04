@@ -27,9 +27,15 @@ app.use(corsMiddleware);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Log requests
+// Log incoming requests with route diagnostics
 app.use((req, _res, next) => {
-  logger.debug(`${req.method} ${req.path}`);
+  logger.info('Incoming request', {
+    method: req.method,
+    path: req.path,
+    originalUrl: req.originalUrl,
+    query: req.query,
+    authProvided: Boolean(req.headers.authorization),
+  });
   next();
 });
 
@@ -54,6 +60,16 @@ app.get('/', (_req, res) => {
 
 // 404 handler
 app.use((req, res) => {
+  logger.warn('Request did not match any route', {
+    method: req.method,
+    path: req.path,
+    originalUrl: req.originalUrl,
+    headers: {
+      authorization: req.headers.authorization ? 'present' : 'missing',
+      host: req.headers.host,
+    },
+  });
+
   res.status(404).json({
     error: 'Not found',
     message: `${req.method} ${req.path} not found`,
