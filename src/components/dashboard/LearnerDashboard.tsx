@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import StatsCard from '@/components/ui/StatsCard';
@@ -12,15 +12,9 @@ const LearnerDashboard: React.FC<LearnerDashboardProps> = ({ onViewChange }) => 
   const [enrollments, setEnrollments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (user) {
-      fetchEnrollments();
-    }
-  }, [user]);
-
-  const fetchEnrollments = async () => {
+  const fetchEnrollments = useCallback(async () => {
     if (!user) return;
-    
+
     try {
       const { data, error } = await supabase.functions.invoke('edu-auth', {
         body: { action: 'getUserClasses', userId: user.id, role: 'learner' }
@@ -33,7 +27,13 @@ const LearnerDashboard: React.FC<LearnerDashboardProps> = ({ onViewChange }) => 
       console.error('Error fetching enrollments:', err);
     }
     setLoading(false);
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchEnrollments();
+    }
+  }, [user, fetchEnrollments]);
 
   // Mock data for demonstration
   const stats = {

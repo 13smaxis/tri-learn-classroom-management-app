@@ -93,11 +93,22 @@ const rebuildCsvPreview = (items: ParsedLearner[], existingNames: string[]) =>
 
 const CLASS_SELECTION_STORAGE_KEY = 'triLearn:selectedClassId';
 
+const normalizeLearnerName = (learner: any) => {
+  const firstName = learner.first_name || learner.firstName || '';
+  const lastName = learner.last_name || learner.lastName || '';
+  const nameFromParts = [firstName, lastName].filter(Boolean).join(' ');
+  return nameFromParts || learner.fullName || learner.full_name || learner.name || 'Learner';
+};
+
+const normalizeLearnerNumber = (learner: any, index: number) => {
+  return learner.student_number || learner.learnerNumber || learner.phone || String(index + 1);
+};
+
 const mapLearnersForAttendance = (data: any[]): Learner[] => {
   return (data || []).map((learner: any, index: number) => ({
     id: learner.id || learner.userId || learner.enrollmentId,
-    name: learner.fullName || learner.name,
-    number: learner.learnerNumber || String(index + 1),
+    name: normalizeLearnerName(learner),
+    number: normalizeLearnerNumber(learner, index),
   }));
 };
 
@@ -322,18 +333,6 @@ const AttendanceView: React.FC = () => {
      * Loads attendance for the selected date
      * Note: This will load the attendance for the selected date every time a new class is selected.
      */
-    api.getAttendanceForDate(selectedClass, selectedDate)
-      .then(data => {
-        setAttendanceByDate({ [selectedDate]: data });
-        setLockedAttendanceByDate({ [selectedDate]: buildLockedMapFromAttendance(data) });                      //-Mark already saved learner statuses as locked for this date.
-        setAttendance(data);
-      })
-      .catch(err => {
-        console.error('Failed to load attendance:', err);
-        setAttendanceByDate({});
-        setLockedAttendanceByDate({});
-        setAttendance({});
-      });
   }, [selectedClass, classes]);
 
   useEffect(() => {                                                                                             //-Keeps per-date attendance map in sync with the selected date
@@ -358,7 +357,7 @@ const AttendanceView: React.FC = () => {
         console.error('Failed to load attendance for date:', err);
         setAttendance({});
       });
-  }, [selectedDate, selectedClass]);
+  }, [selectedDate, selectedClass, attendanceByDate]);
 
   // Preload attendance data for daily/weekly/monthly views
   useEffect(() => {
@@ -414,8 +413,11 @@ const AttendanceView: React.FC = () => {
       csvParsedLearners.map(({ isDuplicate, ...rest }) => rest),
       learners.map((learner) => learner.name)
     );
-    setCsvParsedLearners(refreshed);
-  }, [learners]);
+
+    if (JSON.stringify(refreshed) !== JSON.stringify(csvParsedLearners)) {
+      setCsvParsedLearners(refreshed);
+    }
+  }, [learners, csvParsedLearners]);
 
   /**
    * Clears the overlay timer on unmount to avoid state updates after component disposal.
@@ -546,10 +548,15 @@ const AttendanceView: React.FC = () => {
     try {
       const selectedClassInfo = classes.find((cls) => cls.id === selectedClass);
       const generatedNumbers = buildUniqueSixDigitNumbers(finalLearnersToUpload.length, selectedClassInfo?.grade);
-      const payloadLearners = finalLearnersToUpload.map((learner, index) => ({
-        ...learner,
-        learnerNumber: generatedNumbers[index],
-      }));
+      const payloadLearners = finalLearnersToUpload.map((learner, index) => {
+        const parts = learner.fullName.trim().split(/\s+/);
+        return {
+          learnerNumber: generatedNumbers[index],
+          fullName: learner.fullName,
+          firstName: parts.shift() || '',
+          lastName: parts.join(' '),
+        };
+      });
 
       await api.uploadLearners({
         classId: selectedClass,
@@ -561,10 +568,10 @@ const AttendanceView: React.FC = () => {
       setStuProgress(100);
       await new Promise(r => setTimeout(r, 400));
 
-      const mappedLearners = (fullLearnerList || []).map((l: any) => ({
+      const mappedLearners = (fullLearnerList || []).map((l: any, idx: number) => ({
         id: l.id,
-        name: l.fullName,
-        number: l.learnerNumber,
+        name: normalizeLearnerName(l),
+        number: normalizeLearnerNumber(l, idx),
       }));
       setLearners(mappedLearners);
       setAttendance({});
@@ -737,7 +744,7 @@ const AttendanceView: React.FC = () => {
         setSelectedWeekIndex(0);
       }
     }
-  }, [viewMode]);
+  }, [viewMode, selectedDate]);
 
   const activeWeekDays = getWeekDays(selectedDate);
   const monthWeeksForWeekly = getMonthWeeks(viewingMonthDate);

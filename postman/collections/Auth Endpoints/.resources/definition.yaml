@@ -1,2 +1,18 @@
 $kind: collection
 name: Auth Endpoints
+variables:
+  - key: json_web_token_0w17
+    secret: true
+    disabled: false
+  - key: bearer_token_02ym
+    secret: true
+    disabled: false
+  - key: supabase_service_role_api_key_0w17
+    secret: true
+    disabled: false
+  - key: json_web_token_118a
+    secret: true
+    disabled: false
+  - key: bearer_token_06fc
+    secret: true
+    disabled: false

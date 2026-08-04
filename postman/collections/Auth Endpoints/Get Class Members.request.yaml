@@ -1,0 +1,28 @@
+$kind: http-request
+name: Get Class Members
+description: ""
+url: http://localhost:3000/api/attendance/learners/6e45cf85-2b05-403c-83dd-9f81644294b0
+method: GET
+headers:
+  Authorization: Bearer {{json_web_token_118a}}
+  Content-Type: application/json
+body:
+  type: json
+  content: "{\r
+
+    \  \"classId\": \"6e45cf85-2b05-403c-83dd-9f81644294b0\",\r
+
+    \  \"learners\": [\r
+
+    \    {\r
+
+    \      \"learnerNumber\": \"999999\",\r
+
+    \      \"fullName\": \"Test User\"\r
+
+    \    }\r
+
+    \  ]\r
+
+    }"
+order: 3869683836514357

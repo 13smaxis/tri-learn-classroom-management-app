@@ -129,7 +129,7 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass }) =>
         setClassDetails(selectedClass);
       })
       .finally(() => setLoadingData(false));
-  }, [selectedClassId, filterMode, selectedDate, selectedYear, selectedQuarter]);
+  }, [selectedClass, selectedClassId, filterMode, selectedDate, selectedYear, selectedQuarter]);
 
   useEffect(() => {
     if (!selectedClassId) {

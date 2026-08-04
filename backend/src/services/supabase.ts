@@ -577,11 +577,11 @@ export async function updateLearnerRecord(learnerId: string, data: Record<string
  */
 export async function bulkAddLearnersToClass(
   classId: string,
-  learnersData: Array<{ learnerNumber: string; fullName: string; grade?: string }>
+  learnersData: Array<{ learnerNumber: string; firstName: string; lastName: string; grade?: string }>
 ) {
   const results = {
     success: [] as any[],
-    failed: [] as Array<{ learnerNumber: string; fullName: string; error: string }>,
+    failed: [] as Array<{ learnerNumber: string; firstName: string; lastName: string; error: string }>,
     total: learnersData.length,
   };
 
@@ -598,7 +598,8 @@ export async function bulkAddLearnersToClass(
         // Create new learner record (simple - no auth)
         learnerRecord = await createLearnerRecord({
           student_number: learner.learnerNumber,
-          full_name: learner.fullName,
+          first_name: learner.firstName,
+          last_name: learner.lastName,
           grade: learner.grade || null,
           enrollment_date: new Date().toISOString().split('T')[0],
           user_id: null, // Will be filled during onboarding
@@ -606,7 +607,7 @@ export async function bulkAddLearnersToClass(
           updated_at: new Date().toISOString(),
         });
 
-        logger.info(`Learner created: ${learner.learnerNumber} - ${learner.fullName}`, {
+        logger.info(`Learner created: ${learner.learnerNumber} - ${learner.firstName} ${learner.lastName}`, {
           learnerId: learnerRecord.id,
         });
       }
@@ -616,7 +617,8 @@ export async function bulkAddLearnersToClass(
 
       results.success.push({
         learnerNumber: learner.learnerNumber,
-        fullName: learner.fullName,
+        firstName: learner.firstName,
+        lastName: learner.lastName,
         learnerId: learnerRecord.id,
         classMemberId: classMember.id,
       });
@@ -630,7 +632,8 @@ export async function bulkAddLearnersToClass(
 
       results.failed.push({
         learnerNumber: learner.learnerNumber,
-        fullName: learner.fullName,
+        firstName: learner.firstName,
+        lastName: learner.lastName,
         error: error?.message || 'Unknown error',
       });
     }

@@ -1,0 +1,24 @@
+$kind: http-request
+name: Get All Learners In Class
+description: ""
+url: http://localhost:3000/api/attendance/learner/42aa4352-05cb-49c1-83e2-b76dc6206263
+method: GET
+headers:
+  Authorization: "{{bearer_token_02ym}}"
+  Content-Type: application/json
+body:
+  type: json
+  content: "{\r
+
+    \    \"classId\": \"e8469c2b-40e5-43f1-87c0-e1b9e2e39114\",\r
+
+    \    \"learners\": [\r
+
+    \      { \"learnerNumber\": \"080307\", \"fullName\": \"Smith Mbele\" },\r
+
+    \      { \"learnerNumber\": \"080300\", \"fullName\": \"Thato Dlamini\" }\r
+
+    \    ]\r
+
+    \  }"
+order: 2113680534705454

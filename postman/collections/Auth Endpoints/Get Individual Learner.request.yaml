@@ -1,0 +1,9 @@
+$kind: http-request
+name: Get Individual Learner
+description: ""
+url: http://localhost:3000/api/attendance/learner/42aa4352-05cb-49c1-83e2-b76dc6206263
+method: GET
+headers:
+  Authorization: Bearer {{supabase_service_role_api_key_0w17}}
+  Content-Type: application/json
+order: 3226817723877677

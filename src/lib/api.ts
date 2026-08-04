@@ -260,7 +260,7 @@ export const api = {
     request<any[]>('/users'),
 
   // Attendance
-  uploadLearners: (data: { classId: string; learners: { learnerNumber: string; fullName: string }[] }) =>
+  uploadLearners: (data: { classId: string; learners: Array<{ learnerNumber: string; fullName?: string; firstName?: string; lastName?: string }> }) =>
     request<any[]>('/attendance/upload-learners', { method: 'POST', body: JSON.stringify(data) }),
 
   getLearners: (classId: string) =>

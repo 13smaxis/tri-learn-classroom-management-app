@@ -17,6 +17,32 @@ async function resolveTeacherId(req: AuthenticatedRequest) {
   return await supabaseService.getTeacherIdByUserId(req.userId);
 }
 
+function normalizeUploadLearner(learner: any) {
+  const learnerNumber = learner.learnerNumber || learner.student_number || learner.phone;
+  const firstName = learner.firstName || learner.first_name;
+  const lastName = learner.lastName || learner.last_name;
+  const rawFullName = learner.fullName || learner.full_name || '';
+
+  if (!learnerNumber) {
+    throw new Error('Each learner must include learnerNumber or student_number');
+  }
+
+  if (!rawFullName && (!firstName || !lastName)) {
+    throw new Error('Each learner must include fullName or both firstName and lastName');
+  }
+
+  const nameParts = rawFullName.trim().split(/\s+/).filter(Boolean);
+  const normalizedFirstName = (firstName && String(firstName).trim()) || nameParts.shift() || '';
+  const normalizedLastName = (lastName && String(lastName).trim()) || nameParts.join(' ');
+
+  return {
+    learnerNumber: String(learnerNumber),
+    firstName: normalizedFirstName,
+    lastName: normalizedLastName,
+    grade: learner.grade,
+  };
+}
+
 /**
  * POST /api/attendance/upload-learners
  * Upload and add learners to a class
@@ -40,15 +66,7 @@ router.post('/upload-learners', async (req: AuthenticatedRequest, res: Response)
       });
     }
 
-    // Validate learner objects
-    for (const learner of learners) {
-      if (!learner.learnerNumber || !learner.fullName) {
-        return res.status(400).json({
-          error: 'Bad request',
-          message: 'Each learner must have learnerNumber and fullName',
-        });
-      }
-    }
+    const normalizedLearners = learners.map((learner: any) => normalizeUploadLearner(learner));
 
     const teacherId = await resolveTeacherId(req);
     if (!teacherId) {
@@ -74,13 +92,13 @@ router.post('/upload-learners', async (req: AuthenticatedRequest, res: Response)
       });
     }
 
-    logger.info(`Uploading ${learners.length} learners to class ${classId}`, {
+    logger.info(`Uploading ${normalizedLearners.length} learners to class ${classId}`, {
       classId,
-      learnerCount: learners.length,
+      learnerCount: normalizedLearners.length,
     });
 
     // Bulk add learners
-    const results = await supabaseService.bulkAddLearnersToClass(classId, learners);
+    const results = await supabaseService.bulkAddLearnersToClass(classId, normalizedLearners);
 
     logger.info(`Learner upload completed`, {
       classId,
@@ -113,11 +131,13 @@ router.post('/upload-learners', async (req: AuthenticatedRequest, res: Response)
   }
 });
 
+
 /**
- * GET /api/attendance/class/:classId/learners
+ * GET /api/attendance/learners/:classId
  * Get all learners in a class with full details
+ * (Alias for /class/:classId/learners - frontend uses this path)
  */
-router.get('/class/:classId/learners', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/learners/:classId', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { classId } = req.params;
 
@@ -154,12 +174,17 @@ router.get('/class/:classId/learners', async (req: AuthenticatedRequest, res: Re
     const learnersData = await Promise.all(
       members.map(async (member) => {
         const learner = await supabaseService.getLearnerById(member.learner_id);
+        const fullName = learner?.fullName || [learner?.first_name, learner?.last_name].filter(Boolean).join(' ');
+        const learnerNumber = learner?.learnerNumber || learner?.student_number || learner?.phone || '';
+
         return {
           classMemberId: member.id,
           learnerId: member.learner_id,
           status: member.status,
           joinedAt: member.joined_at,
           ...learner,
+          fullName,
+          learnerNumber,
         };
       })
     );
@@ -176,6 +201,72 @@ router.get('/class/:classId/learners', async (req: AuthenticatedRequest, res: Re
     });
   }
 });
+
+
+/**
+ * GET /api/attendance/records/:classId/:date
+ * Get attendance records for a class on a specific date
+ * Date format: YYYY-MM-DD
+ */
+router.get('/records/:classId/:date', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { classId, date } = req.params;
+
+    const teacherId = await resolveTeacherId(req);
+    if (!teacherId) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: 'Teacher profile not found',
+      });
+    }
+
+    // Verify teacher owns this class
+    const classData = await supabaseService.getClass(classId);
+    if (!classData) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'Class not found',
+      });
+    }
+
+    if (classData.teacher_id !== teacherId) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: 'You do not own this class',
+      });
+    }
+
+    logger.info(`Fetching attendance records for class ${classId} on ${date}`);
+
+    // Get attendance records for this class and date
+    const { data: records, error } = await supabaseService.supabase
+      .from('attendance')
+      .select('*')
+      .eq('class_id', classId)
+      .eq('date', date)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      logger.error('Failed to fetch attendance records', error);
+      return res.status(500).json({
+        error: 'Server error',
+        message: 'Failed to fetch attendance records',
+      });
+    }
+
+    return res.json({
+      data: records || [],
+      total: (records || []).length,
+    });
+  } catch (error: any) {
+    logger.error('Error fetching attendance records', error);
+    return res.status(500).json({
+      error: 'Server error',
+      message: error?.message || 'Failed to fetch attendance records',
+    });
+  }
+});
+
 
 /**
  * GET /api/attendance/learner/:learnerId

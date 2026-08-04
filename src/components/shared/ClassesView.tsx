@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 
@@ -15,13 +15,7 @@ const ClassesView: React.FC<ClassesViewProps> = ({ classesVersion, onSelectClass
   const [refreshing, setRefreshing] = useState(false);
   // Removed selectedClass state, now handled by parent
 
-  useEffect(() => {
-    if (user) {
-      fetchClasses(loading);
-    }
-  }, [user, classesVersion]);
-
-  const fetchClasses = async (showInitialLoader = false, retry = true) => {
+  const fetchClasses = useCallback(async (showInitialLoader = false, retry = true) => {
     if (!user) return;
     if (showInitialLoader) {
       setLoading(true);
@@ -44,7 +38,13 @@ const ClassesView: React.FC<ClassesViewProps> = ({ classesVersion, onSelectClass
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchClasses(true);
+    }
+  }, [user, classesVersion, fetchClasses]);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);

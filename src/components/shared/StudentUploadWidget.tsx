@@ -3,6 +3,8 @@ import React, { useEffect, useRef, useState } from 'react';
 export interface ParsedLearner {
   learnerNumber: string;
   fullName: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 interface StudentUploadWidgetProps {
@@ -76,7 +78,7 @@ const StudentUploadWidget: React.FC<StudentUploadWidgetProps> = ({
         const firstName = (nameRaw || '').trim();
         const surname = (surnameRaw || '').trim();
         const fullName = [firstName, surname].filter(Boolean).join(' ') || `Learner ${idx + 1}`;
-        return { learnerNumber, fullName };
+        return { learnerNumber, fullName, firstName, lastName: surname };
       });
       setCsvLearners(parsed);
     };
@@ -123,9 +125,13 @@ const StudentUploadWidget: React.FC<StudentUploadWidgetProps> = ({
             usedIds.add(learnerNumber);
           }
         }
+        const firstName = r.name.trim();
+        const lastName = r.surname.trim();
         return {
           learnerNumber,
-          fullName: [r.name.trim(), r.surname.trim()].filter(Boolean).join(' '),
+          fullName: [firstName, lastName].filter(Boolean).join(' '),
+          firstName,
+          lastName,
         };
       });
     if (parsed.length === 0) return;
