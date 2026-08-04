@@ -207,6 +207,8 @@ function validateClassMemberStatus(status?: string): ClassMemberStatus {
  */
 export async function getClassMembers(classId: string) {
   try {
+    logger.debug('Querying class_members table for class', { classId });
+
     const { data, error } = await supabase
       .from('class_members')
       .select('id, class_id, learner_id, joined_at, status')
@@ -214,13 +216,15 @@ export async function getClassMembers(classId: string) {
       .order('joined_at', { ascending: false });
 
     if (error) {
-      logger.error('Failed to get class members', error);
+      logger.error('Failed to get class members', error, { classId });
       return [];
     }
 
-    return data || [];
+    const members = data || [];
+    logger.info('Class members fetched', { classId, memberCount: members.length });
+    return members;
   } catch (error) {
-    logger.error('Error fetching class members', error);
+    logger.error('Error fetching class members', error, { classId });
     return [];
   }
 }
@@ -525,6 +529,8 @@ export async function getLearnerByStudentNumber(studentNumber: string) {
  */
 export async function getLearnerById(learnerId: string) {
   try {
+    logger.debug('Querying learners table by id', { learnerId });
+
     const { data, error } = await supabase
       .from('learners')
       .select('*')
@@ -532,13 +538,22 @@ export async function getLearnerById(learnerId: string) {
       .single();
 
     if (error) {
-      logger.error('Failed to get learner by id', error);
+      logger.error('Failed to get learner by id', error, { learnerId });
       return null;
     }
 
+    if (!data) {
+      logger.warn('Learner record not found', { learnerId });
+      return null;
+    }
+
+    logger.info('Learner record fetched', {
+      learnerId,
+      learnerName: [data.first_name, data.last_name].filter(Boolean).join(' ') || data.fullName || null,
+    });
     return data;
   } catch (error) {
-    logger.error('Error fetching learner by id', error);
+    logger.error('Error fetching learner by id', error, { learnerId });
     return null;
   }
 }

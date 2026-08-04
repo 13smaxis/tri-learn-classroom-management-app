@@ -3,6 +3,7 @@ import { Router, Response } from 'express';
 import { authMiddleware, requireRole, type AuthenticatedRequest } from '../middleware/auth.js';
 import * as supabaseService from '../services/supabase.js';
 import { logger } from '../utils/logger.js';
+import { v4 as uuidv4 } from 'uuid';
 
 const router = Router();
 
@@ -138,8 +139,12 @@ router.post('/upload-learners', async (req: AuthenticatedRequest, res: Response)
  * (Alias for /class/:classId/learners - frontend uses this path)
  */
 router.get('/learners/:classId', async (req: AuthenticatedRequest, res: Response) => {
+  console.log('[LEARNERS ENDPOINT] Called with classId:', req.params.classId);
+  console.log('[LEARNERS ENDPOINT] User ID:', req.userId);
+
   try {
     const { classId } = req.params;
+    console.log('[LEARNERS ENDPOINT] Proceeding with classId:', classId);
 
     const teacherId = await resolveTeacherId(req);
     if (!teacherId) {
@@ -165,15 +170,26 @@ router.get('/learners/:classId', async (req: AuthenticatedRequest, res: Response
       });
     }
 
-    logger.info(`Fetching learners for class ${classId}`);
+    const requestId = uuidv4();
+    logger.info('Fetching learners for class', { requestId, classId, teacherId });
 
     // Get class members
     const members = await supabaseService.getClassMembers(classId);
+    logger.info('Resolved class members', { requestId, classId, memberCount: members.length });
 
     // Fetch learner details for each member
     const learnersData = await Promise.all(
       members.map(async (member) => {
         const learner = await supabaseService.getLearnerById(member.learner_id);
+        if (!learner) {
+          logger.warn('Missing learner record for class member', {
+            requestId,
+            classId,
+            classMemberId: member.id,
+            learnerId: member.learner_id,
+          });
+        }
+
         const fullName = learner?.fullName || [learner?.first_name, learner?.last_name].filter(Boolean).join(' ');
         const learnerNumber = learner?.learnerNumber || learner?.student_number || learner?.phone || '';
 
@@ -188,6 +204,15 @@ router.get('/learners/:classId', async (req: AuthenticatedRequest, res: Response
         };
       })
     );
+
+    const missingRecords = learnersData.filter((item) => !item.id).length;
+    logger.info('Completed learner detail resolution', {
+      requestId,
+      classId,
+      totalMembers: members.length,
+      returnedLearners: learnersData.length,
+      missingLearnerRecords: missingRecords,
+    });
 
     return res.json({
       data: learnersData,
@@ -462,6 +487,84 @@ router.patch('/class/:classId/learner/:learnerId/status', async (req: Authentica
     return res.status(400).json({
       error: 'Bad request',
       message: error?.message || 'Failed to update learner status',
+    });
+  }
+});
+
+/**
+ * POST /api/attendance/save
+ * Save attendance records for a class and date
+ */
+router.post('/save', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { classId, date, attendance } = req.body;
+
+    if (!classId || !date || !attendance) {
+      return res.status(400).json({
+        error: 'Bad request',
+        message: 'classId, date, and attendance are required',
+      });
+    }
+
+    const teacherId = await resolveTeacherId(req);
+    if (!teacherId) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: 'Teacher profile not found',
+      });
+    }
+
+    // Verify teacher owns this class
+    const classData = await supabaseService.getClass(classId);
+    if (!classData) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'Class not found',
+      });
+    }
+
+    if (classData.teacher_id !== teacherId) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: 'You do not own this class',
+      });
+    }
+
+    logger.info(`Saving attendance for class ${classId} on ${date}`, {
+      classId,
+      date,
+      recordCount: Object.keys(attendance).length,
+    });
+
+    // Save each attendance record
+    const records = Object.entries(attendance).map(([learnerId, status]) => ({
+      class_id: classId,
+      learner_id: learnerId,
+      date,
+      status,
+      created_at: new Date().toISOString(),
+    }));
+
+    const { error } = await supabaseService.supabase
+      .from('attendance')
+      .upsert(records, { onConflict: 'class_id,learner_id,date' });
+
+    if (error) {
+      logger.error('Failed to save attendance', error);
+      return res.status(500).json({
+        error: 'Server error',
+        message: 'Failed to save attendance',
+      });
+    }
+
+    logger.info(`Attendance saved successfully for class ${classId} on ${date}`);
+
+    return res.json({ success: true, message: 'Attendance saved' });
+  } catch (error: any) {
+    logger.error('Error saving attendance', error);
+    return res.status(500).json({
+      error: 'Server error',
+      message: error?.message || 'Failed to save attendance',
     });
   }
 });

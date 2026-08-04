@@ -85,23 +85,28 @@ router.get('/classes/:classId/members', async (req: AuthenticatedRequest, res: R
       return res.status(403).json({ error: 'Forbidden', message: 'Teacher profile not found' });
     }
 
+    const requestId = uuidv4();
+    logger.info('Teacher class members request started', { requestId, classId, teacherId });
+
     const classData = await supabaseService.getClass(classId);
     if (!classData) {
+      logger.warn('Class not found when fetching members', { requestId, classId, teacherId });
       return res.status(404).json({ error: 'Not found', message: 'Class not found' });
     }
 
     if (classData.teacher_id !== teacherId) {
+      logger.warn('Unauthorized access to class members', { requestId, classId, teacherId });
       return res.status(403).json({ error: 'Forbidden', message: 'You do not own this class' });
     }
 
     const members = await supabaseService.getClassMembers(classId);
+    logger.info('Fetched class members', { requestId, classId, teacherId, memberCount: members.length });
     return res.json({ data: members, total: members.length });
   } catch (error) {
-    logger.error('Error fetching class members', error);
+    logger.error('Error fetching class members', error, { requestId: 'unknown', classId: req.params.classId, teacherId: req.userId });
     return res.status(500).json({ error: 'Server error', message: 'Failed to fetch class members' });
   }
 });
-
 /**
  * POST /teacher/classes/:classId/members
  * Add learner to class
