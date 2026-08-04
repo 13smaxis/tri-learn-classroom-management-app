@@ -262,6 +262,7 @@ router.get('/records/:classId/:date', async (req: AuthenticatedRequest, res: Res
     }
 
     logger.info(`Fetching attendance records for class ${classId} on ${date}`);
+    console.log(`[ATTENDANCE RECORDS] Fetching records for classId: ${classId}, date: ${date}`);
 
     // Get attendance records for this class and date
     const { data: records, error } = await supabaseService.supabase
