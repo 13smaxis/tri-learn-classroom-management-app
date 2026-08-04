@@ -542,7 +542,7 @@ router.post('/save', async (req: AuthenticatedRequest, res: Response) => {
       learner_id: learnerId,
       date,
       status,
-      created_at: new Date().toISOString(),
+      recorded_at: new Date().toISOString(),
     }));
 
     const { error } = await supabaseService.supabase
