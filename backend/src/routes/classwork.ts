@@ -51,4 +51,34 @@ router.get('/list/:classId', async (req: AuthenticatedRequest, res: Response) =>
   }
 });
 
+/**
+ * GET /api/classwork/detail/:id
+ * Return a single classwork item by id
+ */
+router.get('/detail/:id', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const teacherId = await resolveTeacherId(req);
+    if (!teacherId) {
+      return res.status(403).json({ error: 'Forbidden', message: 'Teacher profile not found' });
+    }
+
+    const detail = await supabaseService.getClassworkDetail(id);
+    if (!detail) {
+      return res.status(404).json({ error: 'Not found', message: 'Classwork not found' });
+    }
+
+    // Verify teacher owns this classwork (teacher_id on classwork)
+    if (detail.teacherId !== teacherId) {
+      return res.status(403).json({ error: 'Forbidden', message: 'You do not own this classwork' });
+    }
+
+    return res.json({ data: detail });
+  } catch (error: any) {
+    logger.error('Error fetching classwork detail', error);
+    return res.status(500).json({ error: 'Server error', message: error?.message || 'Failed to fetch classwork detail' });
+  }
+});
+
 export default router;

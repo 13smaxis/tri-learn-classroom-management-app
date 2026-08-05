@@ -684,3 +684,209 @@ export async function getClassworkByClass(classId: string) {
     return [];
   }
 }
+
+/**
+ * Get classwork item by id
+ */
+export async function getClassworkById(id: string) {
+  try {
+    logger.debug('Querying classwork table by id', { id });
+
+    const { data, error } = await supabase
+      .from('classwork')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      logger.error('Failed to get classwork by id', error, { id });
+      return null;
+    }
+
+    if (!data) {
+      logger.warn('Classwork record not found', { id });
+      return null;
+    }
+
+    logger.info('Classwork record fetched', { id, title: data.title });
+    return data;
+  } catch (error) {
+    logger.error('Error fetching classwork by id', error, { id });
+    return null;
+  }
+}
+
+/**
+ * Get aggregated classwork detail suitable for frontend consumption
+ */
+export async function getClassworkDetail(id: string) {
+  try {
+    const classwork = await getClassworkById(id);
+    if (!classwork) return null;
+
+    const classId = classwork.class_id ?? classwork.classId;
+
+    // Get class members
+    const members = await getClassMembers(classId);
+
+    const learnerIds = (members || []).map((m: any) => m.learner_id).filter(Boolean);
+
+    // Bulk fetch learners
+    let learnersMap: Record<string, any> = {};
+    if (learnerIds.length > 0) {
+      try {
+        const { data: learnersData, error: learnersError } = await supabase
+          .from('learners')
+          .select('*')
+          .in('id', learnerIds);
+
+        if (!learnersError && Array.isArray(learnersData)) {
+          learnersMap = (learnersData || []).reduce((acc: any, l: any) => {
+            acc[l.id] = l;
+            return acc;
+          }, {} as Record<string, any>);
+        }
+      } catch (err) {
+        logger.warn('Failed to bulk fetch learners', err);
+      }
+    }
+
+    // Try to fetch submissions (several possible table names)
+    let submissions: any[] = [];
+    const submissionTableCandidates = ['classwork_submissions', 'submissions', 'class_submissions'];
+    for (const tbl of submissionTableCandidates) {
+      try {
+        const { data, error } = await supabase
+          .from(tbl)
+          .select('*')
+          .eq('classwork_id', id);
+        if (!error && Array.isArray(data) && data.length > 0) {
+          submissions = data;
+          break;
+        }
+      } catch (err) {
+        // ignore and try next
+      }
+    }
+
+    // Fallback: try marks table to infer submissions by classwork reference
+    let marksForClasswork: any[] = [];
+    try {
+      const { data: marksData, error: marksError } = await supabase
+        .from('marks')
+        .select('*')
+        .eq('classwork_id', id);
+      if (!marksError && Array.isArray(marksData) && marksData.length > 0) {
+        marksForClasswork = marksData;
+      }
+    } catch (err) {
+      // ignore
+    }
+
+    // Try to fetch stars/awards for this classwork
+    let stars: any[] = [];
+    const starTableCandidates = ['classwork_stars', 'stars', 'awards'];
+    for (const tbl of starTableCandidates) {
+      try {
+        const { data, error } = await supabase
+          .from(tbl)
+          .select('*')
+          .eq('classwork_id', id);
+        if (!error && Array.isArray(data) && data.length > 0) {
+          stars = data;
+          break;
+        }
+      } catch (err) {
+        // ignore
+      }
+    }
+
+    // Build lookup maps
+    const submissionsByLearner: Record<string, any> = {};
+    for (const s of submissions) {
+      if (s.learner_id) submissionsByLearner[s.learner_id] = s;
+    }
+    for (const m of marksForClasswork) {
+      if (m.learner_id && !submissionsByLearner[m.learner_id]) submissionsByLearner[m.learner_id] = m;
+    }
+
+    const starsByLearner: Record<string, any> = {};
+    for (const s of stars) {
+      if (!s.learner_id) continue;
+      if (!starsByLearner[s.learner_id]) starsByLearner[s.learner_id] = [];
+      starsByLearner[s.learner_id].push(s);
+    }
+
+    const totalLearners = learnerIds.length;
+    let submittedCount = 0;
+    let passCount = 0;
+
+    const passMark = (classwork.pass_mark ?? classwork.passMark ?? 50);
+
+    const learnerRows = (members || []).map((member: any) => {
+      const learner = learnersMap[member.learner_id] || null;
+      const submission = submissionsByLearner[member.learner_id] || null;
+
+      const mark = submission && (submission.mark ?? submission.score ?? submission.points ?? null);
+      const submitted = Boolean(submission);
+      const passed = typeof mark === 'number' ? mark >= passMark : false;
+
+      if (submitted) submittedCount += 1;
+      if (passed) passCount += 1;
+
+      const starList = starsByLearner[member.learner_id] || [];
+
+      return {
+        learnerId: member.learner_id,
+        classMemberId: member.id,
+        firstName: learner?.first_name ?? learner?.firstName ?? null,
+        lastName: learner?.last_name ?? learner?.lastName ?? null,
+        fullName: [learner?.first_name, learner?.last_name].filter(Boolean).join(' ') || learner?.full_name || null,
+        studentNumber: learner?.student_number ?? learner?.phone ?? learner?.phone_number ?? null,
+        submitted,
+        submissionId: submission?.id ?? null,
+        mark: typeof mark === 'number' ? mark : null,
+        passed,
+        totalStars: Array.isArray(starList) ? starList.length : 0,
+        classworkStarAwarded: (starList || []).some((s: any) => s.classwork_id === id),
+      };
+    });
+
+    const submissionRate = totalLearners > 0 ? Math.round((submittedCount / totalLearners) * 100) : 0;
+    const passRate = totalLearners > 0 ? Math.round((passCount / totalLearners) * 100) : 0;
+
+    // Top learners by mark (use marksForClasswork + submissions if available)
+    const scoredRows = learnerRows.filter((r: any) => typeof r.mark === 'number');
+    const topLearners = scoredRows.sort((a: any, b: any) => (b.mark - a.mark)).slice(0, 5).map((r: any) => ({
+      learnerId: r.learnerId,
+      fullName: r.fullName,
+      mark: r.mark,
+    }));
+
+    // Map classwork record to camelCase DTO
+    const dto: Record<string, any> = {
+      id: classwork.id,
+      title: classwork.title,
+      description: classwork.description ?? classwork.body ?? null,
+      classId,
+      teacherId: classwork.teacher_id ?? classwork.teacherId ?? null,
+      lessonDate: classwork.lesson_date ?? classwork.lessonDate ?? null,
+      dueDate: classwork.due_date ?? classwork.dueDate ?? null,
+      createdAt: classwork.created_at ?? classwork.createdAt ?? null,
+      updatedAt: classwork.updated_at ?? classwork.updatedAt ?? null,
+      totalLearners,
+      submittedCount,
+      submissionRate,
+      passCount,
+      passRate,
+      learnerRows,
+      topLearners,
+      raw: classwork,
+    };
+
+    return dto;
+  } catch (error) {
+    logger.error('Error building classwork detail', error, { id });
+    return null;
+  }
+}
