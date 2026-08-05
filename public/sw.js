@@ -1,4 +1,4 @@
-const CACHE_NAME = 'educonnect-v2';
+const CACHE_NAME = 'trilearn-v2';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -106,7 +106,7 @@ self.addEventListener('activate', (event) => {
 // Push notification event
 self.addEventListener('push', (event) => {
   const options = {
-    body: event.data ? event.data.text() : 'New notification from EduConnect',
+    body: event.data ? event.data.text() : 'New notification from TriLearn',
     icon: '/icon-192.png',
     badge: '/icon-192.png',
     vibrate: [100, 50, 100],
@@ -115,9 +115,9 @@ self.addEventListener('push', (event) => {
       primaryKey: 1
     }
   };
-
+  
   event.waitUntil(
-    self.registration.showNotification('EduConnect', options)
+    self.registration.showNotification('TriLearn', options)
   );
 });
 

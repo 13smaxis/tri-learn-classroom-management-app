@@ -122,7 +122,12 @@ export const api = {
       body: JSON.stringify({ learnerId, classId }),
     }),
 
-  // Classwork
+  /*
+   * Classwork endpoints
+   * Responsible for creating, listing, counting, deleting, and managing submissions and marks for classwork.
+   * Each function corresponds to a specific API endpoint and handles the necessary HTTP method and request body.
+   * The functions return promises that resolve to the expected data type, allowing for easy integration with the frontend components.
+   */
   createClasswork: (data: { classId: string; title: string; description: string; dueDate: string; attachmentUrls: string[] }) =>
     request<any>('/classwork/create', { method: 'POST', body: JSON.stringify(data) }),
   getClassworkList: (classId: string) =>

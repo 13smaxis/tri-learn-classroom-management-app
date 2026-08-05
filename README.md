@@ -34,13 +34,71 @@ root/
 │   └── terraform/
 ├── public/
 ├── restore_check/
+## Project structure
+```text
+root/
+├── backend/
+│   ├── index.ts
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── src/
+│       ├── index.ts
+│       ├── server.ts
+│       ├── middleware/
+│       │   ├── auth.ts
+│       │   └── cors.ts
+│       ├── routes/
+│       │   ├── attendance.ts
+│       │   ├── auth.ts
+│       │   └── teacher.ts
+│       ├── services/
+│       │   ├── authService.ts
+│       │   └── supabase.ts
+│       ├── types/
+│       │   └── index.ts
+│       └── utils/
+│           ├── inviteCode.test.ts
+│           ├── inviteCode.ts
+│           └── logger.ts
+├── data/
+├── docs/
+├── api-spec.md
+├── architecture.md
+├── deployment.md
+├── development.md
+├── PROJECT_SETUP.md
+├── PROJECT_STRUCTURE.md
+├── QUICK_START.md
+├── SUPABASE_SETUP.md
+├── infra/
+│   └── terraform/
+│       ├── main.tf
+│       ├── outputs.tf
+│       └── variables.tf
+├── postman/
+│   ├── collections/
+│   ├── environments/
+│   ├── flows/
+│   ├── globals/
+│   └── mocks/
+├── public/
+│   ├── manifest.json
+│   ├── robots.txt
+│   └── sw.js
 ├── src/
+│   ├── main.tsx
+│   ├── App.tsx
+│   ├── index.css
+│   ├── vite-env.d.ts
 │   ├── components/
+│   │   ├── AppLayout.tsx
+│   │   ├── ProtectedRoute.tsx
+│   │   └── theme-provider.tsx
 │   │   ├── auth/
 │   │   ├── dashboard/
-│   │   │   ├──LearnerDashboard.tsx
-│   │   │   ├──ParentDashboard.tsx
-│   │   │   ├──TeacherDashboard.tsx
+│   │   │   ├── LearnerDashboard.tsx
+│   │   │   ├── ParentDashboard.tsx
+│   │   │   └── TeacherDashboard.tsx
 │   │   ├── landing/
 │   │   ├── layout/
 │   │   ├── learner/
@@ -49,13 +107,21 @@ root/
 │   │   ├── teacher/
 │   │   └── ui/
 │   ├── contexts/
+│   │   ├── AppContext.tsx
+│   │   └── AuthContext.tsx
 │   ├── hooks/
+│   │   ├── use-mobile.tsx
+│   │   └── use-toast.ts
 │   ├── lib/
+│   │   ├── api.ts
+│   │   ├── supabase.ts
+│   │   └── utils.ts
 │   ├── pages/
-│   ├── services/
-│   ├── App.tsx
-│   ├── index.css
-│   └── main.tsx
+│   │   ├── Index.tsx
+│   │   └── NotFound.tsx
+│   └── services/
+│       ├── authService.ts
+│       └── teacherService.ts
 ├── components.json
 ├── eslint.config.js
 ├── index.html
@@ -68,13 +134,3 @@ root/
 ├── vite.config.ts
 └── VERIFICATION_CHECKLIST.md
 ```
-
-## Environment variables
-Frontend:
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
-
-Backend:
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your-anon-key
-PORT=3000

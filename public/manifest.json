@@ -1,7 +1,7 @@
 {
-  "name": "EduConnect - Education Management Platform",
-  "short_name": "EduConnect",
-  "description": "Connect teachers, parents, and learners on one powerful education management platform",
+  "name": "TriLearn - Classroom Management Platform",
+  "short_name": "TriLearn",
+  "description": "Connect teachers, parents, and learners on one powerful classroom management platform",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

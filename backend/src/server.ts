@@ -43,6 +43,8 @@ app.use((req, _res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/teacher', teacherRoutes);
 app.use('/api/attendance', attendanceRoutes);
+//app.use('/api/classwork', classworkRoutes);
+//app.use('/api/homework', homeworkRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

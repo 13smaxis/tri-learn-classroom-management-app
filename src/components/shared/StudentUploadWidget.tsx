@@ -115,8 +115,9 @@ const StudentUploadWidget: React.FC<StudentUploadWidgetProps> = ({
     const parsed: ParsedLearner[] = manualRows
       .filter(r => r.name.trim() || r.surname.trim())
       .map((r, idx) => {
-        let learnerNumber = r.id.trim();
-        if (!/^ST\d{6}$/.test(learnerNumber) || usedIds.has(learnerNumber)) {
+        let learnerNumber = r.id.trim();                                                                                          //- Use the manually entered ID if provided, otherwise generate a new one
+        if (!/^ST\d{6}$/.test(learnerNumber) || usedIds.has(learnerNumber))                                                       //- Check if the ID is valid and unique; if not, generate a new one
+        {
           learnerNumber = generateUniqueId(usedIds);
         } else {
           usedIds.add(learnerNumber);
