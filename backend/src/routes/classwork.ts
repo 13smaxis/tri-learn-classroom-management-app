@@ -81,4 +81,81 @@ router.get('/detail/:id', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
+/**
+ * POST /api/classwork/:id/bulk-submissions
+ * Update submission state and marks for multiple learners
+ */
+router.post('/:id/bulk-submissions', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { entries } = req.body;
+
+    if (!Array.isArray(entries) || entries.some((entry: any) => typeof entry.learnerId !== 'string')) {
+      return res.status(400).json({ error: 'Bad request', message: 'Entries must be an array of { learnerId, submitted, mark } objects' });
+    }
+
+    const teacherId = await resolveTeacherId(req);
+    if (!teacherId) {
+      return res.status(403).json({ error: 'Forbidden', message: 'Teacher profile not found' });
+    }
+
+    const classwork = await supabaseService.getClassworkById(id);
+    if (!classwork) {
+      return res.status(404).json({ error: 'Not found', message: 'Classwork not found' });
+    }
+
+    if (classwork.teacher_id !== teacherId) {
+      return res.status(403).json({ error: 'Forbidden', message: 'You do not own this classwork' });
+    }
+
+    const classId = classwork.class_id ?? classwork.classId;
+    const updated = await supabaseService.updateClassworkSubmissions(id, classId, entries, teacherId);
+
+    return res.json({ success: true, data: updated, total: updated.length });
+  } catch (error: any) {
+    logger.error('Error updating classwork submissions', error);
+    return res.status(500).json({ error: 'Server error', message: error?.message || 'Failed to update classwork submissions' });
+  }
+});
+
+/**
+ * POST /api/classwork/:id/toggle-star
+ * Toggle a star for a learner on this classwork item
+ */
+router.post('/:id/toggle-star', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { learnerId, classId } = req.body;
+
+    if (typeof learnerId !== 'string' || typeof classId !== 'string') {
+      return res.status(400).json({ error: 'Bad request', message: 'learnerId and classId are required' });
+    }
+
+    const teacherId = await resolveTeacherId(req);
+    if (!teacherId) {
+      return res.status(403).json({ error: 'Forbidden', message: 'Teacher profile not found' });
+    }
+
+    const classwork = await supabaseService.getClassworkById(id);
+    if (!classwork) {
+      return res.status(404).json({ error: 'Not found', message: 'Classwork not found' });
+    }
+
+    const resolvedClassId = classwork.class_id ?? classwork.classId;
+    if (resolvedClassId !== classId) {
+      return res.status(400).json({ error: 'Bad request', message: 'Class ID does not match classwork' });
+    }
+
+    if (classwork.teacher_id !== teacherId) {
+      return res.status(403).json({ error: 'Forbidden', message: 'You do not own this classwork' });
+    }
+
+    const result = await supabaseService.toggleClassworkStar(id, classId, learnerId, teacherId);
+    return res.json({ success: true, awarded: result.awarded });
+  } catch (error: any) {
+    logger.error('Error toggling classwork star', error);
+    return res.status(500).json({ error: 'Server error', message: error?.message || 'Failed to toggle classwork star' });
+  }
+});
+
 export default router;

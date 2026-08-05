@@ -9,6 +9,8 @@ import authRoutes from './routes/auth.js';
 import teacherRoutes from './routes/teacher.js';
 import attendanceRoutes from './routes/attendance.js';
 import classworkRoutes from './routes/classwork.js';
+import homeworkRoutes from './routes/homework.js';
+import assignmentRoutes from './routes/assignment.js';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from './services/supabase.js';
 
@@ -45,6 +47,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/teacher', teacherRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/classwork', classworkRoutes);
+app.use('/api/homework', homeworkRoutes);
+app.use('/api/assignment', assignmentRoutes);
 
 
 // Health check

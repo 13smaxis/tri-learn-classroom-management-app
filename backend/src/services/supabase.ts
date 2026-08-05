@@ -418,6 +418,1088 @@ export async function recordMarks(marksData: Record<string, unknown>) {
 }
 
 /**
+ * Update classwork submissions and marks
+ */
+export async function updateClassworkSubmissions(
+  classworkId: string,
+  classId: string,
+  entries: { learnerId: string; submitted: boolean; mark: number | null }[],
+  teacherId: string,
+) {
+  try {
+    const results: any[] = [];
+
+    for (const entry of entries) {
+      const { learnerId, submitted, mark } = entry;
+      if (!learnerId) continue;
+
+      const { data: existingRecord, error: fetchError } = await supabase
+        .from('marks')
+        .select('id')
+        .eq('classwork_id', classworkId)
+        .eq('learner_id', learnerId)
+        .maybeSingle();
+
+      if (fetchError) {
+        logger.error('Failed to fetch existing classwork mark record', fetchError, {
+          classworkId,
+          learnerId,
+        });
+        throw new Error('Failed to update classwork submissions');
+      }
+
+      if (!submitted) {
+        if (existingRecord?.id) {
+          const { error: deleteError } = await supabase
+            .from('marks')
+            .delete()
+            .eq('id', existingRecord.id);
+
+          if (deleteError) {
+            logger.error('Failed to delete classwork mark record', deleteError, {
+              classworkId,
+              learnerId,
+            });
+            throw new Error('Failed to update classwork submissions');
+          }
+        }
+
+        continue;
+      }
+
+      const recordData: Record<string, unknown> = {
+        classwork_id: classworkId,
+        class_id: classId,
+        learner_id: learnerId,
+        mark,
+        total_mark: mark !== null ? 100 : null,
+        percentage: mark !== null ? Math.round((mark / 100) * 10000) / 100 : null,
+        recorded_by: teacherId,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (existingRecord?.id) {
+        const { data, error } = await supabase
+          .from('marks')
+          .update(recordData)
+          .eq('id', existingRecord.id)
+          .select()
+          .single();
+
+        if (error) {
+          logger.error('Failed to update classwork mark record', error, {
+            classworkId,
+            learnerId,
+          });
+          throw new Error('Failed to update classwork submissions');
+        }
+
+        results.push(data);
+      } else {
+        const insertData = {
+          id: uuidv4(),
+          ...recordData,
+          created_at: new Date().toISOString(),
+        };
+
+        const { data, error } = await supabase
+          .from('marks')
+          .insert([insertData])
+          .select()
+          .single();
+
+        if (error) {
+          logger.error('Failed to insert classwork mark record', error, {
+            classworkId,
+            learnerId,
+          });
+          throw new Error('Failed to update classwork submissions');
+        }
+
+        results.push(data);
+      }
+    }
+
+    return results;
+  } catch (error) {
+    logger.error('Error updating classwork submissions', error, {
+      classworkId,
+      classId,
+      teacherId,
+    });
+    throw error;
+  }
+}
+
+/**
+ * Toggle a classwork star for a learner
+ */
+export async function toggleClassworkStar(
+  classworkId: string,
+  classId: string,
+  learnerId: string,
+  teacherId: string,
+) {
+  try {
+    const { data: existingStar, error: fetchError } = await supabase
+      .from('stars')
+      .select('id')
+      .eq('classwork_id', classworkId)
+      .eq('class_id', classId)
+      .eq('learner_id', learnerId)
+      .maybeSingle();
+
+    if (fetchError) {
+      logger.error('Failed to fetch existing star record', fetchError, {
+        classworkId,
+        classId,
+        learnerId,
+      });
+      throw new Error('Failed to toggle star');
+    }
+
+    if (existingStar?.id) {
+      const { error: deleteError } = await supabase
+        .from('stars')
+        .delete()
+        .eq('id', existingStar.id);
+
+      if (deleteError) {
+        logger.error('Failed to delete star record', deleteError, {
+          classworkId,
+          classId,
+          learnerId,
+        });
+        throw new Error('Failed to toggle star');
+      }
+
+      return { awarded: false };
+    }
+
+    const starData = {
+      id: uuidv4(),
+      classwork_id: classworkId,
+      class_id: classId,
+      learner_id: learnerId,
+      teacher_id: teacherId,
+      star_count: 1,
+      note: 'Classwork star',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data: createdStar, error: insertError } = await supabase
+      .from('stars')
+      .insert([starData])
+      .select()
+      .single();
+
+    if (insertError) {
+      logger.error('Failed to insert star record', insertError, {
+        classworkId,
+        classId,
+        learnerId,
+      });
+      throw new Error('Failed to toggle star');
+    }
+
+    return { awarded: true, star: createdStar };
+  } catch (error) {
+    logger.error('Error toggling classwork star', error, {
+      classworkId,
+      classId,
+      learnerId,
+      teacherId,
+    });
+    throw error;
+  }
+}
+
+export async function createHomework(homeworkData: Record<string, unknown>) {
+  try {
+    const { data, error } = await supabase
+      .from('homework')
+      .insert([homeworkData])
+      .select()
+      .single();
+
+    if (error) {
+      logger.error('Failed to create homework', error);
+      throw new Error(error.message || 'Failed to create homework');
+    }
+
+    return data;
+  } catch (error) {
+    logger.error('Error creating homework', error);
+    throw error;
+  }
+}
+
+export async function getHomeworkCount() {
+  try {
+    const { count, error } = await supabase
+      .from('homework')
+      .select('id', { count: 'exact', head: true });
+
+    if (error) {
+      logger.error('Failed to count homework', error);
+      return 0;
+    }
+
+    return count ?? 0;
+  } catch (error) {
+    logger.error('Error counting homework', error);
+    return 0;
+  }
+}
+
+export async function getHomeworkCountForClass(classId: string) {
+  try {
+    const { count, error } = await supabase
+      .from('homework')
+      .select('id', { count: 'exact', head: true })
+      .eq('class_id', classId);
+
+    if (error) {
+      logger.error('Failed to count homework for class', error, { classId });
+      return 0;
+    }
+
+    return count ?? 0;
+  } catch (error) {
+    logger.error('Error counting homework for class', error, { classId });
+    return 0;
+  }
+}
+
+export async function getHomeworkByClass(classId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('homework')
+      .select('*')
+      .eq('class_id', classId)
+      .order('due_date', { ascending: false })
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      logger.error('Failed to get homework for class', error, { classId });
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    logger.error('Error fetching homework for class', error, { classId });
+    return [];
+  }
+}
+
+export async function getHomeworkById(id: string) {
+  try {
+    const { data, error } = await supabase
+      .from('homework')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      logger.error('Failed to get homework by id', error, { id });
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    logger.error('Error fetching homework by id', error, { id });
+    return null;
+  }
+}
+
+export async function getHomeworkDetail(id: string) {
+  try {
+    const homework = await getHomeworkById(id);
+    if (!homework) return null;
+
+    const classId = homework.class_id ?? homework.classId;
+    const members = await getClassMembers(classId);
+    const learnerIds = (members || []).map((m: any) => m.learner_id).filter(Boolean);
+
+    let learnersMap: Record<string, any> = {};
+    if (learnerIds.length > 0) {
+      const { data: learnersData, error: learnersError } = await supabase
+        .from('learners')
+        .select('*')
+        .in('id', learnerIds);
+
+      if (!learnersError && Array.isArray(learnersData)) {
+        learnersMap = learnersData.reduce((acc: any, l: any) => {
+          acc[l.id] = l;
+          return acc;
+        }, {} as Record<string, any>);
+      }
+    }
+
+    let submissions: any[] = [];
+    const submissionTableCandidates = ['homework_submissions', 'submissions', 'class_submissions'];
+    for (const tbl of submissionTableCandidates) {
+      try {
+        const { data, error } = await supabase
+          .from(tbl)
+          .select('*')
+          .eq('homework_id', id);
+        if (!error && Array.isArray(data) && data.length > 0) {
+          submissions = data;
+          break;
+        }
+      } catch {
+        // ignore and continue
+      }
+    }
+
+    let marksForHomework: any[] = [];
+    try {
+      const { data: marksData, error: marksError } = await supabase
+        .from('marks')
+        .select('*')
+        .eq('homework_id', id);
+      if (!marksError && Array.isArray(marksData) && marksData.length > 0) {
+        marksForHomework = marksData;
+      }
+    } catch {
+      // ignore
+    }
+
+    let stars: any[] = [];
+    const starTableCandidates = ['homework_stars', 'stars', 'awards'];
+    for (const tbl of starTableCandidates) {
+      try {
+        const { data, error } = await supabase
+          .from(tbl)
+          .select('*')
+          .eq('homework_id', id);
+        if (!error && Array.isArray(data) && data.length > 0) {
+          stars = data;
+          break;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    const submissionsByLearner: Record<string, any> = {};
+    for (const s of submissions) {
+      if (s.learner_id) submissionsByLearner[s.learner_id] = s;
+    }
+    for (const m of marksForHomework) {
+      if (m.learner_id && !submissionsByLearner[m.learner_id]) submissionsByLearner[m.learner_id] = m;
+    }
+
+    const starsByLearner: Record<string, any> = {};
+    for (const s of stars) {
+      if (!s.learner_id) continue;
+      if (!starsByLearner[s.learner_id]) starsByLearner[s.learner_id] = [];
+      starsByLearner[s.learner_id].push(s);
+    }
+
+    let submittedCount = 0;
+    let passCount = 0;
+    const passMark = (homework.pass_mark ?? homework.passMark ?? 50);
+
+    const learnerRows = (members || []).map((member: any) => {
+      const learner = learnersMap[member.learner_id] || null;
+      const submission = submissionsByLearner[member.learner_id] || null;
+      const mark = submission && (submission.mark ?? submission.score ?? submission.points ?? null);
+      const submitted = Boolean(submission);
+      const passed = typeof mark === 'number' ? mark >= passMark : false;
+
+      if (submitted) submittedCount += 1;
+      if (passed) passCount += 1;
+
+      const starList = starsByLearner[member.learner_id] || [];
+
+      return {
+        learnerId: member.learner_id,
+        classMemberId: member.id,
+        firstName: learner?.first_name ?? learner?.firstName ?? null,
+        lastName: learner?.last_name ?? learner?.lastName ?? null,
+        fullName: [learner?.first_name, learner?.last_name].filter(Boolean).join(' ') || learner?.full_name || null,
+        studentNumber: learner?.student_number ?? learner?.phone ?? learner?.phone_number ?? null,
+        submitted,
+        submissionId: submission?.id ?? null,
+        mark: typeof mark === 'number' ? mark : null,
+        passed,
+        totalStars: Array.isArray(starList) ? starList.length : 0,
+        homeworkStarAwarded: (starList || []).some((s: any) => s.homework_id === id),
+      };
+    });
+
+    const totalLearners = learnerIds.length;
+    const submissionRate = totalLearners > 0 ? Math.round((submittedCount / totalLearners) * 100) : 0;
+    const passRate = totalLearners > 0 ? Math.round((passCount / totalLearners) * 100) : 0;
+    const topLearners = learnerRows
+      .filter((r: any) => typeof r.mark === 'number')
+      .sort((a: any, b: any) => b.mark - a.mark)
+      .slice(0, 5)
+      .map((r: any) => ({ learnerId: r.learnerId, fullName: r.fullName, mark: r.mark }));
+
+    return {
+      id: homework.id,
+      title: homework.title,
+      description: homework.description ?? homework.body ?? null,
+      classId,
+      teacherId: homework.teacher_id ?? homework.teacherId ?? null,
+      lessonDate: homework.lesson_date ?? homework.lessonDate ?? null,
+      dueDate: homework.due_date ?? homework.dueDate ?? null,
+      createdAt: homework.created_at ?? homework.createdAt ?? null,
+      updatedAt: homework.updated_at ?? homework.updatedAt ?? null,
+      totalLearners,
+      submittedCount,
+      submissionRate,
+      passCount,
+      passRate,
+      learnerRows,
+      topLearners,
+      raw: homework,
+    };
+  } catch (error) {
+    logger.error('Error building homework detail', error, { id });
+    return null;
+  }
+}
+
+export async function updateHomeworkSubmissions(
+  homeworkId: string,
+  classId: string,
+  entries: { learnerId: string; submitted: boolean; mark: number | null }[],
+  teacherId: string,
+) {
+  try {
+    const results: any[] = [];
+
+    for (const entry of entries) {
+      const { learnerId, submitted, mark } = entry;
+      if (!learnerId) continue;
+
+      const { data: existingRecord, error: fetchError } = await supabase
+        .from('marks')
+        .select('id')
+        .eq('homework_id', homeworkId)
+        .eq('learner_id', learnerId)
+        .maybeSingle();
+
+      if (fetchError) {
+        logger.error('Failed to fetch existing homework mark record', fetchError, {
+          homeworkId,
+          learnerId,
+        });
+        throw new Error('Failed to update homework submissions');
+      }
+
+      if (!submitted) {
+        if (existingRecord?.id) {
+          const { error: deleteError } = await supabase
+            .from('marks')
+            .delete()
+            .eq('id', existingRecord.id);
+
+          if (deleteError) {
+            logger.error('Failed to delete homework mark record', deleteError, {
+              homeworkId,
+              learnerId,
+            });
+            throw new Error('Failed to update homework submissions');
+          }
+        }
+
+        continue;
+      }
+
+      const recordData: Record<string, unknown> = {
+        homework_id: homeworkId,
+        class_id: classId,
+        learner_id: learnerId,
+        mark,
+        total_mark: mark !== null ? 100 : null,
+        percentage: mark !== null ? Math.round((mark / 100) * 10000) / 100 : null,
+        recorded_by: teacherId,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (existingRecord?.id) {
+        const { data, error } = await supabase
+          .from('marks')
+          .update(recordData)
+          .eq('id', existingRecord.id)
+          .select()
+          .single();
+
+        if (error) {
+          logger.error('Failed to update homework mark record', error, {
+            homeworkId,
+            learnerId,
+          });
+          throw new Error('Failed to update homework submissions');
+        }
+
+        results.push(data);
+      } else {
+        const insertData = {
+          id: uuidv4(),
+          ...recordData,
+          created_at: new Date().toISOString(),
+        };
+
+        const { data, error } = await supabase
+          .from('marks')
+          .insert([insertData])
+          .select()
+          .single();
+
+        if (error) {
+          logger.error('Failed to insert homework mark record', error, {
+            homeworkId,
+            learnerId,
+          });
+          throw new Error('Failed to update homework submissions');
+        }
+
+        results.push(data);
+      }
+    }
+
+    return results;
+  } catch (error) {
+    logger.error('Error updating homework submissions', error, {
+      homeworkId,
+      classId,
+      teacherId,
+    });
+    throw error;
+  }
+}
+
+export async function toggleHomeworkStar(
+  homeworkId: string,
+  classId: string,
+  learnerId: string,
+  teacherId: string,
+) {
+  try {
+    const { data: existingStar, error: fetchError } = await supabase
+      .from('stars')
+      .select('id')
+      .eq('homework_id', homeworkId)
+      .eq('class_id', classId)
+      .eq('learner_id', learnerId)
+      .maybeSingle();
+
+    if (fetchError) {
+      logger.error('Failed to fetch existing homework star record', fetchError, {
+        homeworkId,
+        classId,
+        learnerId,
+      });
+      throw new Error('Failed to toggle homework star');
+    }
+
+    if (existingStar?.id) {
+      const { error: deleteError } = await supabase
+        .from('stars')
+        .delete()
+        .eq('id', existingStar.id);
+
+      if (deleteError) {
+        logger.error('Failed to delete homework star record', deleteError, {
+          homeworkId,
+          classId,
+          learnerId,
+        });
+        throw new Error('Failed to toggle homework star');
+      }
+
+      return { awarded: false };
+    }
+
+    const starData = {
+      id: uuidv4(),
+      homework_id: homeworkId,
+      class_id: classId,
+      learner_id: learnerId,
+      teacher_id: teacherId,
+      star_count: 1,
+      note: 'Homework star',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data: createdStar, error: insertError } = await supabase
+      .from('stars')
+      .insert([starData])
+      .select()
+      .single();
+
+    if (insertError) {
+      logger.error('Failed to insert homework star record', insertError, {
+        homeworkId,
+        classId,
+        learnerId,
+      });
+      throw new Error('Failed to toggle homework star');
+    }
+
+    return { awarded: true, star: createdStar };
+  } catch (error) {
+    logger.error('Error toggling homework star', error, {
+      homeworkId,
+      classId,
+      learnerId,
+      teacherId,
+    });
+    throw error;
+  }
+}
+
+export async function createAssignment(assignmentData: Record<string, unknown>) {
+  try {
+    const { data, error } = await supabase
+      .from('assignments')
+      .insert([assignmentData])
+      .select()
+      .single();
+
+    if (error) {
+      logger.error('Failed to create assignment', error);
+      throw new Error(error.message || 'Failed to create assignment');
+    }
+
+    return data;
+  } catch (error) {
+    logger.error('Error creating assignment', error);
+    throw error;
+  }
+}
+
+export async function getAssignmentCount() {
+  try {
+    const { count, error } = await supabase
+      .from('assignments')
+      .select('id', { count: 'exact', head: true });
+
+    if (error) {
+      logger.error('Failed to count assignments', error);
+      return 0;
+    }
+
+    return count ?? 0;
+  } catch (error) {
+    logger.error('Error counting assignments', error);
+    return 0;
+  }
+}
+
+export async function getAssignmentCountForClass(classId: string) {
+  try {
+    const { count, error } = await supabase
+      .from('assignments')
+      .select('id', { count: 'exact', head: true })
+      .eq('class_id', classId);
+
+    if (error) {
+      logger.error('Failed to count assignments for class', error, { classId });
+      return 0;
+    }
+
+    return count ?? 0;
+  } catch (error) {
+    logger.error('Error counting assignments for class', error, { classId });
+    return 0;
+  }
+}
+
+export async function getAssignmentsByClass(classId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('assignments')
+      .select('*')
+      .eq('class_id', classId)
+      .order('due_date', { ascending: false })
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      logger.error('Failed to get assignments for class', error, { classId });
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    logger.error('Error fetching assignments for class', error, { classId });
+    return [];
+  }
+}
+
+export async function getAssignmentById(id: string) {
+  try {
+    const { data, error } = await supabase
+      .from('assignments')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      logger.error('Failed to get assignment by id', error, { id });
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    logger.error('Error fetching assignment by id', error, { id });
+    return null;
+  }
+}
+
+export async function getAssignmentDetail(id: string) {
+  try {
+    const assignment = await getAssignmentById(id);
+    if (!assignment) return null;
+
+    const classId = assignment.class_id ?? assignment.classId;
+    const members = await getClassMembers(classId);
+    const learnerIds = (members || []).map((m: any) => m.learner_id).filter(Boolean);
+
+    let learnersMap: Record<string, any> = {};
+    if (learnerIds.length > 0) {
+      const { data: learnersData, error: learnersError } = await supabase
+        .from('learners')
+        .select('*')
+        .in('id', learnerIds);
+
+      if (!learnersError && Array.isArray(learnersData)) {
+        learnersMap = learnersData.reduce((acc: any, l: any) => {
+          acc[l.id] = l;
+          return acc;
+        }, {} as Record<string, any>);
+      }
+    }
+
+    let submissions: any[] = [];
+    const submissionTableCandidates = ['assignment_submissions', 'submissions', 'class_submissions'];
+    for (const tbl of submissionTableCandidates) {
+      try {
+        const { data, error } = await supabase
+          .from(tbl)
+          .select('*')
+          .eq('assignment_id', id);
+        if (!error && Array.isArray(data) && data.length > 0) {
+          submissions = data;
+          break;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    let marksForAssignment: any[] = [];
+    try {
+      const { data: marksData, error: marksError } = await supabase
+        .from('marks')
+        .select('*')
+        .eq('assignment_id', id);
+      if (!marksError && Array.isArray(marksData) && marksData.length > 0) {
+        marksForAssignment = marksData;
+      }
+    } catch {
+      // ignore
+    }
+
+    let stars: any[] = [];
+    const starTableCandidates = ['assignment_stars', 'stars', 'awards'];
+    for (const tbl of starTableCandidates) {
+      try {
+        const { data, error } = await supabase
+          .from(tbl)
+          .select('*')
+          .eq('assignment_id', id);
+        if (!error && Array.isArray(data) && data.length > 0) {
+          stars = data;
+          break;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    const submissionsByLearner: Record<string, any> = {};
+    for (const s of submissions) {
+      if (s.learner_id) submissionsByLearner[s.learner_id] = s;
+    }
+    for (const m of marksForAssignment) {
+      if (m.learner_id && !submissionsByLearner[m.learner_id]) submissionsByLearner[m.learner_id] = m;
+    }
+
+    const starsByLearner: Record<string, any> = {};
+    for (const s of stars) {
+      if (!s.learner_id) continue;
+      if (!starsByLearner[s.learner_id]) starsByLearner[s.learner_id] = [];
+      starsByLearner[s.learner_id].push(s);
+    }
+
+    let submittedCount = 0;
+    let passCount = 0;
+    const passMark = (assignment.pass_mark ?? assignment.passMark ?? 50);
+
+    const learnerRows = (members || []).map((member: any) => {
+      const learner = learnersMap[member.learner_id] || null;
+      const submission = submissionsByLearner[member.learner_id] || null;
+      const mark = submission && (submission.mark ?? submission.score ?? submission.points ?? null);
+      const submitted = Boolean(submission);
+      const passed = typeof mark === 'number' ? mark >= passMark : false;
+
+      if (submitted) submittedCount += 1;
+      if (passed) passCount += 1;
+
+      const starList = starsByLearner[member.learner_id] || [];
+
+      return {
+        learnerId: member.learner_id,
+        classMemberId: member.id,
+        firstName: learner?.first_name ?? learner?.firstName ?? null,
+        lastName: learner?.last_name ?? learner?.lastName ?? null,
+        fullName: [learner?.first_name, learner?.last_name].filter(Boolean).join(' ') || learner?.full_name || null,
+        studentNumber: learner?.student_number ?? learner?.phone ?? learner?.phone_number ?? null,
+        submitted,
+        submissionId: submission?.id ?? null,
+        mark: typeof mark === 'number' ? mark : null,
+        passed,
+        totalStars: Array.isArray(starList) ? starList.length : 0,
+        assignmentStarAwarded: (starList || []).some((s: any) => s.assignment_id === id),
+      };
+    });
+
+    const totalLearners = learnerIds.length;
+    const submissionRate = totalLearners > 0 ? Math.round((submittedCount / totalLearners) * 100) : 0;
+    const passRate = totalLearners > 0 ? Math.round((passCount / totalLearners) * 100) : 0;
+    const topLearners = learnerRows
+      .filter((r: any) => typeof r.mark === 'number')
+      .sort((a: any, b: any) => b.mark - a.mark)
+      .slice(0, 5)
+      .map((r: any) => ({ learnerId: r.learnerId, fullName: r.fullName, mark: r.mark }));
+
+    return {
+      id: assignment.id,
+      title: assignment.title,
+      description: assignment.description ?? assignment.body ?? null,
+      classId,
+      teacherId: assignment.teacher_id ?? assignment.teacherId ?? null,
+      lessonDate: assignment.lesson_date ?? assignment.lessonDate ?? null,
+      dueDate: assignment.due_date ?? assignment.dueDate ?? null,
+      createdAt: assignment.created_at ?? assignment.createdAt ?? null,
+      updatedAt: assignment.updated_at ?? assignment.updatedAt ?? null,
+      totalLearners,
+      submittedCount,
+      submissionRate,
+      passCount,
+      passRate,
+      learnerRows,
+      topLearners,
+      raw: assignment,
+    };
+  } catch (error) {
+    logger.error('Error building assignment detail', error, { id });
+    return null;
+  }
+}
+
+export async function updateAssignmentSubmissions(
+  assignmentId: string,
+  classId: string,
+  entries: { learnerId: string; submitted: boolean; mark: number | null }[],
+  teacherId: string,
+) {
+  try {
+    const results: any[] = [];
+
+    for (const entry of entries) {
+      const { learnerId, submitted, mark } = entry;
+      if (!learnerId) continue;
+
+      const { data: existingRecord, error: fetchError } = await supabase
+        .from('marks')
+        .select('id')
+        .eq('assignment_id', assignmentId)
+        .eq('learner_id', learnerId)
+        .maybeSingle();
+
+      if (fetchError) {
+        logger.error('Failed to fetch existing assignment mark record', fetchError, {
+          assignmentId,
+          learnerId,
+        });
+        throw new Error('Failed to update assignment submissions');
+      }
+
+      if (!submitted) {
+        if (existingRecord?.id) {
+          const { error: deleteError } = await supabase
+            .from('marks')
+            .delete()
+            .eq('id', existingRecord.id);
+
+          if (deleteError) {
+            logger.error('Failed to delete assignment mark record', deleteError, {
+              assignmentId,
+              learnerId,
+            });
+            throw new Error('Failed to update assignment submissions');
+          }
+        }
+
+        continue;
+      }
+
+      const recordData: Record<string, unknown> = {
+        assignment_id: assignmentId,
+        class_id: classId,
+        learner_id: learnerId,
+        mark,
+        total_mark: mark !== null ? 100 : null,
+        percentage: mark !== null ? Math.round((mark / 100) * 10000) / 100 : null,
+        recorded_by: teacherId,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (existingRecord?.id) {
+        const { data, error } = await supabase
+          .from('marks')
+          .update(recordData)
+          .eq('id', existingRecord.id)
+          .select()
+          .single();
+
+        if (error) {
+          logger.error('Failed to update assignment mark record', error, {
+            assignmentId,
+            learnerId,
+          });
+          throw new Error('Failed to update assignment submissions');
+        }
+
+        results.push(data);
+      } else {
+        const insertData = {
+          id: uuidv4(),
+          ...recordData,
+          created_at: new Date().toISOString(),
+        };
+
+        const { data, error } = await supabase
+          .from('marks')
+          .insert([insertData])
+          .select()
+          .single();
+
+        if (error) {
+          logger.error('Failed to insert assignment mark record', error, {
+            assignmentId,
+            learnerId,
+          });
+          throw new Error('Failed to update assignment submissions');
+        }
+
+        results.push(data);
+      }
+    }
+
+    return results;
+  } catch (error) {
+    logger.error('Error updating assignment submissions', error, {
+      assignmentId,
+      classId,
+      teacherId,
+    });
+    throw error;
+  }
+}
+
+export async function toggleAssignmentStar(
+  assignmentId: string,
+  classId: string,
+  learnerId: string,
+  teacherId: string,
+) {
+  try {
+    const { data: existingStar, error: fetchError } = await supabase
+      .from('stars')
+      .select('id')
+      .eq('assignment_id', assignmentId)
+      .eq('class_id', classId)
+      .eq('learner_id', learnerId)
+      .maybeSingle();
+
+    if (fetchError) {
+      logger.error('Failed to fetch existing assignment star record', fetchError, {
+        assignmentId,
+        classId,
+        learnerId,
+      });
+      throw new Error('Failed to toggle assignment star');
+    }
+
+    if (existingStar?.id) {
+      const { error: deleteError } = await supabase
+        .from('stars')
+        .delete()
+        .eq('id', existingStar.id);
+
+      if (deleteError) {
+        logger.error('Failed to delete assignment star record', deleteError, {
+          assignmentId,
+          classId,
+          learnerId,
+        });
+        throw new Error('Failed to toggle assignment star');
+      }
+
+      return { awarded: false };
+    }
+
+    const starData = {
+      id: uuidv4(),
+      assignment_id: assignmentId,
+      class_id: classId,
+      learner_id: learnerId,
+      teacher_id: teacherId,
+      star_count: 1,
+      note: 'Assignment star',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data: createdStar, error: insertError } = await supabase
+      .from('stars')
+      .insert([starData])
+      .select()
+      .single();
+
+    if (insertError) {
+      logger.error('Failed to insert assignment star record', insertError, {
+        assignmentId,
+        classId,
+        learnerId,
+      });
+      throw new Error('Failed to toggle assignment star');
+    }
+
+    return { awarded: true, star: createdStar };
+  } catch (error) {
+    logger.error('Error toggling assignment star', error, {
+      assignmentId,
+      classId,
+      learnerId,
+      teacherId,
+    });
+    throw error;
+  }
+}
+
+/**
  * Record attendance
  */
 export async function recordAttendance(attendanceData: Record<string, unknown>) {
