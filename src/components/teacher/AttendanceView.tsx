@@ -441,12 +441,15 @@ const AttendanceView: React.FC = () => {
       }
       const parsed: ParsedLearner[] = lines
         .map((line, idx) => {
-          const [nameRaw, surnameRaw] = parseCsvRow(line);
+          const [nameRaw, surnameRaw, ...rest] = parseCsvRow(line);
           const firstName = (nameRaw || '').trim();
-          const surname = (surnameRaw || '').trim();
+          const surname = [surnameRaw, ...rest]
+            .filter(Boolean)
+            .map((value) => value.trim())
+            .join(' ');
           const fullName = [firstName, surname].filter(Boolean).join(' ').trim();
           if (!fullName) return null;
-          return { learnerNumber: String(idx + 1), fullName };
+          return { learnerNumber: String(idx + 1), fullName, firstName, lastName: surname };
         })
         .filter((learner): learner is ParsedLearner => Boolean(learner));
 
@@ -537,15 +540,17 @@ const AttendanceView: React.FC = () => {
     }, 300);
 
     try {
-      const selectedClassInfo = classes.find((cls) => cls.id === selectedClass);
-      const generatedNumbers = buildUniqueSixDigitNumbers(finalLearnersToUpload.length, selectedClassInfo?.grade);
+      const generatedNumbers = buildUniqueSixDigitNumbers(finalLearnersToUpload.length);
       const payloadLearners = finalLearnersToUpload.map((learner, index) => {
-        const parts = learner.fullName.trim().split(/\s+/);
+        const parts = learner.fullName?.trim().split(/\s+/) || [];
+        const firstName = learner.firstName?.trim() || parts.shift() || '';
+        const lastName = learner.lastName?.trim() || parts.join(' ');
+        const fullName = learner.fullName?.trim() || [firstName, lastName].filter(Boolean).join(' ');
         return {
           learnerNumber: generatedNumbers[index],
-          fullName: learner.fullName,
-          firstName: parts.shift() || '',
-          lastName: parts.join(' '),
+          fullName,
+          firstName,
+          lastName,
         };
       });
 

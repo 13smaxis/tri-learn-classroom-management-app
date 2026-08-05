@@ -269,7 +269,7 @@ router.get('/records/:classId/:date', async (req: AuthenticatedRequest, res: Res
       .select('*')
       .eq('class_id', classId)
       .eq('date', date)
-      .order('created_at', { ascending: true });
+      .order('recorded_at', { ascending: true });
 
     if (error) {
       logger.error('Failed to fetch attendance records', error);

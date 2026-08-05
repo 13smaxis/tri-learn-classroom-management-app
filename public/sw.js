@@ -1,6 +1,11 @@
 const CACHE_NAME = 'educonnect-v2';
 const urlsToCache = [
-  '/manifest.json'
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/logo-removebg.png',
+  '/icon-192.png',
+  '/icon-512.png'
 ];
 
 // Install event - skip waiting to activate immediately
@@ -26,8 +31,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (request.mode === 'navigate' || request.destination === 'document')                                        //-Network-first for HTML / navigation requests (always get latest version)
-  {
+  if (request.mode === 'navigate' || request.destination === 'document') {
     event.respondWith(
       fetch(request)
         .then((response) => {
@@ -38,7 +42,7 @@ self.addEventListener('fetch', (event) => {
           });
           return response;
         })
-        .catch(() => caches.match(request))
+        .catch(() => caches.match('/index.html'))
     );
     return;
   }
