@@ -254,7 +254,7 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass }) =>
                     <span className="text-xs font-bold text-green-700 w-5">#{i + 1}</span>
                     <div>
                       <p className="text-sm font-medium text-gray-900 leading-tight">{s.fullName}</p>
-                      <p className="text-[10px] text-gray-400 font-mono">#{s.learnerNumber}</p>
+                      <p className="text-[10px] text-gray-400 font-mono">{s.learnerNumber}</p>
                     </div>
                   </div>
                   <span className="text-sm font-bold text-green-700">{s.avgMark}%</span>
@@ -282,7 +282,7 @@ const ClassDetailsView: React.FC<ClassDetailsViewProps> = ({ selectedClass }) =>
                 <div key={s.learnerId} className="flex items-center justify-between rounded-lg bg-white border border-red-100 px-3 py-2">
                   <div>
                     <p className="text-sm font-medium text-gray-900 leading-tight">{s.fullName}</p>
-                    <p className="text-[10px] text-gray-400 font-mono">#{s.learnerNumber}</p>
+                    <p className="text-[10px] text-gray-400 font-mono">{s.learnerNumber}</p>
                   </div>
                   <span className="text-sm font-bold text-red-600">
                     {s.avgMark != null ? `${s.avgMark}%` : 'No data'}

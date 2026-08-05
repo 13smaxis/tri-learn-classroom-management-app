@@ -44,11 +44,11 @@ const StudentUploadWidget: React.FC<StudentUploadWidgetProps> = ({
   ]);
 
   // ── CSV handling ──────────────────────────────────────────
-  // Helper to generate a unique 6-digit ID
+  // Helper to generate a unique ST-prefixed 6-digit student ID
   const generateUniqueId = (existing: Set<string>) => {
     let id;
     do {
-      id = Math.floor(100000 + Math.random() * 900000).toString();
+      id = `ST${Math.floor(100000 + Math.random() * 900000).toString()}`;
     } while (existing.has(id));
     existing.add(id);
     return id;
@@ -73,7 +73,7 @@ const StudentUploadWidget: React.FC<StudentUploadWidgetProps> = ({
       const usedIds = new Set<string>();
       const parsed: ParsedLearner[] = dataLines.map((line, idx) => {
         const [, nameRaw, surnameRaw] = line.split(',');
-        // Always generate a new unique 6-digit learnerNumber
+        // Always generate a new unique ST-prefixed learnerNumber
         const learnerNumber = generateUniqueId(usedIds);
         const firstName = (nameRaw || '').trim();
         const surname = (surnameRaw || '').trim();
@@ -116,14 +116,10 @@ const StudentUploadWidget: React.FC<StudentUploadWidgetProps> = ({
       .filter(r => r.name.trim() || r.surname.trim())
       .map((r, idx) => {
         let learnerNumber = r.id.trim();
-        if (!learnerNumber || learnerNumber.length !== 6 || isNaN(Number(learnerNumber))) {
+        if (!/^ST\d{6}$/.test(learnerNumber) || usedIds.has(learnerNumber)) {
           learnerNumber = generateUniqueId(usedIds);
         } else {
-          if (usedIds.has(learnerNumber)) {
-            learnerNumber = generateUniqueId(usedIds);
-          } else {
-            usedIds.add(learnerNumber);
-          }
+          usedIds.add(learnerNumber);
         }
         const firstName = r.name.trim();
         const lastName = r.surname.trim();

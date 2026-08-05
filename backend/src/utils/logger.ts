@@ -12,46 +12,51 @@ const currentLevel = (process.env.LOG_LEVEL as LogLevel) || 'info';
 class Logger {
   private level = LOG_LEVELS[currentLevel];
 
-  private formatLog(message: string, data?: unknown) {
-    const timestamp = new Date().toISOString();
-    const payload = {
-      timestamp,
-      message,
-      ...(typeof data === 'object' && data !== null ? data : { details: data }),
-    };
+  private formatData(data?: unknown) {
+    if (data === undefined) {
+      return '';
+    }
 
-    return JSON.stringify(payload);
+    if (typeof data === 'string' || typeof data === 'number' || typeof data === 'boolean' || data === null) {
+      return ` ${String(data)}`;
+    }
+
+    try {
+      return ` ${JSON.stringify(data)}`;
+    } catch {
+      return ` ${String(data)}`;
+    }
   }
 
   debug(message: string, data?: unknown) {
     if (this.level <= LOG_LEVELS.debug) {
-      console.log(`[DEBUG] ${this.formatLog(message, data)}`);
+      console.log(`[DEBUG] ${message}${this.formatData(data)}`);
     }
   }
 
   info(message: string, data?: unknown) {
     if (this.level <= LOG_LEVELS.info) {
-      console.log(`[INFO] ${this.formatLog(message, data)}`);
+      console.log(`[INFO] ${message}${this.formatData(data)}`);
     }
   }
 
   warn(message: string, data?: unknown) {
     if (this.level <= LOG_LEVELS.warn) {
-      console.warn(`[WARN] ${this.formatLog(message, data)}`);
+      console.warn(`[WARN] ${message}${this.formatData(data)}`);
     }
   }
 
   error(message: string, error?: unknown, data?: unknown) {
     if (this.level <= LOG_LEVELS.error) {
-      const meta = data ? { ...((typeof data === 'object' && data !== null) ? data : { details: data }) } : undefined;
+      const meta = data ? this.formatData(data) : '';
 
       if (error instanceof Error) {
-        console.error(`[ERROR] ${this.formatLog(message, meta)}`);
+        console.error(`[ERROR] ${message}${meta}`);
         console.error(error.stack || error.message);
       } else if (error && typeof error === 'object') {
-        console.error(`[ERROR] ${this.formatLog(message, { ...meta, error })}`);
+        console.error(`[ERROR] ${message}${meta} ${JSON.stringify(error)}`);
       } else {
-        console.error(`[ERROR] ${this.formatLog(message, { ...meta, error: error ? String(error) : null })}`);
+        console.error(`[ERROR] ${message}${meta}${error ? ` ${String(error)}` : ''}`);
       }
     }
   }

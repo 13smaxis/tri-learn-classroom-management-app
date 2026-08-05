@@ -262,7 +262,6 @@ router.get('/records/:classId/:date', async (req: AuthenticatedRequest, res: Res
     }
 
     logger.info(`Fetching attendance records for class ${classId} on ${date}`);
-    console.log(`[ATTENDANCE RECORDS] Fetching records for classId: ${classId}, date: ${date}`);
 
     // Get attendance records for this class and date
     const { data: records, error } = await supabaseService.supabase
@@ -280,9 +279,17 @@ router.get('/records/:classId/:date', async (req: AuthenticatedRequest, res: Res
       });
     }
 
+    const attendanceMap = (records || []).reduce<Record<string, string>>((acc, record: any) => {
+      const learnerId = record.learner_id || record.learnerId;
+      if (learnerId) {
+        acc[String(learnerId)] = String(record.status ?? '');
+      }
+      return acc;
+    }, {});
+
     return res.json({
-      data: records || [],
-      total: (records || []).length,
+      data: attendanceMap,
+      total: Object.keys(attendanceMap).length,
     });
   } catch (error: any) {
     logger.error('Error fetching attendance records', error);

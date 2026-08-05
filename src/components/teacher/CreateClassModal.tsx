@@ -184,7 +184,7 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({ isOpen, onClose, on
               value={formData.className}
               onChange={handleChange}
               className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              placeholder="e.g., Grade 10A Mathematics"
+              placeholder="e.g., Grade 10A"
               required
             />
           </div>

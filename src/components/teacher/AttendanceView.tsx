@@ -112,20 +112,11 @@ const mapLearnersForAttendance = (data: any[]): Learner[] => {
   }));
 };
 
-const resolveGradePrefix = (grade?: string): string => {
-  if (!grade) return '00';
-  const match = grade.match(/\d{1,2}/);
-  if (!match) return '00';
-  const number = Math.max(0, Math.min(99, Number.parseInt(match[0], 10)));
-  return String(number).padStart(2, '0');
-};
-
-const buildUniqueSixDigitNumbers = (count: number, grade?: string): string[] => {
-  const prefix = resolveGradePrefix(grade);
+const buildUniqueSixDigitNumbers = (count: number): string[] => {
   const generated = new Set<string>();
   while (generated.size < count) {
-    const suffix = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-    generated.add(`${prefix}${suffix}`);
+    const suffix = Math.floor(100000 + Math.random() * 900000).toString();
+    generated.add(`ST${suffix}`);
   }
   return Array.from(generated);
 };
@@ -1221,7 +1212,7 @@ const AttendanceView: React.FC = () => {
                         <div>
                           <p className="font-medium text-gray-900">{learner.name}</p>
                           <p className="text-sm text-gray-500">
-                            #{learner.number}
+                            {learner.number}
                             {isLocked ? <span className="ml-2 text-[11px] font-medium text-blue-600">Saved</span> : null}
                           </p>
                         </div>
@@ -1279,7 +1270,7 @@ const AttendanceView: React.FC = () => {
                       <tr key={learner.id} className="hover:bg-gray-50">
                         <td className="px-4 py-2 text-gray-800">
                           <span className="font-medium">{learner.name}</span>
-                          <span className="ml-1 text-[10px] text-gray-400">#{learner.number}</span>
+                          <span className="ml-1 text-[10px] text-gray-400">{learner.number}</span>
                         </td>
                         {activeWeekDays.map(day => {
                           const status = attendanceByDate[day.dateKey]?.[learner.id];
@@ -1348,7 +1339,7 @@ const AttendanceView: React.FC = () => {
                       <tr key={learner.id} className="hover:bg-gray-50">
                         <td className="px-4 py-2 text-gray-800 whitespace-nowrap">
                           <span className="font-medium">{learner.name}</span>
-                          <span className="ml-1 text-[10px] text-gray-400">#{learner.number}</span>
+                          <span className="ml-1 text-[10px] text-gray-400">{learner.number}</span>
                         </td>
                         {getMonthWeeks(viewingMonthDate).flatMap(week =>
                           week.days.map(day => {
