@@ -8,6 +8,7 @@ import { logger } from './utils/logger.js';
 import authRoutes from './routes/auth.js';
 import teacherRoutes from './routes/teacher.js';
 import attendanceRoutes from './routes/attendance.js';
+import classworkRoutes from './routes/classwork.js';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from './services/supabase.js';
 
@@ -43,8 +44,8 @@ app.use((req, _res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/teacher', teacherRoutes);
 app.use('/api/attendance', attendanceRoutes);
-//app.use('/api/classwork', classworkRoutes);
-//app.use('/api/homework', homeworkRoutes);
+app.use('/api/classwork', classworkRoutes);
+
 
 // Health check
 app.get('/api/health', (_req, res) => {
@@ -113,4 +114,5 @@ app.listen(port, () => {
   logger.info(`🔐 Auth: http://localhost:${port}/api/auth`);
   logger.info(`👨‍🏫 Teacher: http://localhost:${port}/api/teacher`);
   logger.info(`📋 Attendance: http://localhost:${port}/api/attendance`);
+  logger.info(`📝 Classwork: http://localhost:${port}/api/classwork`);
 });

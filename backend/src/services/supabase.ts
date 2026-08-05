@@ -656,3 +656,31 @@ export async function bulkAddLearnersToClass(
 
   return results;
 }
+
+/**
+ * Get classwork items for a class
+ */
+export async function getClassworkByClass(classId: string) {
+  try {
+    logger.debug('Querying classwork table for class', { classId });
+
+    const { data, error } = await supabase
+      .from('classwork')
+      .select('*')
+      .eq('class_id', classId)
+      .order('lesson_date', { ascending: false })
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      logger.error('Failed to get classwork for class', error, { classId });
+      return [];
+    }
+
+    const items = data || [];
+    logger.info('Classwork fetched', { classId, itemCount: items.length });
+    return items;
+  } catch (error) {
+    logger.error('Error fetching classwork for class', error, { classId });
+    return [];
+  }
+}
